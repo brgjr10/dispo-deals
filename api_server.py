@@ -26,6 +26,8 @@ from utils.images import (
     get_mime_type,
     resize_image,
 )
+from utils.strain_match import normalize_name
+from utils.categories import canonical_category
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         # this every image cache miss scanned the whole deals table.
         self._image_url_index = None
         self._image_url_index_lock = threading.Lock()
+        # normalised strain name -> profile, loaded once per process. Strain
+        # profiles are shared across every product carrying that strain.
+        self._strain_index = None
+        self._strain_index_lock = threading.Lock()
         super().__init__(*args, directory=str(self.project_root), **kwargs)
 
     def do_GET(self):
@@ -51,6 +57,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         if path == '/api/data':
             self.send_api_data()
+        elif path == '/api/menu':
+            self.send_full_menu()
         elif path.startswith('/api/image/'):
             self.send_image(path[len('/api/image/'):])
         elif path.startswith('/api/logo/'):
@@ -246,6 +254,28 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_error(500, str(e))
 
+    def send_full_menu(self):
+        try:
+            products = self.get_full_menu()
+            stores = self.get_stores()
+            # Get unique categories
+            categories = sorted(set(p.get("category", "") for p in products if p.get("category")))
+            # Get unique brands
+            brands = sorted(set(p.get("brand", "") for p in products if p.get("brand")))
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "products": products,
+                "stores": stores,
+                "categories": categories,
+                "brands": brands
+            }, default=str, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            self.send_error(500, str(e))
+
     def get_dashboard_data(self):
         stores = self.get_stores()
         deals = self.get_all_deals()
@@ -257,6 +287,42 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             "snapshots": [],
             "weeklyDiff": weekly_diff.to_dict() if weekly_diff else None
         }
+
+    def _strain_index_map(self):
+        """Load every cached strain once, keyed by normalised name.
+
+        Strain profiles are small and there are only a few thousand, so one
+        lookup serves the whole menu instead of a query per product.
+        """
+        if self._strain_index is None:
+            with self._strain_index_lock:
+                if self._strain_index is None:
+                    self._strain_index = self.storage.get_strain_index()
+        return self._strain_index
+
+    def _attach_strains(self, products):
+        """Attach a `strain` profile to each product, in place.
+
+        The strain name is read from the product when it carries one, otherwise
+        through the deal hash, because weekly snapshots written before the
+        strain importer existed have no strain field of their own.
+        """
+        if not products:
+            return products
+        index = self._strain_index_map()
+        by_hash = self.storage.get_strain_names_by_hash()
+
+        for product in products:
+            name = product.get("strain_name") or by_hash.get(product.get("hash"))
+            strain = index.get(normalize_name(name)) if name else None
+            product["strain"] = strain.to_dict() if strain else None
+        return products
+        index = self._strain_index_map()
+        for product in products:
+            name = product.get("strain_name")
+            strain = index.get(normalize_name(name)) if name else None
+            product["strain"] = strain.to_dict() if strain else None
+        return products
 
     def get_stores(self):
         # Return store configs from the database or config
@@ -305,8 +371,55 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             deal["image_key"] = hash_url(deal["image_url"]) if deal.get("image_url") else ""
             # Add weekly status if we can compute it
             deal["weekly_status"] = "NEW"  # Default
+            # Rows written before the canonical names existed keep the raw one,
+            # so normalise here too or the sidebar still splits the shelf.
+            deal["category"] = canonical_category(deal.get("category"))
             deals.append(deal)
-        return deals
+        return self._attach_strains(deals)
+
+    def get_full_menu(self):
+        """Get the complete menu from latest weekly snapshots across all stores."""
+        conn = self.storage._get_connection()
+        try:
+            # Get latest snapshot for each store
+            rows = conn.execute("""
+                SELECT ws.* FROM weekly_snapshots ws
+                INNER JOIN (
+                    SELECT store_id, MAX(week_start) as max_week
+                    FROM weekly_snapshots
+                    GROUP BY store_id
+                ) latest ON ws.store_id = latest.store_id AND ws.week_start = latest.max_week
+            """).fetchall()
+        finally:
+            conn.close()
+
+        all_products = []
+        for row in rows:
+            data = dict(row)
+            try:
+                items = json.loads(data["items"])
+                for item in items:
+                    # Ensure each item has the store_id and image_key
+                    item["store_id"] = data["store_id"]
+                    item["image_key"] = hash_url(item["image_url"]) if item.get("image_url") else ""
+                    # Mark whether it is actually on sale. Snapshots written
+                    # before this field existed only hold deals, so anything
+                    # without a discount percentage is a full-priced product.
+                    item["is_deal"] = (item.get("discount_pct") or 0) > 0
+                    # Weekly status from diff
+                    item["weekly_status"] = item.get("weekly_status", "NEW")
+                    # Stores disagree on shelf names, and a snapshot written by
+                    # an older scraper can still carry a stale one, so the
+                    # category is canonicalised on the way out.
+                    item["category"] = canonical_category(item.get("category"))
+                    all_products.append(item)
+            except Exception as e:
+                logger.warning(f"Failed to parse snapshot for {data['store_id']}: {e}")
+
+        # Snapshots are written before the strain import ran, so a stored item
+        # may not carry its strain yet; the live deals table has the newer data.
+        self._attach_strains(all_products)
+        return all_products
 
     def get_weekly_diff(self):
         today = date.today()

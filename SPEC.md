@@ -82,7 +82,9 @@ dispo-deals/
 ├── utils/
 │   ├── __init__.py
 │   ├── images.py           # download, cache, resize
-│   └── diff.py             # menu comparison logic
+│   ├── diff.py             # menu comparison logic
+│   ├── leafly.py           # Leafly search API + strain page client
+│   └── strain_match.py     # name -> strain extraction, resolution, caching
 └── tests/
 ```
 
@@ -99,7 +101,31 @@ discount_pct: float
 image_url: str
 product_url: str
 detected_at: datetime
+strain_name: Optional[str]  # matched Leafly strain; excluded from hash
 hash: str  # store_id + product_id + sale_price + discount_pct
+
+# Strain
+name: str
+slug: str
+category: str            # Hybrid / Sativa / Indica
+thc_low: Optional[float]     # percentile25
+thc_pct: Optional[float]     # percentile50
+thc_high: Optional[float]    # percentile75
+cbd_low: Optional[float]
+cbd_pct: Optional[float]
+cbd_high: Optional[float]
+effects: List[str]
+flavors: List[str]
+terpenes: List[str]
+helps_with: List[str]
+rating: Optional[float]
+review_count: Optional[int]
+description: str
+image_url: str
+parents: List[str]
+children: List[str]
+source: str              # leafly-search | leafly-detail
+fetched_at: Optional[datetime]
 
 # WeeklySnapshot
 store_id: str
@@ -108,6 +134,7 @@ items: List[Deal]  # full menu at snapshot time
 
 # SeenDeal
 hash: str
+strain_name: Optional[str]
 first_seen: datetime
 last_notified: datetime
 ```
@@ -165,11 +192,23 @@ def compute_weekly_diff(current: List[Deal], previous: List[Deal]) -> List[MenuI
 - Resize to max 800px width for webhook payload size limits
 - Attach as `multipart/form-data` (Discord) or image URL (Slack)
 
+## Leafly Strain Import
+- leafly.py reads Leafly's public consumer search endpoint and strain pages
+- strain_match.py turns a product name into a strain candidate and verifies it
+  against Leafly, accepting only an exact name match (Leafly ranks an exact
+  strain first, so a near-miss means no such strain exists)
+- Matched profiles are stored in `strains`; failed candidates in `strain_misses`
+  so a proprietary cutting is only ever queried once
+- The dashboard renders phenotype, potency, effects, flavours and terpenes per
+  product, with attribution back to Leafly
+
 ## Error Handling
 - Scraper failures: log, continue other stores, alert on repeated failures
 - Webhook failures: retry with exponential backoff (max 3)
 - Missing images: send notification without image, log warning
 - Network timeouts: 30s per request
+- Strain lookup failures are non-fatal: a product without a strain still
+  appears in the dashboard, just without a strain profile
 
 ## Deployment
 - Run as systemd service / Docker container / scheduled cron

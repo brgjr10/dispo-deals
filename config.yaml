@@ -71,3 +71,17 @@ webhook:
   max_retries: 3
   backoff_base_seconds: 5
   timeout: 15
+leafly:
+  enabled: true
+  search_endpoint: https://consumer-api.leafly.com/api/search/v1
+  site_url: https://www.leafly.com
+  timeout: 15
+  max_retries: 3
+  request_delay_seconds: 0.4
+  categories:
+  - Flower
+  - Pre-Rolls
+  - Concentrate
+  - Vaporizers
+  match_threshold: 0.6
+  cache_days: 30

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from enum import Enum
 import hashlib
 import json
@@ -14,6 +14,135 @@ class NotificationMode(str, Enum):
 class DealStatus(str, Enum):
     NEW = "NEW"
     CARRYOVER = "CARRYOVER"
+
+
+@dataclass
+class Strain:
+    """A cannabis strain profile imported from Leafly.
+
+    `category` is the Leafly phenotype (Hybrid / Sativa / Indica). The THC and
+    CBD values are medians of lab-tested samples, so they describe the strain
+    generally rather than any one dispensary's cut of it.
+    """
+
+    name: str
+    slug: str = ""
+    leafly_id: Optional[str] = None
+    category: str = ""
+    thc_pct: Optional[float] = None
+    thc_low: Optional[float] = None
+    thc_high: Optional[float] = None
+    cbd_pct: Optional[float] = None
+    cbd_low: Optional[float] = None
+    cbd_high: Optional[float] = None
+    effects: List[str] = field(default_factory=list)
+    flavors: List[str] = field(default_factory=list)
+    terpenes: List[str] = field(default_factory=list)
+    helps_with: List[str] = field(default_factory=list)
+    rating: Optional[float] = None
+    review_count: Optional[int] = None
+    description: str = ""
+    image_url: str = ""
+    parents: List[str] = field(default_factory=list)
+    children: List[str] = field(default_factory=list)
+    source: str = ""
+    fetched_at: Optional[datetime] = None
+
+    @property
+    def thc_display(self) -> str:
+        """Render potency as a range when the bounds differ, else a single value."""
+        if self.thc_low is not None and self.thc_high is not None and self.thc_high > self.thc_low:
+            return f"{self.thc_low:g}-{self.thc_high:g}%"
+        if self.thc_pct is not None:
+            return f"{self.thc_pct:g}%"
+        if self.thc_high is not None:
+            return f"{self.thc_high:g}%"
+        return ""
+
+    @property
+    def cbd_display(self) -> str:
+        if self.cbd_low is not None and self.cbd_high is not None and self.cbd_high > self.cbd_low:
+            return f"{self.cbd_low:g}-{self.cbd_high:g}%"
+        if self.cbd_pct is not None:
+            return f"{self.cbd_pct:g}%"
+        if self.cbd_high is not None:
+            return f"{self.cbd_high:g}%"
+        return ""
+
+    @property
+    def strain_type(self) -> str:
+        """Normalise the phenotype to a single lowercase keyword for CSS/tests."""
+        value = (self.category or "").lower()
+        if "sativa" in value and "indica" not in value:
+            return "sativa"
+        if "indica" in value and "sativa" not in value:
+            return "indica"
+        if "sativa" in value and "indica" in value:
+            return "hybrid"
+        if "hybrid" in value:
+            return "hybrid"
+        return ""
+
+    @property
+    def top_effects(self, limit: int = 3) -> List[str]:
+        return self.effects[:limit]
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "slug": self.slug,
+            "leafly_id": self.leafly_id,
+            "category": self.category,
+            "thc_pct": self.thc_pct,
+            "thc_low": self.thc_low,
+            "thc_high": self.thc_high,
+            "cbd_pct": self.cbd_pct,
+            "cbd_low": self.cbd_low,
+            "cbd_high": self.cbd_high,
+            "effects": list(self.effects),
+            "flavors": list(self.flavors),
+            "terpenes": list(self.terpenes),
+            "helps_with": list(self.helps_with),
+            "rating": self.rating,
+            "review_count": self.review_count,
+            "description": self.description,
+            "image_url": self.image_url,
+            "parents": list(self.parents),
+            "children": list(self.children),
+            "source": self.source,
+            "fetched_at": self.fetched_at.isoformat() if self.fetched_at else None,
+            "thc_display": self.thc_display,
+            "cbd_display": self.cbd_display,
+            "strain_type": self.strain_type,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Strain":
+        fetched_at = data.get("fetched_at")
+        return cls(
+            name=data["name"],
+            slug=data.get("slug", ""),
+            leafly_id=data.get("leafly_id"),
+            category=data.get("category", ""),
+            thc_pct=data.get("thc_pct"),
+            thc_low=data.get("thc_low"),
+            thc_high=data.get("thc_high"),
+            cbd_pct=data.get("cbd_pct"),
+            cbd_low=data.get("cbd_low"),
+            cbd_high=data.get("cbd_high"),
+            effects=list(data.get("effects", []) or []),
+            flavors=list(data.get("flavors", []) or []),
+            terpenes=list(data.get("terpenes", []) or []),
+            helps_with=list(data.get("helps_with", []) or []),
+            rating=data.get("rating"),
+            review_count=data.get("review_count"),
+            description=data.get("description", ""),
+            image_url=data.get("image_url", ""),
+            parents=list(data.get("parents", []) or []),
+            children=list(data.get("children", []) or []),
+            source=data.get("source", ""),
+            fetched_at=datetime.fromisoformat(fetched_at) if fetched_at else None,
+        )
 
 
 @dataclass
@@ -33,6 +162,10 @@ class Deal:
     cbd_pct: Optional[float] = None
     weight: Optional[str] = None
     brand: Optional[str] = None
+    # Name of the Leafly strain matched to this product, resolved after the
+    # scrape. It is deliberately excluded from `hash` so enriching a deal does
+    # not make previously-seen deals look new to the notifier.
+    strain_name: Optional[str] = None
 
     def __post_init__(self):
         if self.original_price > 0:
@@ -46,6 +179,16 @@ class Deal:
     def hash(self) -> str:
         key = f"{self.store_id}|{self.product_id}|{self.sale_price}|{self.discount_pct}"
         return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+    @property
+    def is_deal(self) -> bool:
+        """True when this product is actually discounted.
+
+        The menu holds every product a store carries, not only its sales, so
+        this is what separates the two. The notifier is gated on it while the
+        dashboard uses it to offer a "deals only" view.
+        """
+        return (self.discount_pct or 0) > 0
 
     @property
     def savings(self) -> float:
@@ -68,6 +211,7 @@ class Deal:
             "cbd_pct": self.cbd_pct,
             "weight": self.weight,
             "brand": self.brand,
+            "strain_name": self.strain_name,
             "hash": self.hash,
             "savings": self.savings,
         }
@@ -89,6 +233,7 @@ class Deal:
             cbd_pct=data.get("cbd_pct"),
             weight=data.get("weight"),
             brand=data.get("brand"),
+            strain_name=data.get("strain_name"),
         )
         if "detected_at" in data:
             deal.detected_at = datetime.fromisoformat(data["detected_at"])
@@ -150,6 +295,7 @@ class SeenDeal:
     cbd_pct: Optional[float]
     weight: Optional[str]
     brand: Optional[str]
+    strain_name: Optional[str]
     first_seen: datetime
     last_notified: datetime
     notify_count: int = 1
@@ -172,6 +318,7 @@ class SeenDeal:
             "cbd_pct": self.cbd_pct,
             "weight": self.weight,
             "brand": self.brand,
+            "strain_name": self.strain_name,
             "first_seen": self.first_seen.isoformat(),
             "last_notified": self.last_notified.isoformat(),
             "notify_count": self.notify_count,
@@ -196,6 +343,7 @@ class SeenDeal:
             cbd_pct=data.get("cbd_pct"),
             weight=data.get("weight"),
             brand=data.get("brand"),
+            strain_name=data.get("strain_name"),
             first_seen=datetime.fromisoformat(data["first_seen"]),
             last_notified=datetime.fromisoformat(data["last_notified"]),
             notify_count=data.get("notify_count", 1),

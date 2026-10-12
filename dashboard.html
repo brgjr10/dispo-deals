@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dispo Deals Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+<title>Dispo Browser - Multi-Store Product Browser</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
 <style>
 :root {
   --bg: #0d1117;
@@ -30,628 +31,1669 @@ body {
   line-height: 1.5;
   min-height: 100vh;
 }
-.header {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--border);
+
+/* Layout: Sidebar + Main */
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar {
+  width: 280px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-header h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.sidebar-header p { font-size: 12px; color: var(--muted); }
+
+.nav-section {
+  padding: 8px;
+}
+.nav-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 12px 8px 6px 8px;
+}
+.nav-item {
+  display: flex;
   align-items: center;
-  position: sticky;
-  top: 0;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 13px;
+}
+.nav-item:hover { background: var(--card-hover); }
+.nav-item.active { background: var(--primary); color: var(--bg); font-weight: 600; }
+.nav-item-count {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--bg);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.nav-item.active .nav-item-count { background: rgba(13,17,23,0.4); color: inherit; }
+.nav-item-store { display: flex; align-items: center; gap: 8px; }
+.nav-item-store img { width: 20px; height: 20px; border-radius: 4px; background: var(--bg); object-fit: cover; }
+
+/* Category groups: one collapsible row per main category instead of a
+   repeated row for every subcategory beneath it. */
+.nav-group { margin-bottom: 2px; }
+.nav-group-header {
+  font-weight: 500;
+  user-select: none;
+}
+.nav-group-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-chevron {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s ease;
+}
+.nav-group.open > .nav-group-header .nav-chevron { transform: rotate(90deg); }
+.nav-group-items {
+  display: none;
+  margin: 2px 0 4px 10px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+.nav-group.open > .nav-group-items { display: block; }
+.nav-sub-item {
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.nav-sub-item:hover { color: var(--text); }
+.nav-sub-item.active { color: var(--bg); }
+
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Header */
+.header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
   background: var(--card-bg);
   backdrop-filter: blur(8px);
   z-index: 100;
 }
+.header-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.header-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .header h1 {
   font-size: 18px;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
 }
-.header h1::before {
-  content: "";
-  width: 10px; height: 10px;
-  background: var(--primary);
-  border-radius: 2px;
-}
-.controls {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-select, input[type="search"] {
+.header h1::before { content: ""; width: 10px; height: 10px; background: var(--primary); border-radius: 2px; }
+.search-input {
+  flex: 1;
+  min-width: 220px;
   background: var(--card-bg);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: 6px;
   font-size: 13px;
-  min-width: 160px;
   backdrop-filter: blur(4px);
 }
-select:focus, input:focus { outline: none; border-color: var(--primary); }
-input[type="search"] { min-width: 200px; }
+.search-input:focus { outline: none; border-color: var(--primary); }
 .btn {
   background: var(--primary);
   color: var(--bg);
   border: none;
-  padding: 6px 14px;
+  padding: 7px 14px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
 }
 .btn:hover { background: var(--primary-hover); }
 .btn:active { transform: scale(0.98); }
 .btn.secondary { background: var(--border); color: var(--text); }
 .btn.secondary:hover { background: var(--hover); }
-.main { padding: 24px; max-width: 1600px; margin: 0 auto; }
-.store-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  gap: 16px;
-}
-.store-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.store-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(88,166,255,0.1); }
-.store-header {
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn.ghost:hover { background: var(--card-hover); }
+.btn-toggle { display: inline-flex; align-items: center; gap: 6px; }
+.btn-toggle.active { background: var(--primary); color: var(--bg); }
+
+/* Filter chips row */
+.filter-row {
   display: flex;
+  gap: 8px;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--card-hover);
+  flex-wrap: wrap;
+  margin-top: 12px;
 }
-.store-logo { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: var(--bg); }
-.store-info { flex: 1; min-width: 0; }
-.store-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.store-meta { font-size: 12px; color: var(--muted); }
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-.badge-new { background: rgba(63,185,80,0.2); color: var(--success); }
-.badge-carryover { background: rgba(210,153,34,0.2); color: var(--warning); }
-.badge-removed { background: rgba(248,81,73,0.2); color: var(--danger); }
-.deals-list { padding: 12px 16px 16px; max-height: 500px; overflow-y: auto; }
-.deal-row {
-  display: grid;
-  grid-template-columns: 60px 1fr auto auto;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  align-items: center;
-  transition: background 0.2s;
-  border-radius: 4px;
-  margin: 0 -4px;
-  padding-left: 4px;
-  padding-right: 4px;
-}
-.deal-img-col { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
-.deal-img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; background: var(--bg); }
-.deal-main { min-width: 0; }
-.deal-name { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.deal-meta { display: flex; gap: 10px; margin-top: 4px; font-size: 11px; color: var(--muted); }
-.deal-price {
-  text-align: right;
-  white-space: nowrap;
-}
-.sale-price { font-weight: 600; font-size: 14px; color: var(--success); }
-.original-price { font-size: 12px; color: var(--muted); text-decoration: line-through; }
-.discount-badge {
-  background: var(--danger);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-}
-.deal-category {
-  background: var(--bg);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  color: var(--primary);
-  white-space: nowrap;
-}
-.empty-state {
-  padding: 32px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 14px;
+.filter-select {
   background: var(--card-bg);
-  border-radius: 8px;
   border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  backdrop-filter: blur(4px);
+  min-width: 140px;
 }
+.filter-select:focus { outline: none; border-color: var(--primary); }
+
+/* Stats bar */
 .stats-bar {
   display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  padding: 14px 20px;
   flex-wrap: wrap;
 }
 .stat {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  padding: 12px 20px;
+  padding: 10px 16px;
   border-radius: 8px;
-  min-width: 140px;
+  min-width: 120px;
+  flex: 1;
 }
-.stat-value { font-size: 24px; font-weight: 700; color: var(--primary); }
-.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
-.tab-bar {
+.stat-value { font-size: 20px; font-weight: 700; color: var(--primary); }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+/* Product area */
+.products-area { flex: 1; overflow-y: auto; padding: 16px 20px 100px 20px; }
+.products-header {
   display: flex;
-  gap: 4px;
-  padding: 8px 8px 4px 8px;
-  border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(8px);
-  border-radius: 10px 10px 0 0;
-  background: var(--card-bg);
-  margin: 0 -16px;
-  padding-left: 24px;
-  padding-right: 24px;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.15);
-  margin-bottom: 8px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
 }
-.content-wrapper {
-  background: var(--card-bg);
-  border-radius: 0 0 10px 10px;
-  backdrop-filter: blur(8px);
-  min-height: 400px;
-  margin: 0 -16px;
-  padding: 0 16px 16px 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-.tab {
-  padding: 8px 16px;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border-radius: 6px;
-  position: relative;
-  transition: color 0.2s, background 0.2s;
-}
-.tab:hover { color: var(--text); background: var(--card-hover); }
-.tab.active { color: var(--primary); background: var(--card-hover); }
-.tab.active::after {
-  content: "";
-  position: absolute;
-  bottom: -4px;
-  left: 0; right: 0;
-  height: 2px;
-  background: var(--primary);
-}
-.tab.active::after {
-  content: "";
-  position: absolute;
-  bottom: -5px;
-  left: 0; right: 0;
-  height: 2px;
-  background: var(--primary);
-}
-.tab-panel { display: none; }
-.tab-panel.active { display: block; animation: fadeIn 0.15s ease; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-.category-section { margin-bottom: 20px; }
-.category-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--primary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-  padding: 0 4px;
-}
-.best-deal {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 12px;
-}
-.best-deal-header {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 8px;
-}
-.best-deal-img-col { width: 80px; height: 80px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.best-deal-img { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; background: var(--bg); }
-.best-deal-info { flex: 1; min-width: 0; }
-.best-deal-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.best-deal-price { display: flex; align-items: baseline; gap: 8px; color: var(--primary); margin-top: 4px; }
-.store-badge {
-  background: var(--primary);
-  color: var(--bg);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-}
-.weekly-diff {
+.products-title { font-size: 16px; font-weight: 600; }
+.products-count { color: var(--muted); font-size: 13px; }
+.products-header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Product grid */
+.product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  contain: layout style paint;
 }
-.diff-card {
+.product-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
 }
-.diff-card h4 {
+.product-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
+.product-card-header {
+  position: relative;
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  background: var(--bg);
+}
+.product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+.product-card:hover .product-img { transform: scale(1.05); }
+.product-store-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.product-store-badge img { width: 14px; height: 14px; border-radius: 3px; }
+.product-card:hover .product-store-badge { border-color: var(--primary); }
+.product-tag {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--danger);
+  color: white;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.product-tag.deal { background: var(--danger); }
+.product-tag.new { background: var(--success); color: var(--bg); }
+.product-tag.in-stock { background: var(--success); color: var(--bg); }
+.product-tag.out-of-stock { background: var(--muted); }
+.product-card.selected .product-store-badge,
+.product-card.selected .product-tag { border: 2px solid var(--primary); }
+.product-info { padding: 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.product-name {
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 12px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 36px;
+}
+.product-meta { display: flex; flex-wrap: wrap; gap: 5px; font-size: 10.5px; color: var(--muted); }
+.product-brand { color: var(--text); font-weight: 500; }
+.product-thc { color: var(--muted); }
+.product-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: auto;
+}
+.product-price { display: flex; align-items: baseline; gap: 6px; }
+.product-sale { font-size: 16px; font-weight: 700; color: var(--success); }
+.product-original { font-size: 12px; color: var(--muted); text-decoration: line-through; }
+.product-store { font-size: 11px; color: var(--muted); }
+
+/* Strain display */
+.product-strain {
+  font-size: 9.5px;
+  color: var(--primary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+/* Strain phenotype badge, overlaid on the product image */
+.strain-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border: 1px solid;
+  backdrop-filter: blur(4px);
+  color: var(--text);
+  background: rgba(13, 17, 23, 0.72);
+}
+.strain-badge.strain-indica { border-color: #a371f7; color: #d2b3ff; }
+.strain-badge.strain-sativa { border-color: var(--warning); color: #f0c674; }
+.strain-badge.strain-hybrid { border-color: var(--primary); color: #7ee787; }
+
+/* Strain detail rows in the quick view modal */
+.strain-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.strain-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.strain-label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; font-size: 10px; white-space: nowrap; }
+.strain-value { font-weight: 500; text-align: right; }
+.strain-value.strain-unknown { color: var(--muted); }
+.strain-rating { font-size: 11px; color: var(--muted); align-self: center; }
+
+/* Strain profile heading in the quick view modal */
+.strain-heading {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
-.diff-count { font-size: 20px; font-weight: 700; }
-.diff-new { color: var(--success); }
-.diff-carryover { color: var(--warning); }
-.diff-removed { color: var(--danger); }
-.diff-items { max-height: 200px; overflow-y: auto; }
-.diff-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
+.strain-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
 }
-.diff-img { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; background: var(--bg); flex-shrink: 0; }
-.diff-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.diff-item-price { color: var(--success); font-weight: 500; margin-left: 12px; white-space: nowrap; }
+.strain-heading .strain-badge {
+  position: static;
+  backdrop-filter: none;
+}
+
+/* Virtualized grid / loader */
+.vg-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.vg-loader { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 24px; color: var(--muted); font-size: 13px; }
+.vg-spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: vg-spin 0.8s linear infinite; }
+@keyframes vg-spin { to { transform: rotate(360deg); } }
+.vg-end { grid-column: 1 / -1; text-align: center; padding: 24px; color: var(--muted); font-size: 13px; }
+.vg-skeleton { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; animation: vg-pulse 1.5s ease-in-out infinite; }
+@keyframes vg-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.8; } }
+.vg-skeleton-img { width: 100%; aspect-ratio: 1/1; background: linear-gradient(90deg, var(--bg) 25%, var(--hover) 50%, var(--bg) 75%); background-size: 200% 100%; animation: vg-shimmer 1.5s infinite; }
+.vg-skeleton-content { padding: 12px; }
+.vg-skeleton-title { height: 16px; background: var(--bg); border-radius: 4px; margin-bottom: 8px; animation: vg-shimmer 1.5s infinite; }
+.vg-skeleton-meta { height: 12px; background: var(--bg); border-radius: 4px; width: 60%; animation: vg-shimmer 1.5s infinite; }
+@keyframes vg-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.vg-empty { grid-column: 1 / -1; padding: 40px; text-align: center; color: var(--muted); font-size: 14px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); }
+/* The scaffold rows must never occupy a card slot. They sit inside the same
+   grid as the product cards, so without a full-width span the sentinel takes
+   the first cell and pushes every product one place right. */
+.vg-sentinel { grid-column: 1 / -1; height: 1px; width: 100%; margin-top: 16px; }
+
+/* Modal */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(13, 17, 23, 0.85); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 1000;
+  opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.modal-backdrop.open { opacity: 1; visibility: visible; }
+.modal {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4); max-width: 900px; width: 100%; max-height: min(90vh, 1200px);
+  overflow: auto; transform: scale(0.98); opacity: 0; transition: transform 0.2s ease, opacity 0.2s ease;
+  display: flex; flex-direction: column;
+}
+.modal-backdrop.open .modal { transform: scale(1); opacity: 1; }
+.modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px 8px; }
+.modal-title { flex: 1; min-width: 0; }
+.modal-name { font-size: 18px; font-weight: 600; line-height: 1.3; margin-bottom: 6px; word-wrap: break-word; }
+.modal-meta { display: flex; flex-wrap: wrap; gap: 8px 10px; font-size: 13px; color: var(--muted); align-items: center; }
+.modal-close { background: transparent; border: 1px solid transparent; color: var(--muted); font-size: 24px; line-height: 1; padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: color 0.2s, background 0.2s, border-color 0.2s; flex-shrink: 0; }
+.modal-close:hover { color: var(--text); background: var(--hover); border-color: var(--border); }
+.modal-content { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 24px; padding: 16px 24px 24px; flex: 1; min-height: 0; }
+.modal-image-section { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.modal-image-wrapper { position: relative; width: 100%; aspect-ratio: 1/1; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.modal-image { width: 100%; height: 100%; object-fit: cover; }
+.modal-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(13,17,23,0.75); color: var(--text); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 24px; line-height: 1; transition: background 0.2s, transform 0.2s, opacity 0.2s; opacity: 0; user-select: none; }
+.modal-image-wrapper:hover .modal-nav { opacity: 1; }
+.modal-nav:hover { background: rgba(13,17,23,0.9); transform: translateY(-50%) scale(1.05); }
+.modal-nav:active { transform: translateY(-50%) scale(0.98); }
+.modal-nav.prev { left: 8px; }
+.modal-nav.next { right: 8px; }
+.modal-nav:disabled { opacity: 0.25; cursor: not-allowed; pointer-events: none; }
+.modal-details { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.modal-section { display: flex; flex-direction: column; gap: 10px; }
+.modal-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
+.modal-pricing { display: flex; flex-direction: column; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.modal-price-row { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.modal-sale-price { font-size: 32px; font-weight: 700; color: var(--success); line-height: 1; }
+.modal-original-price { font-size: 18px; color: var(--muted); text-decoration: line-through; }
+.modal-discount { font-size: 16px; font-weight: 600; color: var(--danger); }
+.modal-savings { font-size: 13px; color: var(--muted); }
+.modal-info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.modal-info-item { display: flex; flex-direction: column; gap: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.modal-info-label { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
+.modal-info-value { font-size: 14px; font-weight: 500; word-wrap: break-word; }
+.modal-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
+.modal-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--primary); color: var(--bg); border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+.modal-btn:hover { background: var(--primary-hover); }
+.modal-btn:active { transform: scale(0.98); }
+.modal-btn.secondary { background: var(--border); color: var(--text); }
+.modal-btn.secondary:hover { background: var(--hover); }
+.modal-btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.modal-btn.ghost:hover { background: var(--hover); }
+
+/* Compare Panel */
+.compare-panel {
+  position: fixed; bottom: 0; left: 0; right: 0; background: var(--card);
+  border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(0,0,0,0.3); z-index: 200;
+  max-height: 60vh; overflow: auto; animation: compareSlideUp 0.3s ease;
+}
+@keyframes compareSlideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.compare-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 12px; }
+.compare-header h3 { font-size: 16px; font-weight: 600; }
+.compare-actions { display: flex; gap: 8px; }
+.compare-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 16px 24px 24px; }
+.compare-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.compare-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.compare-card-name { font-weight: 600; font-size: 14px; flex: 1; }
+.compare-remove { background: transparent; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1; transition: color 0.2s; }
+.compare-remove:hover { color: var(--danger); }
+.compare-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 8px; background: var(--bg); }
+.compare-pricing { display: flex; flex-direction: column; gap: 4px; }
+.compare-sale { font-size: 20px; font-weight: 700; color: var(--success); }
+.compare-original { font-size: 13px; color: var(--muted); text-decoration: line-through; }
+.compare-discount { font-size: 12px; font-weight: 600; color: var(--danger); }
+.compare-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--muted); }
+.compare-meta span { background: var(--bg); padding: 2px 8px; border-radius: 4px; }
+.compare-store { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); }
+.compare-store img { width: 24px; height: 24px; border-radius: 4px; background: var(--bg); }
+.compare-empty { grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--muted); }
+.compare-checkbox {
+  position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 4px;
+  border: 2px solid var(--border); background: var(--card); cursor: pointer; appearance: none;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s; z-index: 10;
+}
+.compare-checkbox:checked { background: var(--primary); border-color: var(--primary); }
+.compare-checkbox:checked::after { content: ''; width: 6px; height: 10px; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-1px); }
+.product-card { position: relative; }
+.product-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(63,185,80,0.3); }
+#compareToggle[aria-pressed="true"] { background: var(--primary); color: var(--bg); }
+
+/* Skeleton product card */
+.product-skeleton .product-skeleton-img { width: 100%; aspect-ratio: 1/1; background: var(--bg); border-radius: 10px 10px 0 0; animation: vg-pulse 1.5s ease-in-out infinite; }
+.product-skeleton .product-skeleton-title { height: 16px; background: var(--bg); border-radius: 4px; margin-bottom: 8px; animation: vg-pulse 1.5s ease-in-out infinite; }
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+@keyframes scaleIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.card-enter { animation: fadeIn 0.3s ease-out; }
+.card-enter-active { animation: fadeIn 0.3s ease-out; }
+
+/* Stats bar items */
+.stat {
+    animation: fadeIn 0.5s ease-out both;
+}
+.stat:nth-child(1) { animation-delay: 0.1s; }
+.stat:nth-child(2) { animation-delay: 0.15s; }
+.stat:nth-child(3) { animation-delay: 0.2s; }
+
+/* Charts container */
+.charts-container {
+    animation: fadeIn 0.5s ease-out both;
+}
+
+/* Product cards */
+.product-card {
+    animation: fadeIn 0.4s ease-out both;
+    will-change: transform, box-shadow;
+}
+.product-card:nth-child(n+2) { animation-delay: calc((n-1) * 0.02s); }
+
+/* Filter row */
+.filter-row {
+    animation: fadeIn 0.3s ease-out both;
+}
+
+/* Search input focus animation */
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.2);
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth;
+}
 @media (max-width: 768px) {
-  .main { padding: 16px; }
-  .store-grid { grid-template-columns: 1fr; }
-  .deal-row { grid-template-columns: 1fr; gap: 8px; }
-  .deal-price { text-align: left; }
+  .app { flex-direction: column; }
+  .sidebar { display: none; }
+  .header h1 { font-size: 16px; }
+  .header-left { min-width: 0; }
+  .products-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .products-header-actions { width: 100%; }
+  .modal-content { grid-template-columns: 1fr; }
+  .modal-image-wrapper { max-width: min(80vw, 360px); margin: 0 auto; }
+  .modal-nav { opacity: 1; }
 }
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>Dispo Deals</h1>
-  <div class="controls">
-    <select id="storeFilter" onchange="render()">
-      <option value="">All Stores</option>
-    </select>
-    <select id="categoryFilter" onchange="render()">
-      <option value="">All Categories</option>
-    </select>
-    <select id="statusFilter" onchange="render()">
-      <option value="">All Status</option>
-      <option value="NEW">New Only</option>
-      <option value="CARRYOVER">Carryover Only</option>
-    </select>
-    <input type="search" id="searchInput" placeholder="Search products..." oninput="debouncedRender()">
-    <button class="btn secondary" onclick="loadData()">Refresh</button>
-  </div>
+<div class="app">
+  <!-- Sidebar: stores + categories -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Dispo Browser</h2>
+      <p>Cross-store menu browser</p>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-section-title">Stores</div>
+      <div id="storeNavList"></div>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-section-title">Categories</div>
+      <div id="categoryNavList"></div>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-section-title">Brands</div>
+      <div id="brandNavList"></div>
+    </nav>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+    <header class="header">
+      <div class="header-row">
+        <div class="header-left">
+          <h1 id="pageTitle">All Products</h1>
+        </div>
+        <div class="header-actions">
+          <input type="search" class="search-input" id="searchInput" placeholder="Search products, brands, categories...">
+          <select class="filter-select" id="storeFilter" style="min-width: 150px;">
+            <option value="">All Stores</option>
+          </select>
+          <select class="filter-select" id="categoryFilter" style="min-width: 150px;">
+            <option value="">All Categories</option>
+          </select>
+          <select class="filter-select" id="brandFilter" style="min-width: 140px;">
+            <option value="">All Brands</option>
+          </select>
+          <select class="filter-select" id="sortSelect" style="min-width: 160px;">
+          </select>
+        </div>
+      </div>
+      <div class="filter-row">
+        <button class="btn btn-toggle active" id="dealFilterBtn" onclick="toggleDealFilter(true)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          All Products
+        </button>
+        <button class="btn btn-toggle" id="dealsOnlyBtn" onclick="toggleDealFilter(false)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+          Deals Only
+        </button>
+        <select class="filter-select" id="stockFilter" style="min-width: 130px;">
+          <option value="all">All Stock</option>
+          <option value="in-stock">In Stock</option>
+          <option value="out-of-stock">Out of Stock</option>
+        </select>
+        <button class="btn ghost" id="clearFiltersBtn" onclick="clearFilters()">Clear Filters</button>
+      </div>
+    </header>
+
+    <div class="stats-bar" id="statsBar">
+        <div class="stat" style="min-width: 200px;">
+            <div class="stat-value" id="totalProducts">0</div>
+            <div class="stat-label">Total Products</div>
+        </div>
+        <div class="stat" style="min-width: 200px;">
+            <div class="stat-value" id="totalDeals">0</div>
+            <div class="stat-label">On Deal</div>
+        </div>
+        <div class="stat" style="min-width: 200px;">
+            <div class="stat-value" id="storesWithDeals">0</div>
+            <div class="stat-label">Stores with Deals</div>
+        </div>
+        <div class="stat charts-container" style="flex: 1; min-width: 300px; display: flex; gap: 12px;">
+            <canvas id="categoryChart" width="120" height="80"></canvas>
+            <canvas id="brandChart" width="120" height="80"></canvas>
+        </div>
+    </div>
+
+    <div class="products-area" id="productsArea">
+      <div class="products-header">
+        <div>
+          <div class="products-title" id="productsTitle">All products</div>
+          <div class="products-count" id="productsCount">Showing all products across all stores</div>
+        </div>
+        <div class="products-header-actions">
+          <button class="btn" id="compareToggle" onclick="toggleCompareMode()" style="display:none;" aria-pressed="false">
+            Compare (<span id="compareCount">0</span>)
+          </button>
+          <button class="btn secondary" onclick="loadData()">Refresh</button>
+        </div>
+      </div>
+
+      <div class="product-grid" id="productGrid">
+        <div class="vg-loader" id="vgLoader" aria-hidden="true" style="display:none;">
+          <div class="vg-spinner"></div>
+          <span>Loading products...</span>
+        </div>
+        <div class="vg-end" id="vgEnd" aria-hidden="true" style="display:none;">No more products</div>
+        <div class="vg-sentinel" id="vgSentinel" aria-hidden="true"></div>
+      </div>
+    </div>
+  </main>
 </div>
-<div class="main">
-  <div class="stats-bar" id="statsBar"></div>
-  <div class="content-wrapper">
-    <div class="tab-bar">
-      <button class="tab active" data-tab="stores" onclick="switchTab('stores')">By Store</button>
-      <button class="tab" data-tab="categories" onclick="switchTab('categories')">Best per Category</button>
-      <button class="tab" data-tab="weekly" onclick="switchTab('weekly')">Weekly Diff</button>
+
+<!-- Compare Panel -->
+<div id="comparePanel" class="compare-panel" role="region" aria-label="Product comparison" style="display:none;">
+  <div class="compare-header">
+    <h3>Compare Products</h3>
+    <div class="compare-actions">
+      <button class="btn secondary" onclick="clearCompare()">Clear All</button>
+      <button class="btn" onclick="closeComparePanel()">Done</button>
     </div>
-    <div id="storesPanel" class="tab-panel active">
-      <div class="store-grid" id="storeGrid"></div>
+  </div>
+  <div class="compare-grid" id="compareGrid"></div>
+</div>
+
+<!-- Quick View Modal -->
+<div id="quickViewModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalName">
+  <div class="modal" role="document" tabindex="-1">
+    <div class="modal-header">
+      <div class="modal-title">
+        <div class="modal-name" id="modalName"></div>
+        <div class="modal-meta" id="modalMeta"></div>
+      </div>
+      <button class="modal-close" id="modalClose" aria-label="Close quick view">×</button>
     </div>
-    <div id="categoriesPanel" class="tab-panel">
-      <div id="categoriesContent"></div>
-    </div>
-    <div id="weeklyPanel" class="tab-panel">
-      <div class="weekly-diff" id="weeklyContent"></div>
+    <div class="modal-content">
+      <div class="modal-image-section">
+        <div class="modal-image-wrapper">
+          <img class="modal-image" id="modalImage" src="" alt="" onerror="handleImageError(this)">
+          <button class="modal-nav prev" id="modalPrev" aria-label="Previous product">‹</button>
+          <button class="modal-nav next" id="modalNext" aria-label="Next product">›</button>
+        </div>
+      </div>
+      <div class="modal-details">
+        <div class="modal-section">
+          <div class="modal-section-title">Pricing</div>
+          <div class="modal-pricing">
+            <div class="modal-price-row">
+              <div class="modal-sale-price" id="modalSalePrice"></div>
+              <div class="modal-original-price" id="modalOriginalPrice"></div>
+              <div class="modal-discount" id="modalDiscount"></div>
+            </div>
+            <div class="modal-savings" id="modalSavings"></div>
+          </div>
+        </div>
+        <div class="modal-section" id="modalStrainSection">
+          <div class="modal-section-title">Strain Profile</div>
+          <div id="modalStrainGrid" class="strain-info"></div>
+          <div id="modalStrainActions" class="modal-actions"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Details</div>
+          <div class="modal-info-grid" id="modalInfoGrid"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Availability</div>
+          <div class="modal-info-grid" id="modalStoreGrid"></div>
+        </div>
+        <div class="modal-actions">
+          <a class="modal-btn" id="modalProductLink" href="#" target="_blank" rel="noopener noreferrer">View Product Page</a>
+          <button class="modal-btn secondary" id="modalCloseBtn">Close</button>
+          <button class="modal-btn ghost" id="modalShareBtn" style="display:none">Share</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 // ---- State ----
-let allData = { stores: [], deals: [], snapshots: [], weeklyDiff: null };
+let allData = { products: [], stores: [], categories: [], brands: [] };
 let debounceTimer = null;
+// Strain profiles are imported from Leafly by the API server and served as one
+// shared profile per strain. Nothing here is hardcoded: a product carries a
+// `strain` object when the importer matched its name, and null when it did not.
+function getProductStrain(product) {
+  if (!product || !product.strain) return null;
+  return product.strain;
+}
 
-// ---- Init ----
-document.addEventListener('DOMContentLoaded', loadData);
+// Filtering / sorting state
+let currentFilters = {
+  store: '',
+  category: '',
+  brand: '',
+  dealOnly: false,
+  stock: 'all',
+  search: '',
+  sort: 'discount-desc'
+};
 
-// ---- Data Loading ----
+// Virtualized grid state
+let displayedProducts = [];
+let renderedCount = 0;
+const BATCH_SIZE = 60;
+let isLoadingBatch = false;
+let observer = null;
+let observedSentinel = null;
+
+// Compare mode
+let compareSelection = new Set();
+
+// Modal state
+let modalOpen = false;
+let currentDealIndex = -1;
+let visibleDeals = [];
+let focusedElementBeforeModal = null;
+let preloadedImages = new Set();
+
+// ---- URL state ----
+const URL_PARAMS = { store: 'store', category: 'cat', brand: 'brand', deal: 'deal', stock: 'stock', sort: 'sort', search: 'q' };
+
+function getUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    store: params.get(URL_PARAMS.store) || '',
+    category: params.get(URL_PARAMS.category) || '',
+    brand: params.get(URL_PARAMS.brand) || '',
+    deal: params.get(URL_PARAMS.deal) === 'true',
+    stock: params.get(URL_PARAMS.stock) || 'all',
+    sort: params.get(URL_PARAMS.sort) || 'discount-desc',
+    search: params.get(URL_PARAMS.search) || ''
+  };
+}
+
+function setUrlState(state) {
+  const params = new URLSearchParams();
+  if (state.store) params.set(URL_PARAMS.store, state.store);
+  if (state.category) params.set(URL_PARAMS.category, state.category);
+  if (state.brand) params.set(URL_PARAMS.brand, state.brand);
+  if (state.deal !== undefined) params.set(URL_PARAMS.deal, state.deal);
+  if (state.stock && state.stock !== 'all') params.set(URL_PARAMS.stock, state.stock);
+  if (state.sort && state.sort !== 'discount-desc') params.set(URL_PARAMS.sort, state.sort);
+  if (state.search) params.set(URL_PARAMS.search, state.search);
+  const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+  history.replaceState(null, '', newUrl);
+}
+
+// ---- Data loading ----
 async function loadData() {
   try {
-    const response = await fetch('/api/data');
-    if (!response.ok) throw new Error('Failed to load');
+    const response = await fetch('/api/menu');
+    if (!response.ok) throw new Error('Failed to load menu');
     allData = await response.json();
+    populateSidebar();
     populateFilters();
-    render();
+    restoreUrlState();
+    applyFilters();
   } catch (e) {
     console.error(e);
-    document.getElementById('storeGrid').innerHTML = '<div class="empty-state">Failed to load data. Is the API server running?</div>';
+    const grid = document.getElementById('productGrid');
+    if (grid) grid.innerHTML = '<div class="vg-empty">Failed to load menu. Is the API server running?</div>';
   }
 }
 
-// ---- API Server (Python http.server with CGI or simple endpoint) ----
-// For standalone file:// usage, we'll use a local proxy approach
-// See README for running the API server
-
-// ---- Rendering ----
-function render() {
-  const storeFilter = document.getElementById('storeFilter').value;
-  const categoryFilter = document.getElementById('categoryFilter').value;
-  const statusFilter = document.getElementById('statusFilter').value;
-  const search = document.getElementById('searchInput').value.toLowerCase();
-
-  const activeTab = document.querySelector('.tab.active').dataset.tab;
-
-  if (activeTab === 'stores') renderStores(storeFilter, categoryFilter, statusFilter, search);
-  else if (activeTab === 'categories') renderCategories(storeFilter, categoryFilter, statusFilter, search);
-  else if (activeTab === 'weekly') renderWeekly();
-
-  renderStats();
+function restoreUrlState() {
+  const state = getUrlState();
+  currentFilters = { ...currentFilters, ...state };
+  document.getElementById('storeFilter').value = currentFilters.store;
+  document.getElementById('categoryFilter').value = currentFilters.category;
+  document.getElementById('brandFilter').value = currentFilters.brand;
+  document.getElementById('stockFilter').value = currentFilters.stock;
+  document.getElementById('sortSelect').value = currentFilters.sort;
+  document.getElementById('searchInput').value = currentFilters.search;
+  const dealBtn = document.getElementById('dealFilterBtn');
+  const dealsOnlyBtn = document.getElementById('dealsOnlyBtn');
+  if (currentFilters.dealOnly) {
+    dealBtn.classList.remove('active');
+    dealsOnlyBtn.classList.add('active');
+    document.getElementById('pageTitle').textContent = 'Deals Only';
+  } else {
+    dealBtn.classList.add('active');
+    dealsOnlyBtn.classList.remove('active');
+    document.getElementById('pageTitle').textContent = 'All Products';
+  }
 }
 
-function debouncedRender() {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(render, 150);
-}
+// ---- Populate sidebar & filters ----
+function populateSidebar() {
+  // Stores
+  const storeNav = document.getElementById('storeNavList');
+  storeNav.innerHTML = '';
+  allData.stores.forEach(store => {
+    const item = document.createElement('div');
+    item.className = 'nav-item';
+    item.onclick = () => {
+      currentFilters.store = currentFilters.store === store.id ? '' : store.id;
+      currentFilters.category = '';
+      currentFilters.brand = '';
+      currentFilters.dealOnly = false;
+      updateActiveStore(store.id);
+      applyFilters();
+    };
+    item.innerHTML = `
+      <div class="nav-item-store">
+        ${store.logo_url ? `<img src="${store.logo_url}" onerror="this.style.display='none'">` : ''}
+        <span>${escapeHtml(store.name)}</span>
+      </div>
+      <span class="nav-item-count">${storeCount(store.id)}</span>
+    `;
+    storeNav.appendChild(item);
+  });
 
-function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tab + 'Panel'));
-  render();
+  // Categories, grouped by main category. Each group is one collapsible row
+  // with its subcategories nested inside, so the sidebar no longer repeats
+  // "Flower" above every "Flower · <subcategory>" entry.
+  const catNav = document.getElementById('categoryNavList');
+  catNav.innerHTML = '';
+  const catCounts = {};
+  allData.products.forEach(p => { catCounts[p.category] = (catCounts[p.category] || 0) + 1; });
+
+  const groups = new Map();
+  Object.keys(catCounts).forEach(cat => {
+    const main = categoryMain(cat);
+    if (!groups.has(main)) groups.set(main, { count: 0, subs: [] });
+    const group = groups.get(main);
+    group.count += catCounts[cat];
+    if (cat !== main) group.subs.push({ cat, count: catCounts[cat] });
+  });
+
+  const expanded = getExpandedGroups();
+  // Keep the group holding the active subcategory visible.
+  if (currentFilters.category) expanded.add(categoryMain(currentFilters.category));
+
+  [...groups.keys()].sort().forEach(main => {
+    const group = groups.get(main);
+    const wrap = document.createElement('div');
+    wrap.className = 'nav-group' + (expanded.has(main) ? ' open' : '');
+    wrap.dataset.group = main;
+
+    const header = document.createElement('div');
+    header.className = 'nav-item nav-group-header';
+    header.dataset.group = main;
+    header.innerHTML = `
+      <span class="nav-group-label">
+        <span class="nav-chevron"></span>
+        <span>${escapeHtml(main)}</span>
+      </span>
+      <span class="nav-item-count">${group.count}</span>
+    `;
+    wrap.appendChild(header);
+
+    // The label selects the whole group; the chevron only opens and closes it,
+    // so expanding a group never disturbs the current filter.
+    header.querySelector('.nav-group-label').addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectCategoryGroup(main);
+    });
+    header.querySelector('.nav-chevron').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleCategoryGroup(main);
+    });
+
+    if (group.subs.length) {
+      const subs = document.createElement('div');
+      subs.className = 'nav-group-items';
+      [...group.subs]
+        .sort((a, b) => b.count - a.count || a.cat.localeCompare(b.cat))
+        .forEach(({ cat, count }) => {
+          const sub = document.createElement('div');
+          sub.className = 'nav-item nav-sub-item';
+          sub.dataset.category = cat;
+          sub.innerHTML = `
+            <span>${escapeHtml(categorySub(cat))}</span>
+            <span class="nav-item-count">${count}</span>
+          `;
+          sub.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectCategory(cat);
+          });
+          subs.appendChild(sub);
+        });
+      wrap.appendChild(subs);
+    }
+
+    catNav.appendChild(wrap);
+  });
+
+  // Brands
+  const brandNav = document.getElementById('brandNavList');
+  brandNav.innerHTML = '';
+  const brandCounts = {};
+  allData.products.forEach(p => { if (p.brand) brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1; });
+  Object.keys(brandCounts).sort().forEach(brand => {
+    const item = document.createElement('div');
+    item.className = 'nav-item';
+    item.onclick = () => {
+      currentFilters.brand = currentFilters.brand === brand ? '' : brand;
+      currentFilters.store = '';
+      currentFilters.category = '';
+      currentFilters.dealOnly = false;
+      updateActiveBrand(brand);
+      applyFilters();
+    };
+    item.innerHTML = `
+      <span>${escapeHtml(brand)}</span>
+      <span class="nav-item-count">${brandCounts[brand]}</span>
+    `;
+    brandNav.appendChild(item);
+  });
 }
 
 function populateFilters() {
-  const stores = [...new Set(allData.deals.map(d => d.store_id))];
   const storeSelect = document.getElementById('storeFilter');
-  stores.forEach(id => {
-    const store = allData.stores.find(s => s.id === id) || { name: id };
-    storeSelect.innerHTML += `<option value="${id}">${store.name}</option>`;
+  storeSelect.innerHTML = '<option value="">All Stores</option>';
+  allData.stores.forEach(store => {
+    storeSelect.innerHTML += `<option value="${store.id}">${escapeHtml(store.name)}</option>`;
   });
 
-  const categories = [...new Set(allData.deals.map(d => d.category))].sort();
   const catSelect = document.getElementById('categoryFilter');
-  categories.forEach(c => catSelect.innerHTML += `<option value="${c}">${c}</option>`);
+  catSelect.innerHTML = '<option value="">All Categories</option>';
+  // Grouped the same way as the sidebar: one optgroup per main category so the
+  // list is not a flat wall of repeated "Flower · ..." entries.
+  const catGroups = new Map();
+  allData.categories.forEach(cat => {
+    const main = categoryMain(cat);
+    if (!catGroups.has(main)) catGroups.set(main, []);
+    catGroups.get(main).push(cat);
+  });
+  [...catGroups.keys()].sort().forEach(main => {
+    const options = catGroups.get(main).sort();
+    const lines = [];
+    // The group has to be selectable even when every product sits under a
+    // subcategory and no bare "Vaporizers" category exists, so add it as the
+    // first entry of its optgroup. Without it, picking the group from the
+    // sidebar leaves the select with no matching option and it reads as
+    // "All Categories" while the list is filtered.
+    if (!options.includes(main)) {
+      lines.push(`      <option value="${escapeHtml(main)}">All ${escapeHtml(main)}</option>`);
+    }
+    lines.push(...options.map(cat =>
+      `      <option value="${escapeHtml(cat)}">${escapeHtml(categorySub(cat))}</option>`
+    ));
+    catSelect.innerHTML +=
+      `    <optgroup label="${escapeHtml(main)}">\n${lines.join('\n')}\n    </optgroup>\n`;
+  });
+
+  const brandSelect = document.getElementById('brandFilter');
+  brandSelect.innerHTML = '<option value="">All Brands</option>';
+  allData.brands.forEach(b => {
+    brandSelect.innerHTML += `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`;
+  });
+
+  const sortSelect = document.getElementById('sortSelect');
+  const SORT_OPTIONS = [
+    { value: 'discount-desc', label: 'Best discount first' },
+    { value: 'price-asc', label: 'Price: Low to high' },
+    { value: 'price-desc', label: 'Price: High to low' },
+    { value: 'name-asc', label: 'Name: A to Z' },
+    { value: 'name-desc', label: 'Name: Z to A' }
+  ];
+  SORT_OPTIONS.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.label;
+    sortSelect.appendChild(option);
+  });
 }
 
-function renderStats() {
-  const totalDeals = allData.deals.length;
-  const totalStores = allData.stores.filter(s => s.enabled).length;
-  const newThisWeek = allData.deals.filter(d => isNewThisWeek(d)).length;
-  const avgDiscount = allData.deals.length ? (allData.deals.reduce((s, d) => s + d.discount_pct, 0) / allData.deals.length).toFixed(1) : 0;
-
-  document.getElementById('statsBar').innerHTML = `
-    <div class="stat"><div class="stat-value">${totalDeals}</div><div class="stat-label">Total Deals</div></div>
-    <div class="stat"><div class="stat-value">${totalStores}</div><div class="stat-label">Stores</div></div>
-    <div class="stat"><div class="stat-value">${newThisWeek}</div><div class="stat-label">New This Week</div></div>
-    <div class="stat"><div class="stat-value">${avgDiscount}%</div><div class="stat-label">Avg Discount</div></div>
-  `;
+function storeCount(storeId) {
+  return allData.products.filter(p => p.store_id === storeId).length;
 }
 
-function isNewThisWeek(deal) {
-  const detected = new Date(deal.detected_at);
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  return detected > weekAgo;
+function updateActiveStore(storeId) {
+  document.querySelectorAll('#storeNavList .nav-item').forEach(item => {
+    item.classList.toggle('active', item.querySelector('.nav-item-store span')?.textContent === storeName(storeId));
+  });
 }
 
-function filterDeals(deals, storeFilter, categoryFilter, statusFilter, search) {
-  return deals.filter(d => {
-    if (storeFilter && d.store_id !== storeFilter) return false;
-    if (categoryFilter && d.category !== categoryFilter) return false;
-    if (search && !d.name.toLowerCase().includes(search) && !(d.brand && d.brand.toLowerCase().includes(search))) return false;
+function updateActiveCategory(cat) {
+  document.querySelectorAll('#categoryNavList .nav-item').forEach(item => {
+    const row = item.dataset.category;
+    const group = item.dataset.group;
+    // A subcategory row is active only for its own exact category, while the
+    // group row is active for the group selection.
+    item.classList.toggle('active', group ? cat === group : cat === row);
+  });
+
+  // Keep the group holding the active subcategory expanded so the selection is
+  // visible rather than hidden inside a collapsed section.
+  if (cat) {
+    const main = categoryMain(cat);
+    const wrap = document.querySelector(`#categoryNavList .nav-group[data-group="${CSS.escape(main)}"]`);
+    if (wrap && !wrap.classList.contains('open')) {
+      wrap.classList.add('open');
+      rememberExpandedGroup(main);
+    }
+  }
+}
+
+// ---- Category groups ----
+
+function categoryMain(cat) {
+  return String(cat || '').split(' · ')[0].trim();
+}
+
+function categorySub(cat) {
+  const parts = String(cat || '').split(' · ');
+  return parts.length > 1 ? parts.slice(1).join(' · ').trim() : cat;
+}
+
+const EXPANDED_GROUPS_KEY = 'dispo-category-groups';
+
+function getExpandedGroups() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(EXPANDED_GROUPS_KEY) || '[]');
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function rememberExpandedGroup(main) {
+  const expanded = getExpandedGroups();
+  expanded.add(main);
+  try {
+    localStorage.setItem(EXPANDED_GROUPS_KEY, JSON.stringify([...expanded]));
+  } catch (e) { /* private mode: expansion simply is not remembered */ }
+}
+
+function forgetExpandedGroup(main) {
+  const expanded = getExpandedGroups();
+  expanded.delete(main);
+  try {
+    localStorage.setItem(EXPANDED_GROUPS_KEY, JSON.stringify([...expanded]));
+  } catch (e) { /* ignore */ }
+}
+
+function toggleCategoryGroup(main) {
+  const wrap = document.querySelector(`#categoryNavList .nav-group[data-group="${CSS.escape(main)}"]`);
+  if (!wrap) return;
+  const isOpen = wrap.classList.toggle('open');
+  if (isOpen) rememberExpandedGroup(main);
+  else forgetExpandedGroup(main);
+}
+
+function updateFilterSelects() {
+  // Mirror the sidebar state into the header selects. A group selection such
+  // as "Flower" has no matching option when every product sits in a
+  // subcategory, so one is added rather than letting the select silently show
+  // "All Categories" while the list is in fact filtered.
+  const sync = (id, value) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const fallback = id === 'stockFilter' ? 'all' : id === 'sortSelect' ? 'discount-desc' : '';
+    const target = value || fallback;
+    if (target && !Array.from(el.options).some(o => o.value === target)) {
+      el.add(new Option(target, target));
+    }
+    el.value = target;
+  };
+  sync('storeFilter', currentFilters.store);
+  sync('categoryFilter', currentFilters.category);
+  sync('brandFilter', currentFilters.brand);
+  sync('stockFilter', currentFilters.stock);
+  sync('sortSelect', currentFilters.sort);
+}
+
+function selectCategoryGroup(main) {
+  // Selecting a group filters to every subcategory under it, matching the
+  // toggle behaviour the store and category rows already use.
+  currentFilters.category = currentFilters.category === main ? '' : main;
+  currentFilters.store = '';
+  currentFilters.brand = '';
+  currentFilters.dealOnly = false;
+  if (currentFilters.category) {
+    rememberExpandedGroup(main);
+    const wrap = document.querySelector(`#categoryNavList .nav-group[data-group="${CSS.escape(main)}"]`);
+    if (wrap) wrap.classList.add('open');
+  }
+  updateActiveCategory(currentFilters.category);
+  updateFilterSelects();
+  setUrlState(currentFilters);
+  applyFilters();
+}
+
+function selectCategory(cat) {
+  currentFilters.category = currentFilters.category === cat ? '' : cat;
+  currentFilters.store = '';
+  currentFilters.brand = '';
+  currentFilters.dealOnly = false;
+  updateActiveCategory(currentFilters.category);
+  updateFilterSelects();
+  setUrlState(currentFilters);
+  applyFilters();
+}
+
+function updateActiveBrand(brand) {
+  document.querySelectorAll('#brandNavList .nav-item').forEach(item => {
+    item.classList.toggle('active', item.textContent.trim().replace(/(\d+)/, '') === brand);
+  });
+}
+
+function storeName(id) {
+  const s = allData.stores.find(x => x.id === id);
+  return s ? s.name : id;
+}
+
+// ---- Filtering / sorting ----
+function applyFilters() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    renderVirtualizedGrid();
+  }, 100);
+}
+
+function toggleDealFilter(showAll) {
+  currentFilters.dealOnly = !showAll;
+  const dealBtn = document.getElementById('dealFilterBtn');
+  const dealsOnlyBtn = document.getElementById('dealsOnlyBtn');
+  const title = document.getElementById('pageTitle');
+  if (currentFilters.dealOnly) {
+    dealBtn.classList.remove('active');
+    dealsOnlyBtn.classList.add('active');
+    title.textContent = 'Deals Only';
+  } else {
+    dealBtn.classList.add('active');
+    dealsOnlyBtn.classList.remove('active');
+    title.textContent = 'All Products';
+  }
+  setUrlState(currentFilters);
+  applyFilters();
+}
+
+function updateStockFilter() {
+  currentFilters.stock = document.getElementById('stockFilter').value;
+  setUrlState(currentFilters);
+  applyFilters();
+}
+
+function updateSort() {
+  currentFilters.sort = document.getElementById('sortSelect').value;
+  setUrlState(currentFilters);
+  renderVirtualizedGrid();
+}
+
+function updateSearch(e) {
+  currentFilters.search = e.target.value.toLowerCase();
+  setUrlState(currentFilters);
+  applyFilters();
+}
+
+function clearFilters() {
+  currentFilters = {
+    store: '', category: '', brand: '', dealOnly: false, stock: 'all', sort: 'discount-desc', search: ''
+  };
+  document.getElementById('storeFilter').value = '';
+  document.getElementById('categoryFilter').value = '';
+  document.getElementById('brandFilter').value = '';
+  document.getElementById('stockFilter').value = 'all';
+  document.getElementById('sortSelect').value = 'discount-desc';
+  document.getElementById('searchInput').value = '';
+  // The sidebar rows keep their own active state, so they must be cleared too.
+  updateActiveStore('');
+  updateActiveCategory('');
+  updateActiveBrand('');
+  const dealBtn = document.getElementById('dealFilterBtn');
+  const dealsOnlyBtn = document.getElementById('dealsOnlyBtn');
+  dealBtn.classList.add('active');
+  dealsOnlyBtn.classList.remove('active');
+  document.getElementById('pageTitle').textContent = 'All Products';
+  setUrlState(currentFilters);
+  applyFilters();
+}
+
+function filterProducts(products) {
+  return products.filter(p => {
+    if (currentFilters.store && p.store_id !== currentFilters.store) return false;
+    if (currentFilters.category) {
+      // A group selection ("Flower") matches every subcategory beneath it,
+      // while a subcategory selection ("Flower · premium") matches exactly.
+      const selected = categoryMain(currentFilters.category);
+      if (selected === currentFilters.category) {
+        if (categoryMain(p.category) !== selected) return false;
+      } else if (p.category !== currentFilters.category) {
+        return false;
+      }
+    }
+    if (currentFilters.brand && p.brand !== currentFilters.brand) return false;
+    if (currentFilters.dealOnly && !p.is_deal) return false;
+    if (currentFilters.stock === 'in-stock' && !p.in_stock) return false;
+    if (currentFilters.stock === 'out-of-stock' && p.in_stock) return false;
+    if (currentFilters.search) {
+      const hay = (p.name + ' ' + (p.brand || '') + ' ' + p.category).toLowerCase();
+      if (!hay.includes(currentFilters.search)) return false;
+    }
     return true;
   });
 }
 
-function renderStores(storeFilter, categoryFilter, statusFilter, search) {
-  const grid = document.getElementById('storeGrid');
-  const stores = allData.stores.filter(s => s.enabled && (!storeFilter || s.id === storeFilter));
+function sortProducts(products) {
+  const sorted = [...products];
+  const key = currentFilters.sort;
+  switch (key) {
+    case 'discount-desc': return sorted.sort((a, b) => b.discount_pct - a.discount_pct);
+    case 'discount-asc': return sorted.sort((a, b) => a.discount_pct - b.discount_pct);
+    case 'price-asc': return sorted.sort((a, b) => a.sale_price - b.sale_price);
+    case 'price-desc': return sorted.sort((a, b) => b.sale_price - a.sale_price);
+    case 'name-asc': return sorted.sort((a, b) => a.name.localeCompare(b.name));
+    case 'name-desc': return sorted.sort((a, b) => b.name.localeCompare(a.name));
+    default: return sorted;
+  }
+}
 
-  if (stores.length === 0) {
-    grid.innerHTML = '<div class="empty-state">No stores match filters</div>';
+// ---- Virtualized grid ----
+function initVirtualizedGrid() {
+  bindGridScroll();
+  if (!observer) {
+    observer = new IntersectionObserver((entries) => {
+      // Any intersecting entry counts: the observer must not depend on exactly
+      // one target being observed.
+      if (entries.some(e => e.isIntersecting) && !isLoadingBatch) {
+        loadMoreProducts();
+      }
+    }, { rootMargin: '150px', threshold: 0.1 });
+  }
+  observeSentinel();
+}
+
+function observeSentinel() {
+  // The sentinel is recreated every time renderVirtualizedGrid rewrites the
+  // grid. Observing the new node without first dropping the old ones leaves the
+  // observer watching a pile of detached sentinels, and the callback then gets
+  // a stale entry first, which silently stops the next batch from loading.
+  if (!observer) return;
+  const sentinel = document.getElementById('vgSentinel');
+  if (!sentinel || sentinel === observedSentinel) return;
+  observer.disconnect();
+  observer.observe(sentinel);
+  observedSentinel = sentinel;
+}
+
+function maybeLoadMore() {
+  // IntersectionObserver only fires on a transition, so its first callback for
+  // a freshly observed sentinel is swallowed when a batch is already loading
+  // and nothing re-triggers it. Checking the geometry directly after each
+  // batch and on scroll keeps the tail of the list loading.
+  if (isLoadingBatch) return;
+  const sentinel = document.getElementById('vgSentinel');
+  const area = document.getElementById('productsArea');
+  if (!sentinel || !area) return;
+  if (sentinel.style.display === 'none') return;
+
+  const limit = area.getBoundingClientRect().bottom + 150;
+  if (sentinel.getBoundingClientRect().top <= limit) {
+    loadMoreProducts();
+  }
+}
+
+function bindGridScroll() {
+  // productsArea is the scroll container, not the window, so the scroll has to
+  // be listened for on that element.
+  const area = document.getElementById('productsArea');
+  if (!area || area.dataset.scrollBound) return;
+  area.dataset.scrollBound = '1';
+  let queued = false;
+  area.addEventListener('scroll', () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      maybeLoadMore();
+    });
+  }, { passive: true });
+}
+
+function renderVirtualizedGrid() {
+  const container = document.getElementById('productGrid');
+  if (!container) return;
+
+  displayedProducts = filterProducts(allData.products);
+  displayedProducts = sortProducts(displayedProducts);
+
+  // Reset state
+  renderedCount = 0;
+  // The scaffold rows come after the cards so they read as a footer row rather
+  // than a band above the grid, and so the sentinel stays at the very bottom
+  // where it triggers the next batch.
+  container.innerHTML = `
+    <div class="vg-loader" id="vgLoader" aria-hidden="true" style="display:none;">
+      <div class="vg-spinner"></div><span>Loading products...</span>
+    </div>
+    <div class="vg-end" id="vgEnd" aria-hidden="true" style="display:none;">No more products</div>
+    <div class="vg-sentinel" id="vgSentinel" aria-hidden="true"></div>
+  `;
+  updateStats();
+  updateProductsCount();
+
+  // Empty state
+  if (displayedProducts.length === 0) {
+    container.innerHTML = '<div class="vg-empty">No products match your filters</div>';
     return;
   }
 
-  grid.innerHTML = stores.map(store => {
-    let deals = allData.deals.filter(d => d.store_id === store.id);
-    deals = filterDeals(deals, '', categoryFilter, statusFilter, search);
-    deals.sort((a, b) => b.discount_pct - a.discount_pct);
+  // The scaffold was just recreated, so point the observer at the new sentinel.
+  observeSentinel();
+  bindGridScroll();
 
-    if (deals.length === 0) {
-      return `
-        <div class="store-card">
-          <div class="store-header">
-            <img class="store-logo" src="${storeLogoSrc(store)}" alt="" onerror="handleImageError(this)">
-            <div class="store-info">
-              <div class="store-name">${escapeHtml(store.name)}</div>
-              <div class="store-meta">No deals match current filters</div>
-            </div>
-          </div>
-          <div class="deals-list"><div class="empty-state">No deals found</div></div>
-        </div>
-      `;
-    }
-
-    return `
-      <div class="store-card">
-        <div class="store-header">
-          <img class="store-logo" src="${storeLogoSrc(store)}" alt="" onerror="handleImageError(this)">
-          <div class="store-info">
-            <div class="store-name">${escapeHtml(store.name)}</div>
-            <div class="store-meta">${deals.length} deal${deals.length !== 1 ? 's' : ''}</div>
-          </div>
-        </div>
-        <div class="deals-list">
-          ${deals.slice(0, 25).map(deal => renderDealRow(deal)).join('')}
-          ${deals.length > 25 ? `<div class="empty-state" style="padding:8px;">+ ${deals.length - 25} more deals</div>` : ''}
-        </div>
-      </div>
-    `;
-  }).join('');
+  // Initial batch
+  loadMoreProducts();
 }
 
-function renderDealRow(deal) {
-  const status = deal.weekly_status || 'NEW';
-  const badgeClass = status === 'NEW' ? 'badge-new' : status === 'CARRYOVER' ? 'badge-carryover' : 'badge-removed';
-  const brandHtml = deal.brand ? `<span>${escapeHtml(deal.brand)}</span>` : '';
-  const thcHtml = deal.thc_pct ? `<span>THC: ${deal.thc_pct}%</span>` : '';
-  const weightHtml = deal.weight ? `<span>${escapeHtml(deal.weight)}</span>` : '';
-  const imgHtml = deal.image_url ? `<img class="deal-img" src="${productImageSrc(deal)}" alt="" onerror="handleImageError(this)">` : '';
+function loadMoreProducts() {
+  if (isLoadingBatch || renderedCount >= displayedProducts.length) return;
+
+  isLoadingBatch = true;
+  const container = document.getElementById('productGrid');
+  const loader = document.getElementById('vgLoader');
+  const endMsg = document.getElementById('vgEnd');
+  const sentinel = document.getElementById('vgSentinel');
+
+  loader.style.display = 'flex';
+
+  requestAnimationFrame(() => {
+    const batch = displayedProducts.slice(renderedCount, renderedCount + BATCH_SIZE);
+    renderedCount += batch.length;
+
+    // Inserted above the scaffold footer rows, not at the end of the grid, so
+    // the loader/end/sentinel stay below the cards they belong to.
+    loader.insertAdjacentHTML('beforebegin', batch.map(createProductSkeleton).join(''));
+
+    requestAnimationFrame(() => {
+      const skeletons = container.querySelectorAll('.product-skeleton');
+      batch.forEach((product, i) => {
+        if (skeletons[i]) {
+          skeletons[i].outerHTML = renderProductCard(product);
+        }
+      });
+
+      loader.style.display = 'none';
+
+      if (renderedCount >= displayedProducts.length) {
+        endMsg.style.display = 'block';
+        sentinel.style.display = 'none';
+        if (observer) observer.unobserve(sentinel);
+        observedSentinel = null;
+      }
+
+      updateCompareCount();
+      isLoadingBatch = false;
+      // A batch may have filled less space than the viewport, so check again
+      // rather than waiting for the next scroll event.
+      maybeLoadMore();
+    });
+  });
+}
+
+function createProductSkeleton() {
+  return '<div class="vg-skeleton product-skeleton"><div class="product-skeleton-img"></div><div class="vg-skeleton-content"><div class="product-skeleton-title"></div><div class="product-skeleton-meta"></div></div></div>';
+}
+
+function renderStrainBadge(strain) {
+  if (!strain) return '';
+  const type = strain.strain_type || 'hybrid';
+  const label = strain.category || 'Strain';
+  return `<span class="strain-badge strain-${type}" title="${escapeHtml(strain.name)}">${escapeHtml(label)}</span>`;
+}
+
+function renderStrainInfo(strain) {
+  if (!strain) return '';
+
+  const rows = [
+    strain.effects && strain.effects.length
+      ? `<span class="strain-label">Effects</span><span class="strain-value">${escapeHtml(strain.effects.slice(0, 3).join(', '))}</span>` : '',
+    strain.flavors && strain.flavors.length
+      ? `<span class="strain-label">Flavors</span><span class="strain-value">${escapeHtml(strain.flavors.slice(0, 3).join(', '))}</span>` : '',
+    strain.terpenes && strain.terpenes.length
+      ? `<span class="strain-label">Terpenes</span><span class="strain-value">${escapeHtml(strain.terpenes.slice(0, 3).join(', '))}</span>` : '',
+    `<span class="strain-label">THC</span>${strain.thc_display
+      ? `<span class="strain-value">${escapeHtml(strain.thc_display)}</span>`
+      : '<span class="strain-value strain-unknown">—</span>'}`,
+    strain.cbd_display
+      ? `<span class="strain-label">CBD</span><span class="strain-value">${escapeHtml(strain.cbd_display)}</span>` : ''
+  ].filter(Boolean)
+   .map(row => `<div class="strain-detail-item">${row}</div>`)
+   .join('');
+
+  // The profile is reference data, so it is headed by the strain's own name and
+  // phenotype rather than by a "Strain" label that only repeats the section.
+  const heading = `<div class="strain-heading">
+      <span class="strain-name">${escapeHtml(strain.name || '')}</span>
+      ${strain.category ? `<span class="strain-badge strain-${strain.strain_type || 'hybrid'}">${escapeHtml(strain.category)}</span>` : ''}
+    </div>`;
+
+  return `${heading}<div class="strain-info">${rows}</div>`;
+}
+
+function renderProductCard(product) {
+  const store = allData.stores.find(s => s.id === product.store_id);
+  const strain = getProductStrain(product);
+  const dealBadge = product.is_deal ? `<span class="product-tag deal">-${product.discount_pct.toFixed(0)}%</span>` : '';
+  const stockBadge = product.in_stock
+    ? `<span class="product-tag in-stock">In stock</span>`
+    : `<span class="product-tag out-of-stock">Out of stock</span>`;
+  const imgSrc = product.image_url ? productImageSrc(product) : IMAGE_PLACEHOLDER;
 
   return `
-    <div class="deal-row">
-      <div class="deal-img-col">${imgHtml}</div>
-      <div class="deal-main">
-        <div class="deal-name">${escapeHtml(deal.name)} <span class="badge ${badgeClass}">${status}</span></div>
-        <div class="deal-meta">${brandHtml} ${thcHtml} ${weightHtml} <span>${escapeHtml(deal.category)}</span></div>
+    <div class="product-card deal-row-clickable" data-deal-hash="${escapeHtml(product.hash)}" tabindex="0" role="button" aria-label="${escapeHtml(product.name)}">
+      ${compareCheckbox(product.hash)}
+      <div class="product-card-header">
+        ${dealBadge}
+        ${stockBadge}
+        ${strain ? renderStrainBadge(strain) : ''}
+        <img class="product-img" src="${imgSrc}" alt="" onerror="handleImageError(this)">
       </div>
-      <div class="deal-price">
-        <div class="sale-price">$${deal.sale_price.toFixed(2)}</div>
-        <div class="original-price">$${deal.original_price.toFixed(2)}</div>
-      </div>
-      <div class="discount-badge">${deal.discount_pct.toFixed(1)}% OFF</div>
-    </div>
-  `;
-}
-
-function renderCategories(storeFilter, categoryFilter, statusFilter, search) {
-  const content = document.getElementById('categoriesContent');
-  const deals = filterDeals(allData.deals, storeFilter, categoryFilter, statusFilter, search);
-  const categories = [...new Set(deals.map(d => d.category))].sort();
-
-  if (categories.length === 0) {
-    content.innerHTML = '<div class="empty-state">No deals match current filters</div>';
-    return;
-  }
-
-  content.innerHTML = categories.map(cat => {
-    const catDeals = deals.filter(d => d.category === cat).sort((a, b) => b.discount_pct - a.discount_pct);
-    const best = catDeals[0];
-    const store = allData.stores.find(s => s.id === best.store_id);
-    const bestImgHtml = best.image_url ? `<img class="best-deal-img" src="${productImageSrc(best)}" alt="" onerror="handleImageError(this)">` : '';
-
-    return `
-      <div class="category-section">
-        <div class="category-title">${escapeHtml(cat)} (${catDeals.length} deals)</div>
-        <div class="best-deal">
-          <div class="best-deal-header">
-            <div class="best-deal-img-col">${bestImgHtml}</div>
-            <div class="best-deal-info">
-              <div class="best-deal-name">${escapeHtml(best.name)}</div>
-              <div class="best-deal-price">
-                <span class="sale-price">$${best.sale_price.toFixed(2)}</span>
-                <span class="original-price">$${best.original_price.toFixed(2)}</span>
-                <span class="discount-badge">${best.discount_pct.toFixed(1)}% OFF</span>
-              </div>
-            </div>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px;">
-            <span class="store-badge">${escapeHtml(store?.name || best.store_id)}</span>
-            ${best.brand ? `<span>${escapeHtml(best.brand)}</span>` : ''}
-            ${best.thc_pct ? `<span>THC: ${best.thc_pct}%</span>` : ''}
-            ${best.weight ? `<span>${escapeHtml(best.weight)}</span>` : ''}
-          </div>
-          <details style="margin-top:12px; font-size:12px; color:var(--muted);">
-            <summary style="cursor:pointer; background:var(--card-bg); padding:8px; border-radius:4px; border:1px solid var(--border);">Show all ${catDeals.length} deals in this category</summary>
-            <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px; background:var(--card-bg); padding:12px; border-radius:4px; border:1px solid var(--border);">
-              ${catDeals.slice(1).map(d => {
-                const s = allData.stores.find(st => st.id === d.store_id);
-                return `
-                  <div style="display:flex; justify-content:space-between; padding:6px; background:var(--bg); border-radius:4px;">
-                    <span>${escapeHtml(d.name)}</span>
-                    <span style="display:flex; gap:12px; align-items:center;">
-                      <span class="sale-price">$${d.sale_price.toFixed(2)}</span>
-                      <span class="original-price">$${d.original_price.toFixed(2)}</span>
-                      <span class="discount-badge" style="font-size:10px; padding:1px 6px;">${d.discount_pct.toFixed(1)}%</span>
-                      <span class="store-badge" style="background:var(--border); color:var(--text); font-size:10px;">${escapeHtml(s?.name || d.store_id)}</span>
-                    </span>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </details>
+      <div class="product-info">
+        <div class="product-name">${escapeHtml(product.name)}</div>
+        <div class="product-meta">
+          ${product.brand ? `<span class="product-brand">${escapeHtml(product.brand)}</span>` : ''}
+          ${product.thc_pct !== null && product.thc_pct !== undefined ? `<span class="product-thc">THC ${product.thc_pct}%</span>` : ''}
+          <span class="product-thc">${escapeHtml(product.category)}</span>
+          ${strain ? `<span class="product-strain">🌿 ${escapeHtml(strain.name)}</span>` : ''}
         </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderWeekly() {
-  const content = document.getElementById('weeklyContent');
-  if (!allData.weeklyDiff) {
-    content.innerHTML = '<div class="empty-state">No weekly comparison data available yet. Run the scraper for at least 2 weeks.</div>';
-    return;
-  }
-
-  const diff = allData.weeklyDiff;
-  content.innerHTML = `
-    <div class="diff-card">
-      <h4><span class="diff-count diff-new">${diff.new_count}</span> New Items</h4>
-      <div class="diff-items">
-        ${diff.new_items.slice(0, 30).map(item => `
-          <div class="diff-item">
-            ${item.deal.image_url ? `<img class="diff-img" src="${productImageSrc(item.deal)}" alt="" onerror="handleImageError(this)">` : ''}
-            <span class="diff-item-name">${escapeHtml(item.deal.name)}</span>
-            <span class="diff-item-price">$${item.deal.sale_price.toFixed(2)} <span class="original-price" style="font-size:11px;">$${item.deal.original_price.toFixed(2)}</span></span>
+        <div class="product-price-row">
+          <div class="product-price">
+            <span class="product-sale">$${product.sale_price.toFixed(2)}</span>
+            ${product.original_price > product.sale_price ? `<span class="product-original">$${product.original_price.toFixed(2)}</span>` : ''}
           </div>
-        `).join('')}
-        ${diff.new_items.length > 30 ? `<div style="color:var(--muted); font-size:11px;">+ ${diff.new_items.length - 30} more</div>` : ''}
-      </div>
-    </div>
-    <div class="diff-card">
-      <h4><span class="diff-count diff-carryover">${diff.carryover_count}</span> Carryover</h4>
-      <div class="diff-items">
-        ${diff.carryover_items.slice(0, 30).map(item => `
-          <div class="diff-item">
-            ${item.deal.image_url ? `<img class="diff-img" src="${productImageSrc(item.deal)}" alt="" onerror="handleImageError(this)">` : ''}
-            <span class="diff-item-name">${escapeHtml(item.deal.name)}</span>
-            <span class="diff-item-price">$${item.deal.sale_price.toFixed(2)}</span>
-          </div>
-        `).join('')}
-        ${diff.carryover_items.length > 30 ? `<div style="color:var(--muted); font-size:11px;">+ ${diff.carryover_items.length - 30} more</div>` : ''}
-      </div>
-    </div>
-    <div class="diff-card">
-      <h4><span class="diff-count diff-removed">${diff.removed_count}</span> Removed</h4>
-      <div class="diff-items">
-        ${diff.removed_items.slice(0, 30).map(deal => `
-          <div class="diff-item">
-            ${deal.image_url ? `<img class="diff-img" src="${productImageSrc(deal)}" alt="" onerror="handleImageError(this)">` : ''}
-            <span class="diff-item-name">${escapeHtml(deal.name)}</span>
-            <span class="diff-item-price" style="color:var(--danger);">$${deal.sale_price.toFixed(2)}</span>
-          </div>
-        `).join('')}
-        ${diff.removed_items.length > 30 ? `<div style="color:var(--muted); font-size:11px;">+ ${diff.removed_items.length - 30} more</div>` : ''}
+        </div>
+        <div class="product-store">${escapeHtml(store?.name || product.store_id)}</div>
       </div>
     </div>
   `;
 }
-function escapeHtml(text) {
-  if (!text) return '';
 
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+function compareCheckbox(hash) {
+  const isSelected = compareSelection.has(hash);
+  return `<input type="checkbox" class="compare-checkbox" data-deal-hash="${escapeHtml(hash)}" ${isSelected ? 'checked' : ''} onchange="toggleCompareSelection('${escapeHtml(hash)}')" onclick="event.stopPropagation()" aria-label="Add to compare">`;
 }
 
-// Inline placeholder so a failed image never leaves an empty box in the grid.
+// ---- Stats ----
+function updateStats() {
+        const total = allData.products.length;
+        const deals = allData.products.filter(p => p.is_deal).length;
+        const storesWithDeals = new Set(allData.products.filter(p => p.is_deal).map(p => p.store_id)).size;
+        
+        // Update text stats
+        document.getElementById('totalProducts').textContent = total;
+        document.getElementById('totalDeals').textContent = deals;
+        document.getElementById('storesWithDeals').textContent = storesWithDeals;
+        
+        // Update charts
+        updateCategoryChart();
+        updateBrandChart();
+    }
+    
+    function updateCategoryChart() {
+        const ctx = document.getElementById('categoryChart');
+        if (!ctx) return;
+
+        // Chart.js is loaded from a CDN. If it is unavailable the charts must
+        // not take the whole dashboard down with them, so bail out here.
+        if (typeof Chart === 'undefined') return;
+
+        // Count deals by category
+        const categoryCounts = {};
+        allData.products
+            .filter(p => p.is_deal)
+            .forEach(p => {
+                const cat = p.category || 'Uncategorized';
+                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+            });
+        
+        // Get top 5 categories
+        const sortedCategories = Object.entries(categoryCounts)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5);
+        
+        const labels = sortedCategories.map(([cat]) => cat);
+        const data = sortedCategories.map(([,count]) => count);
+        
+        // Destroy existing chart if any
+            if (window.categoryChart && typeof window.categoryChart.destroy === 'function') {
+                window.categoryChart.destroy();
+            }
+        
+        // Create new chart
+        window.categoryChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Deals by Category',
+                    data: data,
+                    backgroundColor: 'rgba(63, 185, 80, 0.7)',
+                    borderColor: 'rgba(63, 185, 80, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + ' deals';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateBrandChart() {
+        const ctx = document.getElementById('brandChart');
+        if (!ctx) return;
+
+        if (typeof Chart === 'undefined') return;
+
+        // Count deals by brand
+        const brandCounts = {};
+        allData.products
+            .filter(p => p.is_deal && p.brand)
+            .forEach(p => {
+                const brand = p.brand;
+                brandCounts[brand] = (brandCounts[brand] || 0) + 1;
+            });
+        
+        // Get top 5 brands
+        const sortedBrands = Object.entries(brandCounts)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 5);
+        
+        const labels = sortedBrands.map(([brand]) => brand);
+        const data = sortedBrands.map(([,count]) => count);
+        
+        // Destroy existing chart if any
+            if (window.brandChart && typeof window.brandChart.destroy === 'function') {
+                window.brandChart.destroy();
+            }
+        
+        // Create new chart
+        window.brandChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Deals by Brand',
+                    data: data,
+                    backgroundColor: 'rgba(88, 166, 255, 0.7)',
+                    borderColor: 'rgba(88, 166, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + ' deals';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+function updateProductsCount() {
+  document.getElementById('productsCount').textContent = `Showing ${displayedProducts.length} of ${allData.products.length} products`;
+}
+
+// ---- Quick View Modal ----
 const IMAGE_PLACEHOLDER = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">' +
   '<rect width="80" height="80" rx="8" fill="#161b22"/>' +
@@ -659,27 +1701,363 @@ const IMAGE_PLACEHOLDER = "data:image/svg+xml;charset=utf-8," + encodeURICompone
   '</svg>'
 );
 
-// Route images through the local proxy (server supplies the cache key) so
-// downloads are cached server-side and CORS/mixed-content failures cannot
-// leave a broken image box.
-function productImageSrc(deal) {
-  const key = deal && deal.image_key;
+function productImageSrc(product) {
+  const key = product && product.image_key;
   if (!key) return IMAGE_PLACEHOLDER;
   return '/api/image/' + key;
 }
 
-// Store logos come from the config URL, which may 404; serve through the local
-// cache so a bad URL degrades to the placeholder instead of a broken image.
 function storeLogoSrc(store) {
   if (!store || !store.id) return IMAGE_PLACEHOLDER;
   return '/api/logo/' + encodeURIComponent(store.id);
 }
 
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 function handleImageError(img) {
   if (img.dataset.fallbackApplied) return;
   img.dataset.fallbackApplied = 'true';
-  img.style.display = '';
   img.src = IMAGE_PLACEHOLDER;
+}
+
+function openQuickView(product) {
+  if (!modalOpen && document.getElementById('quickViewModal')) {
+    focusedElementBeforeModal = document.activeElement;
+    visibleDeals = displayedProducts.slice();
+    currentDealIndex = visibleDeals.findIndex(d => d.hash === product.hash);
+    if (currentDealIndex === -1) {
+      visibleDeals = [product].concat(visibleDeals);
+      currentDealIndex = 0;
+    }
+    renderModal();
+    modalOpen = true;
+    const backdrop = document.getElementById('quickViewModal');
+    backdrop.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => {
+      const dialog = backdrop.querySelector('.modal');
+      if (dialog) dialog.focus();
+    }, 50);
+    preloadNeighbors();
+  }
+}
+
+function closeQuickView() {
+  const backdrop = document.getElementById('quickViewModal');
+  if (!backdrop) return;
+  modalOpen = false;
+  backdrop.classList.remove('open');
+  document.body.style.overflow = '';
+  if (focusedElementBeforeModal && typeof focusedElementBeforeModal.focus === 'function') {
+    try { focusedElementBeforeModal.focus(); } catch (e) {}
+  }
+}
+
+function renderModal() {
+  if (currentDealIndex < 0 || !visibleDeals[currentDealIndex]) return;
+  const deal = visibleDeals[currentDealIndex];
+  const store = allData.stores.find(s => s.id === deal.store_id);
+
+  document.getElementById('modalName').textContent = deal.name;
+  const meta = [];
+  if (deal.brand) meta.push(deal.brand);
+  if (deal.category) meta.push(deal.category);
+  if (deal.weight) meta.push(deal.weight);
+  if (deal.thc_pct !== null && deal.thc_pct !== undefined) meta.push('THC: ' + deal.thc_pct + '%');
+  if (deal.cbd_pct !== null && deal.cbd_pct !== undefined) meta.push('CBD: ' + deal.cbd_pct + '%');
+  document.getElementById('modalMeta').innerHTML = meta.map(m => '<span>' + escapeHtml(m) + '</span>').join(' · ');
+
+  const imgEl = document.getElementById('modalImage');
+  imgEl.src = productImageSrc(deal);
+  imgEl.alt = deal.name;
+
+  document.getElementById('modalSalePrice').textContent = '$' + Number(deal.sale_price).toFixed(2);
+  document.getElementById('modalOriginalPrice').textContent = '$' + Number(deal.original_price).toFixed(2);
+  document.getElementById('modalDiscount').textContent = 'Save ' + Number(deal.discount_pct).toFixed(1) + '%';
+  const sa = Number(deal.original_price) - Number(deal.sale_price);
+  document.getElementById('modalSavings').textContent = 'You save $' + sa.toFixed(2);
+
+  const igEl = document.getElementById('modalInfoGrid');
+  igEl.innerHTML = '';
+  addInfoItem('Product ID', deal.product_id);
+  if (deal.is_deal) addInfoItem('Status', 'On sale');
+  addInfoItem('In Stock', deal.in_stock ? 'Yes' : 'No');
+
+  // Strain profile, imported from Leafly, rendered as a dedicated section so a
+  // matched strain reads as reference data rather than a dispensary claim.
+  const strain = getProductStrain(deal);
+  const strainSection = document.getElementById('modalStrainSection');
+  const strainGrid = document.getElementById('modalStrainGrid');
+  if (strainSection && strainGrid) {
+    if (strain) {
+      strainGrid.innerHTML = renderStrainInfo(strain);
+      strainSection.style.display = '';
+      renderStrainActions(strain);
+    } else {
+      strainGrid.innerHTML = '';
+      strainSection.style.display = 'none';
+    }
+  }
+  if (deal.detected_at) addInfoItem('Detected', new Date(deal.detected_at).toLocaleDateString());
+  if (deal.hash) addInfoItem('Hash', deal.hash);
+
+  const sgEl = document.getElementById('modalStoreGrid');
+  sgEl.innerHTML = '';
+  if (store) addStoreItem('Store', store.name, store);
+  else addStoreItem('Store ID', deal.store_id, null);
+
+  document.getElementById('modalProductLink').href = deal.product_url || '#';
+  const pv = document.getElementById('modalPrev');
+  const nx = document.getElementById('modalNext');
+  pv.disabled = visibleDeals.length <= 1 || currentDealIndex === 0;
+  nx.disabled = visibleDeals.length <= 1 || currentDealIndex === visibleDeals.length - 1;
+}
+
+function navigateModal(dir) {
+  if (visibleDeals.length <= 1) return;
+  if (dir === 'prev' && currentDealIndex > 0) currentDealIndex--;
+  if (dir === 'next' && currentDealIndex < visibleDeals.length - 1) currentDealIndex++;
+  renderModal();
+  preloadNeighbors();
+}
+
+function preloadImage(product) {
+  if (!product || !product.image_key || preloadedImages.has(product.image_key)) return;
+  const x = new Image();
+  x.src = productImageSrc(product);
+  preloadedImages.add(product.image_key);
+}
+
+function preloadNeighbors() {
+  const n = [];
+  if (currentDealIndex > 0) n.push(visibleDeals[currentDealIndex - 1]);
+  if (currentDealIndex < visibleDeals.length - 1) n.push(visibleDeals[currentDealIndex + 1]);
+  n.forEach(preloadImage);
+}
+
+function renderStrainActions(strain) {
+  const host = document.getElementById('modalStrainActions');
+  if (!host) return;
+  host.innerHTML = '';
+
+  // Profile data is credited to Leafly, so link back to the source strain page
+  // rather than presenting it as the store's own claim.
+  if (strain.slug) {
+    const link = document.createElement('a');
+    link.className = 'modal-btn ghost';
+    link.href = 'https://www.leafly.com/strains/' + encodeURIComponent(strain.slug);
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'View on Leafly';
+    host.appendChild(link);
+  }
+
+  if (strain.rating !== null && strain.rating !== undefined) {
+    const rating = document.createElement('span');
+    rating.className = 'strain-rating';
+    rating.textContent = 'Leafly rating ' + Number(strain.rating).toFixed(1)
+      + (strain.review_count ? ' (' + Number(strain.review_count).toLocaleString() + ' reviews)' : '');
+    host.appendChild(rating);
+  }
+}
+
+function addInfoItem(label, value) {
+  if (value === null || value === undefined || value === '') return;
+  const it = document.createElement('div');
+  it.className = 'modal-info-item';
+  it.innerHTML = '<div class="modal-info-label">' + escapeHtml(String(label)) + '</div><div class="modal-info-value">' + escapeHtml(String(value)) + '</div>';
+  document.getElementById('modalInfoGrid').appendChild(it);
+}
+
+function addStoreItem(label, value, store) {
+  const it = document.createElement('div');
+  it.className = 'modal-info-item';
+  let cnt = '<div class="modal-info-label">' + escapeHtml(String(label)) + '</div><div class="modal-info-value" style="display:flex;align-items:center;gap:8px">' + escapeHtml(String(value));
+  if (store) {
+    cnt += '<img src="' + storeLogoSrc(store) + '" alt="" style="width:16px;height:16px;border-radius:4px;background:var(--bg)" onerror="handleImageError(this)">';
+  }
+  cnt += '</div>';
+  it.innerHTML = cnt;
+  document.getElementById('modalStoreGrid').appendChild(it);
+}
+
+document.addEventListener('click', function(e) {
+  const row = e.target.closest('.deal-row-clickable');
+  if (row && !e.target.closest('a,button,input')) {
+    const h = row.getAttribute('data-deal-hash');
+    const d = allData.products.find(x => x.hash === h);
+    if (d) { openQuickView(d); }
+  }
+});
+document.addEventListener('keydown', function(e) {
+  const row = e.target.closest('.deal-row-clickable');
+  if (row && (e.key === 'Enter' || e.key === ' ')) {
+    const h = row.getAttribute('data-deal-hash');
+    const d = allData.products.find(x => x.hash === h);
+    if (d) { e.preventDefault(); openQuickView(d); }
+  }
+});
+document.addEventListener('keydown', function(e) {
+  if (!modalOpen) return;
+  if (e.key === 'Escape') { closeQuickView(); return; }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); navigateModal('prev'); return; }
+  if (e.key === 'ArrowRight') { e.preventDefault(); navigateModal('next'); return; }
+});
+document.getElementById('quickViewModal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeQuickView();
+});
+document.getElementById('modalClose')?.addEventListener('click', function(e) {
+  e.stopPropagation(); closeQuickView();
+});
+document.getElementById('modalCloseBtn')?.addEventListener('click', function(e) {
+  e.stopPropagation(); closeQuickView();
+});
+document.getElementById('modalPrev')?.addEventListener('click', function(e) { e.stopPropagation(); navigateModal('prev'); });
+document.getElementById('modalNext')?.addEventListener('click', function(e) { e.stopPropagation(); navigateModal('next'); });
+document.getElementById('searchInput')?.addEventListener('input', updateSearch);
+document.getElementById('storeFilter')?.addEventListener('change', () => {
+  currentFilters.store = document.getElementById('storeFilter').value;
+  setUrlState(currentFilters); applyFilters();
+});
+document.getElementById('categoryFilter')?.addEventListener('change', () => {
+  // Reuse the sidebar handler so the header select and the sidebar nav stay in
+  // sync, including the group-versus-subcategory matching rule.
+  selectCategory(document.getElementById('categoryFilter').value);
+});
+document.getElementById('brandFilter')?.addEventListener('change', () => {
+  currentFilters.brand = document.getElementById('brandFilter').value;
+  setUrlState(currentFilters); applyFilters();
+});
+document.getElementById('stockFilter')?.addEventListener('change', updateStockFilter);
+document.getElementById('sortSelect')?.addEventListener('change', updateSort);
+
+document.addEventListener('DOMContentLoaded', async () => {
+  loadData();
+  initVirtualizedGrid();
+  document.getElementById('clearFiltersBtn')?.addEventListener('click', clearFilters);
+});
+
+// ---- Compare Mode ----
+function toggleCompareMode() {
+  const panel = document.getElementById('comparePanel');
+  const toggle = document.getElementById('compareToggle');
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    closeComparePanel();
+  } else {
+    openComparePanel();
+  }
+}
+
+function openComparePanel() {
+  const panel = document.getElementById('comparePanel');
+  const toggle = document.getElementById('compareToggle');
+  panel.style.display = 'block';
+  toggle.setAttribute('aria-pressed', 'true');
+  toggle.textContent = 'Compare (' + compareSelection.size + ') Close';
+  renderComparePanel();
+  updateCompareCheckboxes();
+}
+
+function closeComparePanel() {
+  const panel = document.getElementById('comparePanel');
+  const toggle = document.getElementById('compareToggle');
+  panel.style.display = 'none';
+  toggle.setAttribute('aria-pressed', 'false');
+  toggle.textContent = 'Compare (' + compareSelection.size + ')';
+  document.querySelectorAll('.deal-row-clickable.selected').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.compare-checkbox').forEach(cb => cb.checked = false);
+}
+
+function clearCompare() {
+  compareSelection.clear();
+  renderComparePanel();
+  updateCompareCount();
+  updateCompareCheckboxes();
+}
+
+function toggleCompareSelection(hash) {
+  if (compareSelection.has(hash)) {
+    compareSelection.delete(hash);
+  } else if (compareSelection.size < 4) {
+    compareSelection.add(hash);
+  } else {
+    alert('Maximum 4 products for comparison');
+    return;
+  }
+  updateCompareCount();
+  updateCompareCheckboxes();
+  renderComparePanel();
+}
+
+function updateCompareCount() {
+  const countEl = document.getElementById('compareCount');
+  const toggle = document.getElementById('compareToggle');
+  if (countEl) countEl.textContent = compareSelection.size;
+  if (toggle) {
+    toggle.style.display = compareSelection.size > 0 ? 'inline-flex' : 'none';
+    if (toggle.getAttribute('aria-pressed') === 'true') {
+      toggle.textContent = 'Compare (' + compareSelection.size + ') Close';
+    } else {
+      toggle.textContent = 'Compare (' + compareSelection.size + ')';
+    }
+  }
+}
+
+function updateCompareCheckboxes() {
+  document.querySelectorAll('.compare-checkbox').forEach(cb => {
+    const hash = cb.getAttribute('data-deal-hash');
+    cb.checked = compareSelection.has(hash);
+    const card = cb.closest('.deal-row-clickable');
+    if (card) card.classList.toggle('selected', compareSelection.has(hash));
+  });
+}
+
+function removeFromCompare(hash) {
+  compareSelection.delete(hash);
+  updateCompareCount();
+  updateCompareCheckboxes();
+  renderComparePanel();
+}
+
+function renderComparePanel() {
+  const grid = document.getElementById('compareGrid');
+  if (!grid) return;
+  if (compareSelection.size === 0) {
+    grid.innerHTML = '<div class="compare-empty">Select up to 4 products to compare</div>';
+    return;
+  }
+  const products = allData.products.filter(p => compareSelection.has(p.hash));
+  grid.innerHTML = products.map(p => {
+    const store = allData.stores.find(s => s.id === p.store_id);
+    const imgHtml = p.image_url ? `<img class="compare-img" src="${productImageSrc(p)}" alt="" onerror="handleImageError(this)">` : '';
+    const storeHtml = store ? '<div class="compare-store"><img src="' + storeLogoSrc(store) + '" alt="" onerror="handleImageError(this)">' + escapeHtml(store.name) + '</div>' : '';
+    return `
+      <div class="compare-card">
+        <div class="compare-card-header">
+          <div class="compare-card-name">${escapeHtml(p.name)}</div>
+          <button class="compare-remove" onclick="removeFromCompare('${escapeHtml(p.hash)}')" aria-label="Remove">×</button>
+        </div>
+        ${imgHtml}
+        <div class="compare-pricing">
+          <div class="compare-sale">$${p.sale_price.toFixed(2)}</div>
+          ${p.original_price > p.sale_price ? '<div class="compare-original">$' + p.original_price.toFixed(2) + '</div>' : ''}
+          ${p.is_deal ? '<div class="compare-discount">Save ' + p.discount_pct.toFixed(1) + '%</div>' : ''}
+        </div>
+        <div class="compare-meta">
+          ${p.brand ? '<span>' + escapeHtml(p.brand) + '</span>' : ''}
+          ${p.thc_pct !== null && p.thc_pct !== undefined ? '<span>THC ' + p.thc_pct + '%</span>' : ''}
+          <span>' + escapeHtml(p.category) + '</span>
+        </div>
+        ${storeHtml}
+      </div>
+    `;
+  }).join('');
 }
 </script>
 </body>

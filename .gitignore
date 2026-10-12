@@ -36,5 +36,9 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# Agent / editor state
-.kilo/
+# Local dev artifacts
+*.bak
+output.txt
+check_db*.py
+modal.js
+modal_inject.js

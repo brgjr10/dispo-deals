@@ -9,6 +9,7 @@ from typing import List, Optional
 from config import Config
 from models import StoreConfig, Deal, WeeklySnapshot, DealStatus, NotificationMode
 from utils.diff import WeeklyDiff
+from utils.strain_match import StrainResolver, ResolutionStats, enrich_deals
 from scrapers import create_scraper
 from storage import SQLiteStorage
 from notifier import WebhookNotifier
@@ -29,9 +30,36 @@ class DispoDeals:
         self.storage = SQLiteStorage()
         self.notifier = WebhookNotifier(config, self.storage)
         self.running = True
+        # Strains are optional: when Leafly is disabled the app behaves exactly
+        # as it did before the integration was added.
+        self.strain_resolver = self._build_strain_resolver()
 
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
+
+    def _build_strain_resolver(self) -> Optional[StrainResolver]:
+        leafly = getattr(self.config, "leafly", None)
+        if not leafly or not leafly.enabled:
+            logging.getLogger(__name__).info("Leafly strain import disabled")
+            return None
+
+        from utils.leafly import LeaflyClient
+
+        client = LeaflyClient(
+            search_endpoint=leafly.search_endpoint,
+            site_url=leafly.site_url,
+            timeout=leafly.timeout,
+            max_retries=leafly.max_retries,
+            request_delay_seconds=leafly.request_delay_seconds,
+        )
+        return StrainResolver(
+            storage=self.storage,
+            client=client,
+            enabled=True,
+            categories=list(leafly.categories),
+            match_threshold=leafly.match_threshold,
+            cache_days=leafly.cache_days,
+        )
 
     def _signal_handler(self, signum, frame):
         logging.getLogger(__name__).info("Shutdown signal received")
@@ -55,6 +83,8 @@ class DispoDeals:
                     store_results[store.id] = {"deals": [], "error": "No deals found"}
                     continue
 
+                self._enrich_strains(deals)
+
                 new_deals = self._process_deals(store, deals)
                 all_new_deals.extend(new_deals)
                 store_results[store.id] = {"deals": new_deals, "error": None}
@@ -71,12 +101,102 @@ class DispoDeals:
         logger.info(f"Run complete. Found {len(all_new_deals)} new deals across {len(store_results)} stores")
         return True
 
+    def _enrich_strains(self, deals: List[Deal]) -> ResolutionStats:
+        """Match each product to a Leafly strain and stamp the name onto it."""
+        if not self.strain_resolver:
+            return ResolutionStats()
+
+        stats = ResolutionStats()
+        enrich_deals(deals, self.strain_resolver, stats)
+        count = stats.as_dict()
+        logging.getLogger(__name__).info(
+            "Strain enrichment: %(resolved)s/%(looked_up)s products matched, "
+            "%(api_calls)s Leafly requests, %(from_cache)s from cache",
+            count,
+        )
+        return stats
+
+    def import_strains(self) -> bool:
+        """Backfill strains for products already stored.
+
+        Products are keyed by their strain candidate, so this costs roughly one
+        API call per distinct strain rather than per product; already-matched and
+        already-missed candidates are served from the SQLite cache.
+        """
+        logger = logging.getLogger(__name__)
+        if not self.strain_resolver:
+            logger.error("Leafly strain import is unavailable (disabled in config)")
+            return False
+
+        deals = self.storage.get_deals_missing_strain(limit=100000)
+        logger.info("Backfilling strains for %s products without a strain", len(deals))
+
+        stats = ResolutionStats()
+        updated = 0
+        for deal in deals:
+            strain = self.strain_resolver.resolve_for_product(
+                deal.name, brand=deal.brand, category=deal.category
+            )
+            stats.record(deal.name, strain is not None)
+            if strain and self.storage.set_deal_strain(deal.hash, strain.name):
+                updated += 1
+
+        logger.info(
+            "Strain backfill complete: %s of %s matched, %s deals updated "
+            "(%s cached strains, %s cached misses)",
+            stats.resolved, stats.looked_up, updated,
+            self.storage.count_strains(), self.storage.count_strain_misses(),
+        )
+        return True
+
+    def enrich_strains(self, limit: int = 2000) -> bool:
+        """Fill in flavours and the full description from each strain's page.
+
+        Leafly's search endpoint returns effects, terpenes and potency but never
+        flavours, so a second request per strain is what makes the imported
+        profiles complete. Only strains missing flavours are fetched, and the
+        results overwrite the cached profile.
+        """
+        logger = logging.getLogger(__name__)
+        client = getattr(self.strain_resolver, "client", None)
+        if not self.strain_resolver or not client:
+            logger.error("Leafly strain import is unavailable (disabled in config)")
+            return False
+
+        pending = self.storage.get_strains_needing_detail(limit)
+        logger.info("Enriching %s strains with detail-page data", len(pending))
+
+        enriched = 0
+        for strain in pending:
+            if not strain.slug:
+                continue
+            try:
+                detail = client.get_strain_by_slug(strain.slug)
+            except Exception as e:
+                logger.warning("Failed to fetch detail for %s: %s", strain.slug, e)
+                continue
+            if not detail:
+                continue
+            if self.storage.save_strain(client.merge_strain(strain, detail)):
+                enriched += 1
+
+        logger.info("Strain enrichment complete: %s of %s strains enriched", enriched, len(pending))
+        return True
+
     def _process_deals(self, store: StoreConfig, deals: List[Deal]) -> List[Deal]:
+        """Track every product, but only return the ones worth notifying about.
+
+        Every product is persisted so the dashboard can browse the full menu,
+        while `new_deals` stays restricted to genuine discounts. Without that
+        split, the first run after a store starts reporting undiscounted stock
+        would blast its whole catalogue to the webhook.
+        """
         new_deals = []
         for deal in deals:
             if self.storage.is_new_deal(deal, self.config.deduplication.re_notify_on_deeper_discount):
                 self.storage.save_seen_deal(deal)
-                new_deals.append(deal)
+                if deal.is_deal:
+                    new_deals.append(deal)
             else:
                 self.storage.update_seen_deal(deal, notify=False)
         return new_deals
@@ -151,6 +271,26 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Dry run (no webhook sends)")
     parser.add_argument("--store", help="Run for specific store ID only")
     parser.add_argument("--test-webhook", action="store_true", help="Send test webhook")
+    parser.add_argument(
+        "--import-strains",
+        action="store_true",
+        help="Import Leafly strain data for products already in the database, then exit",
+    )
+    parser.add_argument(
+        "--enrich-strains",
+        action="store_true",
+        help="Fetch full profiles (flavours, description) for cached strains, then exit",
+    )
+    parser.add_argument(
+        "--no-enrich",
+        action="store_true",
+        help="With --import-strains, skip fetching full strain profiles",
+    )
+    parser.add_argument(
+        "--strain-status",
+        action="store_true",
+        help="Report how many products carry a Leafly strain, then exit",
+    )
     args = parser.parse_args()
 
     config = Config.load(args.config)
@@ -185,12 +325,59 @@ def main():
         print("Test webhook sent")
         return 0
 
+    if args.strain_status:
+        print_strain_status(app.storage)
+        return 0
+
+    if args.enrich_strains:
+        return 0 if app.enrich_strains() else 1
+
+    if args.import_strains:
+        if not app.import_strains():
+            return 1
+        if args.no_enrich:
+            return 0
+        return 0 if app.enrich_strains() else 1
+
     if args.once:
         success = app.run_once()
         return 0 if success else 1
     else:
         app.run_scheduler()
         return 0
+
+
+def print_strain_status(storage: SQLiteStorage):
+    """Summarise strain coverage so an import can be checked without SQL."""
+    conn = storage._get_connection()
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM seen_deals").fetchone()[0]
+        with_strain = conn.execute(
+            "SELECT COUNT(*) FROM seen_deals WHERE strain_name IS NOT NULL AND strain_name != ''"
+        ).fetchone()[0]
+        per_store = conn.execute("""
+            SELECT store_id,
+                   COUNT(*) AS products,
+                   SUM(CASE WHEN strain_name IS NOT NULL AND strain_name != '' THEN 1 ELSE 0 END) AS matched
+            FROM seen_deals
+            GROUP BY store_id
+            ORDER BY products DESC
+        """).fetchall()
+    finally:
+        conn.close()
+
+    pct = (with_strain / total * 100) if total else 0.0
+    print(f"Products with a strain: {with_strain} / {total} ({pct:.1f}%)")
+    print(f"Cached strains:         {storage.count_strains()}")
+    print(f"Cached misses:          {storage.count_strain_misses()}")
+    print(f"Fresh strains:          {storage.count_fresh_strains()}")
+    print("\nBy store:")
+    for row in per_store:
+        store_pct = (row["matched"] / row["products"] * 100) if row["products"] else 0.0
+        print(
+            f"  {row['store_id']:<20} {row['matched']:>5} / {row['products']:<5} "
+            f"({store_pct:.1f}%)"
+        )
 
 
 if __name__ == "__main__":

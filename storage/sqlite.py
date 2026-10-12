@@ -1,12 +1,13 @@
 import sqlite3
 import json
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 import logging
 
-from models import Deal, WeeklySnapshot, SeenDeal, MenuItem, DealStatus
+from models import Deal, Strain, WeeklySnapshot, SeenDeal, MenuItem, DealStatus
+from utils.strain_match import normalize_name
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +73,65 @@ class SQLiteStorage:
                     updated_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS strains (
+                    name TEXT PRIMARY KEY,
+                    slug TEXT,
+                    leafly_id TEXT,
+                    category TEXT,
+                    thc_pct REAL,
+                    thc_low REAL,
+                    thc_high REAL,
+                    cbd_pct REAL,
+                    cbd_low REAL,
+                    cbd_high REAL,
+                    effects TEXT,
+                    flavors TEXT,
+                    terpenes TEXT,
+                    helps_with TEXT,
+                    rating REAL,
+                    review_count INTEGER,
+                    description TEXT,
+                    image_url TEXT,
+                    parents TEXT,
+                    children TEXT,
+                    source TEXT,
+                    fetched_at TEXT NOT NULL,
+                    lookup_count INTEGER DEFAULT 1
+                );
+
+                -- Candidate names that produced no Leafly strain. Without this
+                -- cache every run would re-query the many products whose names
+                -- are flavours or proprietary cuttings Leafly does not carry.
+                CREATE TABLE IF NOT EXISTS strain_misses (
+                    name TEXT PRIMARY KEY,
+                    attempted_at TEXT NOT NULL,
+                    attempts INTEGER DEFAULT 1
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_seen_deals_store ON seen_deals(store_id);
                 CREATE INDEX IF NOT EXISTS idx_snapshots_store_week ON weekly_snapshots(store_id, week_start);
             """)
+            conn.commit()
+        self._migrate_schema()
+
+    def _migrate_schema(self):
+        """Bring an older database up to the current schema.
+
+        SQLite has no "add column if absent", and the databases in the wild
+        predate the strain fields, so the columns are added by inspection rather
+        than by assuming a fresh schema. The strain index has to be created
+        afterwards, because it references the column being added.
+        """
+        with self._get_connection() as conn:
+            columns = {
+                row["name"] for row in conn.execute("PRAGMA table_info(seen_deals)").fetchall()
+            }
+            if "strain_name" not in columns:
+                conn.execute("ALTER TABLE seen_deals ADD COLUMN strain_name TEXT")
+                logger.info("Added strain_name column to seen_deals")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_seen_deals_strain ON seen_deals(strain_name)"
+            )
             conn.commit()
 
     def get_seen_deal(self, deal_hash: str) -> Optional[SeenDeal]:
@@ -105,18 +162,20 @@ class SQLiteStorage:
             cbd_pct=deal.cbd_pct,
             weight=deal.weight,
             brand=deal.brand,
+            strain_name=deal.strain_name,
             first_seen=now,
             last_notified=now,
             notify_count=1,
         )
         with self._get_connection() as conn:
             conn.execute("""
-                INSERT INTO seen_deals (hash, store_id, product_id, name, category, original_price, sale_price, discount_pct, max_discount_pct, image_url, product_url, in_stock, thc_pct, cbd_pct, weight, brand, first_seen, last_notified, notify_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO seen_deals (hash, store_id, product_id, name, category, original_price, sale_price, discount_pct, max_discount_pct, image_url, product_url, in_stock, thc_pct, cbd_pct, weight, brand, strain_name, first_seen, last_notified, notify_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 seen.hash, seen.store_id, seen.product_id, seen.name,
                 deal.category, deal.original_price, deal.sale_price, deal.discount_pct, seen.max_discount_pct,
                 deal.image_url, deal.product_url, int(deal.in_stock), deal.thc_pct, deal.cbd_pct, deal.weight, deal.brand,
+                deal.strain_name,
                 seen.first_seen.isoformat(), seen.last_notified.isoformat(),
                 seen.notify_count
             ))
@@ -138,12 +197,15 @@ class SQLiteStorage:
                 SET sale_price = ?, discount_pct = ?, max_discount_pct = ?,
                     category = ?, original_price = ?, image_url = ?, product_url = ?,
                     in_stock = ?, thc_pct = ?, cbd_pct = ?, weight = ?, brand = ?,
-                    last_notified = ?, notify_count = ?
+                    strain_name = ?, last_notified = ?, notify_count = ?
                 WHERE hash = ?
             """, (
                 deal.sale_price, deal.discount_pct, max_discount,
                 deal.category, deal.original_price, deal.image_url, deal.product_url,
                 int(deal.in_stock), deal.thc_pct, deal.cbd_pct, deal.weight, deal.brand,
+                # Keep an existing strain when this run resolved nothing, so an
+                # empty enrichment never wipes good data.
+                deal.strain_name or existing.strain_name,
                 now.isoformat() if notify else existing.last_notified,
                 notify_count, deal.hash
             ))
@@ -161,6 +223,7 @@ class SQLiteStorage:
         existing.cbd_pct = deal.cbd_pct
         existing.weight = deal.weight
         existing.brand = deal.brand
+        existing.strain_name = deal.strain_name or existing.strain_name
         if notify:
             existing.last_notified = now
             existing.notify_count = notify_count
@@ -247,6 +310,244 @@ class SQLiteStorage:
                 "SELECT image_data FROM product_images WHERE url_hash = ?", (url_hash,)
             ).fetchone()
             return row[0] if row else None
+
+    # ---- strains ----
+
+    def get_strain(self, normalized_name: str) -> Optional[Strain]:
+        """Look up a cached strain by its normalised name."""
+        row = self._get_strain_row(normalized_name)
+        return self._strain_from_row(row) if row else None
+
+    def get_strains(self, normalized_names: List[str]) -> dict:
+        """Look up many cached strains in one pass, keyed by normalised name."""
+        if not normalized_names:
+            return {}
+
+        found: dict = {}
+        # Chunked so a long IN (...) never trips SQLite's bound-parameter limit.
+        for start in range(0, len(normalized_names), 400):
+            chunk = normalized_names[start:start + 400]
+            placeholders = ",".join("?" for _ in chunk)
+            query = f"SELECT * FROM strains WHERE lower(name) IN ({placeholders})"
+            try:
+                with self._get_connection() as conn:
+                    rows = conn.execute(query, chunk).fetchall()
+            except Exception as e:
+                logger.warning(f"Failed to load strains: {e}")
+                continue
+            for row in rows:
+                strain = self._strain_from_row(row)
+                if strain:
+                    found[strain.name.strip().lower()] = strain
+        return found
+
+    def get_strain_index(self) -> dict:
+        """Every cached strain keyed by normalised display name.
+
+        Strain profiles are few and small, so the API loads them all in one
+        query and indexes in Python. That avoids the mismatch of normalising in
+        SQL: "GG#4" and "gg4" are the same strain for lookups but not for a
+        ``lower(name)`` comparison.
+        """
+        index: dict = {}
+        try:
+            with self._get_connection() as conn:
+                rows = conn.execute("SELECT * FROM strains").fetchall()
+        except Exception as e:
+            # A database that predates the strain schema simply has no strains.
+            logger.debug(f"Failed to load strain index: {e}")
+            return index
+
+        for row in rows:
+            strain = self._strain_from_row(row)
+            if strain:
+                index[normalize_name(strain.name)] = strain
+        return index
+
+    def get_strain_names_by_hash(self) -> dict:
+        """Deal hash -> strain display name, one query for the whole menu.
+
+        Snapshots written before the strain importer ran carry no strain name,
+        so joining through the live deals table is what keeps the dashboard
+        working off older weekly snapshots.
+        """
+        mapping: dict = {}
+        try:
+            with self._get_connection() as conn:
+                rows = conn.execute("""
+                    SELECT hash, strain_name FROM seen_deals
+                    WHERE strain_name IS NOT NULL AND strain_name != ''
+                """).fetchall()
+        except Exception as e:
+            logger.debug(f"Failed to load strain names: {e}")
+            return mapping
+        for row in rows:
+            mapping[row["hash"]] = row["strain_name"]
+        return mapping
+
+    def get_strain_rows_for_names(self, names: List[str]) -> List[Strain]:
+        """Return cached strains whose display name matches any of `names`."""
+        if not names:
+            return []
+        lowered = [n.strip().lower() for n in names if n and n.strip()]
+        if not lowered:
+            return []
+        return list(self.get_strains(lowered).values())
+
+    def _get_strain_row(self, normalized_name: str):
+        # The lookup key is a normalised (lower-cased) name while the column
+        # holds Leafly's display casing, so the comparison is case-insensitive.
+        # Without this the resolver's cache would never hit and every run would
+        # re-query Leafly for strains it had already imported.
+        with self._get_connection() as conn:
+            return conn.execute(
+                "SELECT * FROM strains WHERE name = ? COLLATE NOCASE", (normalized_name,)
+            ).fetchone()
+
+    @staticmethod
+    def _strain_from_row(row) -> Optional[Strain]:
+        if not row:
+            return None
+        data = dict(row)
+        for field_name in ("effects", "flavors", "terpenes", "helps_with", "parents", "children"):
+            try:
+                data[field_name] = json.loads(data.get(field_name) or "[]")
+            except (TypeError, ValueError):
+                data[field_name] = []
+        try:
+            # `fetched_at` is left as its stored string: Strain.from_dict is the
+            # single place that converts it, so parsing it here too would try to
+            # parse a datetime and fail.
+            return Strain.from_dict(data)
+        except Exception as e:
+            logger.warning(f"Failed to parse cached strain {data.get('name')!r}: {e}")
+            return None
+
+    def save_strain(self, strain: Strain) -> bool:
+        """Insert or refresh a strain profile, preserving lookup counts."""
+        now = datetime.utcnow().isoformat()
+        if strain.fetched_at is None:
+            strain.fetched_at = datetime.utcnow()
+        try:
+            with self._get_connection() as conn:
+                existing = conn.execute(
+                    "SELECT lookup_count FROM strains WHERE name = ?", (strain.name,)
+                ).fetchone()
+                lookup_count = (existing[0] + 1) if existing else 1
+                conn.execute("""
+                    INSERT OR REPLACE INTO strains
+                    (name, slug, leafly_id, category, thc_pct, thc_low, thc_high,
+                     cbd_pct, cbd_low, cbd_high, effects, flavors, terpenes,
+                     helps_with, rating, review_count, description, image_url,
+                     parents, children, source, fetched_at, lookup_count)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    strain.name, strain.slug, strain.leafly_id, strain.category,
+                    strain.thc_pct, strain.thc_low, strain.thc_high,
+                    strain.cbd_pct, strain.cbd_low, strain.cbd_high,
+                    json.dumps(strain.effects), json.dumps(strain.flavors),
+                    json.dumps(strain.terpenes), json.dumps(strain.helps_with),
+                    strain.rating, strain.review_count, strain.description,
+                    strain.image_url,
+                    json.dumps(strain.parents), json.dumps(strain.children),
+                    strain.source, strain.fetched_at.isoformat(), lookup_count,
+                ))
+                conn.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save strain {strain.name!r}: {e}")
+            return False
+
+    def record_strain_miss(self, normalized_name: str) -> None:
+        """Remember that a candidate produced no strain, to avoid re-querying."""
+        now = datetime.utcnow().isoformat()
+        try:
+            with self._get_connection() as conn:
+                conn.execute("""
+                    INSERT INTO strain_misses (name, attempted_at, attempts)
+                    VALUES (?, ?, 1)
+                    ON CONFLICT(name) DO UPDATE SET
+                        attempted_at = excluded.attempted_at,
+                        attempts = attempts + 1
+                """, (normalized_name, now))
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Failed to record strain miss for {normalized_name!r}: {e}")
+
+    def is_strain_miss(self, normalized_name: str) -> Optional[str]:
+        """Return when a candidate last failed to match, or None."""
+        try:
+            with self._get_connection() as conn:
+                row = conn.execute(
+                    "SELECT attempted_at FROM strain_misses WHERE name = ?", (normalized_name,)
+                ).fetchone()
+        except Exception as e:
+            logger.warning(f"Failed to read strain miss for {normalized_name!r}: {e}")
+            return None
+        return row[0] if row else None
+
+    def clear_strain_misses(self) -> int:
+        """Drop the miss cache so every candidate is tried against Leafly again."""
+        with self._get_connection() as conn:
+            cursor = conn.execute("DELETE FROM strain_misses")
+            conn.commit()
+            return cursor.rowcount
+
+    def count_strains(self) -> int:
+        with self._get_connection() as conn:
+            row = conn.execute("SELECT COUNT(*) FROM strains").fetchone()
+        return row[0] if row else 0
+
+    def get_strains_needing_detail(self, limit: int = 500) -> List[Strain]:
+        """Return cached strains whose flavour list is still empty.
+
+        Leafly's search endpoint carries effects and terpenes but not flavours;
+        those only exist on the strain's own page. This is how the importer
+        finds the profiles worth a second request.
+        """
+        with self._get_connection() as conn:
+            rows = conn.execute("""
+                SELECT * FROM strains
+                WHERE (flavors IS NULL OR flavors = '' OR flavors = '[]')
+                ORDER BY lookup_count DESC, name
+                LIMIT ?
+            """, (limit,)).fetchall()
+        strains = [self._strain_from_row(row) for row in rows]
+        return [s for s in strains if s]
+
+    def count_strain_misses(self) -> int:
+        with self._get_connection() as conn:
+            row = conn.execute("SELECT COUNT(*) FROM strain_misses").fetchone()
+        return row[0] if row else 0
+
+    def get_deals_missing_strain(self, limit: int = 500) -> List[SeenDeal]:
+        """Return strain-eligible deals that have no strain attached yet."""
+        with self._get_connection() as conn:
+            rows = conn.execute("""
+                SELECT * FROM seen_deals
+                WHERE (strain_name IS NULL OR strain_name = '')
+                ORDER BY last_notified DESC
+                LIMIT ?
+            """, (limit,)).fetchall()
+        return [SeenDeal.from_dict(dict(row)) for row in rows]
+
+    def set_deal_strain(self, deal_hash: str, strain_name: Optional[str]) -> bool:
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE seen_deals SET strain_name = ? WHERE hash = ?",
+                (strain_name, deal_hash),
+            )
+            conn.commit()
+        return True
+
+    def count_fresh_strains(self, max_age_days: int = 30) -> int:
+        """Number of cached strains younger than `max_age_days`."""
+        cutoff = (datetime.utcnow() - timedelta(days=max_age_days)).isoformat()
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM strains WHERE fetched_at >= ?", (cutoff,)
+            ).fetchone()
+        return row[0] if row else 0
 
     def get_all_seen_deals(self, store_id: Optional[str] = None) -> List[SeenDeal]:
         with self._get_connection() as conn:

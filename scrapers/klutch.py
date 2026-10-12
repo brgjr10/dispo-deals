@@ -8,6 +8,7 @@ from scrapers.base import BaseScraper
 from scrapers.dutchie import DutchieScraper
 from models import Deal, StoreConfig
 from config import Config
+from utils.categories import canonical_category
 
 
 class KlutchScraper(BaseScraper):
@@ -57,7 +58,10 @@ class KlutchScraper(BaseScraper):
     def _extract_category_name(self, url: str) -> str:
         match = re.search(r"/collections/([^/?]+)", url)
         if match:
-            return match.group(1).replace("-", " ").title()
+            # Klutch's collection slugs are plural ("concentrates", "vapes"),
+            # which would show up as separate shelves from the singular names
+            # the Dutchie stores report.
+            return canonical_category(match.group(1).replace("-", " ").title())
         return "Uncategorized"
 
     def _parse_product_card(self, card, category: str) -> Optional[Deal]:

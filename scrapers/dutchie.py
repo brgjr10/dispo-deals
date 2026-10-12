@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from scrapers.base import BaseScraper
 from models import Deal, StoreConfig
 from config import Config
+from utils.categories import canonical_category
 
 # Dutchie's live storefront menu comes from the consumer GraphQL API. The
 # dutchie.com endpoint exposes the identical schema and is a safe fallback.
@@ -424,7 +425,10 @@ class DutchieScraper(BaseScraper):
 
         Dutchie exposes parallel `recPrices` / `recSpecialPrices` arrays (one
         entry per variant). A deal exists when a special price undercuts the
-        regular price for the same variant.
+        regular price for the same variant, but the record is still returned
+        when it does not: the menu is meant to hold every product a store
+        carries, not only the discounted ones, so the dashboard can browse the
+        whole catalogue and filter to deals itself.
         """
         try:
             name = product.get("Name") or product.get("name") or ""
@@ -455,10 +459,14 @@ class DutchieScraper(BaseScraper):
                     original_price = best[1]
                     sale_price = best[2]
                 else:
-                    return None
+                    # Priced but not discounted: fall through with a 0% discount
+                    # so the product still appears in the menu.
+                    original_price = rec_prices[0]
+                    sale_price = rec_prices[0]
             else:
-                # No special pricing on this product, so there is no deal to report.
-                return None
+                # No special pricing on this product, so there is no discount.
+                original_price = rec_prices[0]
+                sale_price = rec_prices[0]
 
             image_url = self._extract_product_image_url(product)
             brand = self._extract_brand_name(product)
@@ -469,6 +477,9 @@ class DutchieScraper(BaseScraper):
             subcategory = product.get("subcategory") or ""
             if subcategory:
                 category = f"{category} · {subcategory}" if category != "Uncategorized" else subcategory
+            # Dutchie is already consistent, but a store reporting "Concentrates"
+            # would otherwise sit next to the canonical "Concentrate" shelf.
+            category = canonical_category(category)
 
             options = product.get("Options") or []
             weight = options[0] if options and options[0] and options[0] != "N/A" else None

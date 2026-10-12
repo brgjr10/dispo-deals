@@ -103,8 +103,71 @@ stores:
 ## Data Storage
 
 - SQLite at `./data/dispo_deals.db` (mounted as `/app/data`)
-- Tables: `seen_deals`, `weekly_snapshots`, `store_logos`, `product_images`
+- Tables: `seen_deals`, `weekly_snapshots`, `store_logos`, `product_images`, `strains`, `strain_misses`
 - Image cache in `./cache/images/` (mounted as `/app/cache`)
+
+## Products vs Deals
+
+Every product a store carries is captured, not only the discounted ones. The
+dashboard browses the full menu, and a "Deals only" toggle narrows it to
+products with a `discount_pct > 0`.
+
+Webhook alerts are deliberately limited to real deals, so a store that lists
+mostly full-price stock (Culture Akron carries ~380 of them against ~20 sales)
+still loads a full catalogue without spamming a channel. The split lives in
+`main.py:_process_deals`.
+
+This is also why store counts differ so much in the dashboard: Bliss Ohio has
+94% of its menu on sale, while Culture Akron runs one blanket 20% promotion
+across a small slice of its menu.
+
+## Leafly Strain Data
+
+Each product's strain is resolved against Leafly when a scrape runs, so the
+dashboard can show the strain's phenotype, typical potency, effects and flavours
+instead of just the dispensary's name for it.
+
+```yaml
+leafly:
+  enabled: true
+  # Categories that can plausibly carry a strain. Edibles, topicals and
+  # tinctures are excluded because their names are flavours, not strains.
+  categories: [Flower, Pre-Rolls, Concentrate, Vaporizers]
+  request_delay_seconds: 0.4
+  cache_days: 30
+```
+
+Commands:
+
+```bash
+# Backfill strains for products already in the database
+python main.py --import-strains
+
+# Fetch full profiles (flavours, description, genetics) for cached strains
+python main.py --enrich-strains
+
+# Report coverage
+python main.py --strain-status
+
+# Force every candidate to be re-tried against Leafly
+python main.py --import-strains   # after clearing the miss cache
+```
+
+**How matching works.** Leafly has no public self-serve strain API. The importer
+uses the search endpoint the Leafly site itself calls, which resolves a name to
+Leafly's canonical strain record and carries phenotype, cannabinoid percentiles,
+effects, terpenes and rating. Strain pages are then read for the fields that
+endpoint omits, mainly flavours and the full description.
+
+Leafly ranks an exact strain first whenever it exists and only falls back to
+fuzzy near-misses ("Gas Apples" for "Ap Gas") when it does not, so a hit is
+accepted only when its name matches the candidate exactly. The bias is towards
+precision: a missing strain badge costs nothing, while a wrong one would show
+someone the wrong effects and potency.
+
+Two caches keep this cheap. `strains` holds matched profiles; `strain_misses`
+holds candidates that produced nothing, so the many products whose names are
+proprietary cuttings Leafly does not carry are only queried once.
 
 ## Adding a Store
 

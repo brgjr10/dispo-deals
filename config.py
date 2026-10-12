@@ -41,6 +41,34 @@ class WebhookConfig:
 
 
 @dataclass
+class LeaflyConfig:
+    """Settings for importing strain profiles from Leafly.
+
+    `enabled` gates every outbound strain lookup so a run can proceed without
+    touching Leafly at all. `request_delay_seconds` keeps the importer polite
+    against the public consumer API.
+    """
+
+    enabled: bool = True
+    search_endpoint: str = "https://consumer-api.leafly.com/api/search/v1"
+    site_url: str = "https://www.leafly.com"
+    timeout: int = 15
+    max_retries: int = 3
+    request_delay_seconds: float = 0.4
+    # Strains are matched only for categories that can carry a strain. Edibles,
+    # topicals and tinctures are usually named after a flavour or a product
+    # line, so matching them mostly produces noise.
+    categories: List[str] = field(default_factory=lambda: [
+        "Flower",
+        "Pre-Rolls",
+        "Concentrate",
+        "Vaporizers",
+    ])
+    match_threshold: float = 0.6
+    cache_days: int = 30
+
+
+@dataclass
 class Config:
     schedule_cron: str = "0 */6 * * *"
     webhook_url: str = ""
@@ -53,6 +81,7 @@ class Config:
     deduplication: DeduplicationConfig = field(default_factory=DeduplicationConfig)
     weekly_menu: WeeklyMenuConfig = field(default_factory=WeeklyMenuConfig)
     webhook: WebhookConfig = field(default_factory=WebhookConfig)
+    leafly: LeaflyConfig = field(default_factory=LeaflyConfig)
 
     @classmethod
     def load(cls, path: str = "config.yaml") -> "Config":
@@ -78,6 +107,7 @@ class Config:
             deduplication=DeduplicationConfig(**data.get("deduplication", {})),
             weekly_menu=WeeklyMenuConfig(**data.get("weekly_menu", {})),
             webhook=WebhookConfig(**data.get("webhook", {})),
+            leafly=LeaflyConfig(**data.get("leafly", {})),
         )
 
     def get_store(self, store_id: str) -> Optional[StoreConfig]:
