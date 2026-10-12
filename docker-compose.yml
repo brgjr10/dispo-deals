@@ -1,0 +1,73 @@
+services:
+  # FlareSolverr for Cloudflare bypass (Dutchie protection)
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: dispo-flaresolverr
+    ports:
+      - "8191:8191"
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8191 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Scraper service - runs on schedule
+  scraper:
+    build: .
+    container_name: dispo-scraper
+    environment:
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - LOG_LEVEL=INFO
+      - TZ=America/New_York
+    volumes:
+      - ./data:/app/data
+      - ./cache:/app/cache
+      - ./config.yaml:/app/config.yaml:ro
+    depends_on:
+      flaresolverr:
+        condition: service_healthy
+    restart: unless-stopped
+    command: python main.py
+
+  # API server for dashboard
+  api:
+    build: .
+    container_name: dispo-api
+    ports:
+      - "4040:4040"
+    environment:
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./cache:/app/cache
+    command: python api_server.py --port 4040
+    restart: unless-stopped
+
+  # Optional: Manual trigger service
+  manual-scrape:
+    build: .
+    container_name: dispo-manual
+    environment:
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./cache:/app/cache
+      - ./config.yaml:/app/config.yaml:ro
+    depends_on:
+      flaresolverr:
+        condition: service_healthy
+    profiles:
+      - manual
+    command: python main.py --once
+
+networks:
+  default:
+    name: dispo-network

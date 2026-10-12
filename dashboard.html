@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dispo Deals Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+<style>
+:root {
+  --bg: #0d1117;
+  --card: #161b22;
+  --card-bg: rgba(22, 27, 34, 0.8);
+  --card-hover: rgba(22, 27, 34, 0.88);
+  --border: #30363d;
+  --primary: #3fb950;
+  --primary-hover: #5cb96d;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --hover: #1f2428;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: var(--bg) url('backgroundtile.jpg') repeat;
+  background-size: 200px;
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+.header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+}
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header h1::before {
+  content: "";
+  width: 10px; height: 10px;
+  background: var(--primary);
+  border-radius: 2px;
+}
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+select, input[type="search"] {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 160px;
+  backdrop-filter: blur(4px);
+}
+select:focus, input:focus { outline: none; border-color: var(--primary); }
+input[type="search"] { min-width: 200px; }
+.btn {
+  background: var(--primary);
+  color: var(--bg);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.btn:hover { background: var(--primary-hover); }
+.btn:active { transform: scale(0.98); }
+.btn.secondary { background: var(--border); color: var(--text); }
+.btn.secondary:hover { background: var(--hover); }
+.main { padding: 24px; max-width: 1600px; margin: 0 auto; }
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 16px;
+}
+.store-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.store-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(88,166,255,0.1); }
+.store-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card-hover);
+}
+.store-logo { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: var(--bg); }
+.store-info { flex: 1; min-width: 0; }
+.store-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.store-meta { font-size: 12px; color: var(--muted); }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.badge-new { background: rgba(63,185,80,0.2); color: var(--success); }
+.badge-carryover { background: rgba(210,153,34,0.2); color: var(--warning); }
+.badge-removed { background: rgba(248,81,73,0.2); color: var(--danger); }
+.deals-list { padding: 12px 16px 16px; max-height: 500px; overflow-y: auto; }
+.deal-row {
+  display: grid;
+  grid-template-columns: 60px 1fr auto auto;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  transition: background 0.2s;
+  border-radius: 4px;
+  margin: 0 -4px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+.deal-img-col { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; }
+.deal-img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; background: var(--bg); }
+.deal-main { min-width: 0; }
+.deal-name { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deal-meta { display: flex; gap: 10px; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.deal-price {
+  text-align: right;
+  white-space: nowrap;
+}
+.sale-price { font-weight: 600; font-size: 14px; color: var(--success); }
+.original-price { font-size: 12px; color: var(--muted); text-decoration: line-through; }
+.discount-badge {
+  background: var(--danger);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.deal-category {
+  background: var(--bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--primary);
+  white-space: nowrap;
+}
+.empty-state {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.stat {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 12px 20px;
+  border-radius: 8px;
+  min-width: 140px;
+}
+.stat-value { font-size: 24px; font-weight: 700; color: var(--primary); }
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 8px 4px 8px;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  border-radius: 10px 10px 0 0;
+  background: var(--card-bg);
+  margin: 0 -16px;
+  padding-left: 24px;
+  padding-right: 24px;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.15);
+  margin-bottom: 8px;
+}
+.content-wrapper {
+  background: var(--card-bg);
+  border-radius: 0 0 10px 10px;
+  backdrop-filter: blur(8px);
+  min-height: 400px;
+  margin: 0 -16px;
+  padding: 0 16px 16px 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.tab {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  position: relative;
+  transition: color 0.2s, background 0.2s;
+}
+.tab:hover { color: var(--text); background: var(--card-hover); }
+.tab.active { color: var(--primary); background: var(--card-hover); }
+.tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--primary);
+}
+.tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--primary);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn 0.15s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+.category-section { margin-bottom: 20px; }
+.category-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+.best-deal {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.best-deal-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.best-deal-img-col { width: 80px; height: 80px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.best-deal-img { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; background: var(--bg); }
+.best-deal-info { flex: 1; min-width: 0; }
+.best-deal-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.best-deal-price { display: flex; align-items: baseline; gap: 8px; color: var(--primary); margin-top: 4px; }
+.store-badge {
+  background: var(--primary);
+  color: var(--bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.weekly-diff {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.diff-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.diff-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.diff-count { font-size: 20px; font-weight: 700; }
+.diff-new { color: var(--success); }
+.diff-carryover { color: var(--warning); }
+.diff-removed { color: var(--danger); }
+.diff-items { max-height: 200px; overflow-y: auto; }
+.diff-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.diff-img { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; background: var(--bg); flex-shrink: 0; }
+.diff-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diff-item-price { color: var(--success); font-weight: 500; margin-left: 12px; white-space: nowrap; }
+@media (max-width: 768px) {
+  .main { padding: 16px; }
+  .store-grid { grid-template-columns: 1fr; }
+  .deal-row { grid-template-columns: 1fr; gap: 8px; }
+  .deal-price { text-align: left; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Dispo Deals</h1>
+  <div class="controls">
+    <select id="storeFilter" onchange="render()">
+      <option value="">All Stores</option>
+    </select>
+    <select id="categoryFilter" onchange="render()">
+      <option value="">All Categories</option>
+    </select>
+    <select id="statusFilter" onchange="render()">
+      <option value="">All Status</option>
+      <option value="NEW">New Only</option>
+      <option value="CARRYOVER">Carryover Only</option>
+    </select>
+    <input type="search" id="searchInput" placeholder="Search products..." oninput="debouncedRender()">
+    <button class="btn secondary" onclick="loadData()">Refresh</button>
+  </div>
+</div>
+<div class="main">
+  <div class="stats-bar" id="statsBar"></div>
+  <div class="content-wrapper">
+    <div class="tab-bar">
+      <button class="tab active" data-tab="stores" onclick="switchTab('stores')">By Store</button>
+      <button class="tab" data-tab="categories" onclick="switchTab('categories')">Best per Category</button>
+      <button class="tab" data-tab="weekly" onclick="switchTab('weekly')">Weekly Diff</button>
+    </div>
+    <div id="storesPanel" class="tab-panel active">
+      <div class="store-grid" id="storeGrid"></div>
+    </div>
+    <div id="categoriesPanel" class="tab-panel">
+      <div id="categoriesContent"></div>
+    </div>
+    <div id="weeklyPanel" class="tab-panel">
+      <div class="weekly-diff" id="weeklyContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- State ----
+let allData = { stores: [], deals: [], snapshots: [], weeklyDiff: null };
+let debounceTimer = null;
+
+// ---- Init ----
+document.addEventListener('DOMContentLoaded', loadData);
+
+// ---- Data Loading ----
+async function loadData() {
+  try {
+    const response = await fetch('/api/data');
+    if (!response.ok) throw new Error('Failed to load');
+    allData = await response.json();
+    populateFilters();
+    render();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('storeGrid').innerHTML = '<div class="empty-state">Failed to load data. Is the API server running?</div>';
+  }
+}
+
+// ---- API Server (Python http.server with CGI or simple endpoint) ----
+// For standalone file:// usage, we'll use a local proxy approach
+// See README for running the API server
+
+// ---- Rendering ----
+function render() {
+  const storeFilter = document.getElementById('storeFilter').value;
+  const categoryFilter = document.getElementById('categoryFilter').value;
+  const statusFilter = document.getElementById('statusFilter').value;
+  const search = document.getElementById('searchInput').value.toLowerCase();
+
+  const activeTab = document.querySelector('.tab.active').dataset.tab;
+
+  if (activeTab === 'stores') renderStores(storeFilter, categoryFilter, statusFilter, search);
+  else if (activeTab === 'categories') renderCategories(storeFilter, categoryFilter, statusFilter, search);
+  else if (activeTab === 'weekly') renderWeekly();
+
+  renderStats();
+}
+
+function debouncedRender() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(render, 150);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tab + 'Panel'));
+  render();
+}
+
+function populateFilters() {
+  const stores = [...new Set(allData.deals.map(d => d.store_id))];
+  const storeSelect = document.getElementById('storeFilter');
+  stores.forEach(id => {
+    const store = allData.stores.find(s => s.id === id) || { name: id };
+    storeSelect.innerHTML += `<option value="${id}">${store.name}</option>`;
+  });
+
+  const categories = [...new Set(allData.deals.map(d => d.category))].sort();
+  const catSelect = document.getElementById('categoryFilter');
+  categories.forEach(c => catSelect.innerHTML += `<option value="${c}">${c}</option>`);
+}
+
+function renderStats() {
+  const totalDeals = allData.deals.length;
+  const totalStores = allData.stores.filter(s => s.enabled).length;
+  const newThisWeek = allData.deals.filter(d => isNewThisWeek(d)).length;
+  const avgDiscount = allData.deals.length ? (allData.deals.reduce((s, d) => s + d.discount_pct, 0) / allData.deals.length).toFixed(1) : 0;
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat"><div class="stat-value">${totalDeals}</div><div class="stat-label">Total Deals</div></div>
+    <div class="stat"><div class="stat-value">${totalStores}</div><div class="stat-label">Stores</div></div>
+    <div class="stat"><div class="stat-value">${newThisWeek}</div><div class="stat-label">New This Week</div></div>
+    <div class="stat"><div class="stat-value">${avgDiscount}%</div><div class="stat-label">Avg Discount</div></div>
+  `;
+}
+
+function isNewThisWeek(deal) {
+  const detected = new Date(deal.detected_at);
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  return detected > weekAgo;
+}
+
+function filterDeals(deals, storeFilter, categoryFilter, statusFilter, search) {
+  return deals.filter(d => {
+    if (storeFilter && d.store_id !== storeFilter) return false;
+    if (categoryFilter && d.category !== categoryFilter) return false;
+    if (search && !d.name.toLowerCase().includes(search) && !(d.brand && d.brand.toLowerCase().includes(search))) return false;
+    return true;
+  });
+}
+
+function renderStores(storeFilter, categoryFilter, statusFilter, search) {
+  const grid = document.getElementById('storeGrid');
+  const stores = allData.stores.filter(s => s.enabled && (!storeFilter || s.id === storeFilter));
+
+  if (stores.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No stores match filters</div>';
+    return;
+  }
+
+  grid.innerHTML = stores.map(store => {
+    let deals = allData.deals.filter(d => d.store_id === store.id);
+    deals = filterDeals(deals, '', categoryFilter, statusFilter, search);
+    deals.sort((a, b) => b.discount_pct - a.discount_pct);
+
+    if (deals.length === 0) {
+      return `
+        <div class="store-card">
+          <div class="store-header">
+            <img class="store-logo" src="${store.logo_url || ''}" alt="" onerror="this.style.display='none'">
+            <div class="store-info">
+              <div class="store-name">${escapeHtml(store.name)}</div>
+              <div class="store-meta">No deals match current filters</div>
+            </div>
+          </div>
+          <div class="deals-list"><div class="empty-state">No deals found</div></div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="store-card">
+        <div class="store-header">
+          <img class="store-logo" src="${store.logo_url || ''}" alt="" onerror="this.style.display='none'">
+          <div class="store-info">
+            <div class="store-name">${escapeHtml(store.name)}</div>
+            <div class="store-meta">${deals.length} deal${deals.length !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        <div class="deals-list">
+          ${deals.slice(0, 25).map(deal => renderDealRow(deal)).join('')}
+          ${deals.length > 25 ? `<div class="empty-state" style="padding:8px;">+ ${deals.length - 25} more deals</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDealRow(deal) {
+  const status = deal.weekly_status || 'NEW';
+  const badgeClass = status === 'NEW' ? 'badge-new' : status === 'CARRYOVER' ? 'badge-carryover' : 'badge-removed';
+  const brandHtml = deal.brand ? `<span>${escapeHtml(deal.brand)}</span>` : '';
+  const thcHtml = deal.thc_pct ? `<span>THC: ${deal.thc_pct}%</span>` : '';
+  const weightHtml = deal.weight ? `<span>${escapeHtml(deal.weight)}</span>` : '';
+  const imgHtml = deal.image_url ? `<img class="deal-img" src="${escapeHtml(deal.image_url)}" alt="" onerror="this.style.display='none'">` : '';
+
+  return `
+    <div class="deal-row">
+      <div class="deal-img-col">${imgHtml}</div>
+      <div class="deal-main">
+        <div class="deal-name">${escapeHtml(deal.name)} <span class="badge ${badgeClass}">${status}</span></div>
+        <div class="deal-meta">${brandHtml} ${thcHtml} ${weightHtml} <span>${escapeHtml(deal.category)}</span></div>
+      </div>
+      <div class="deal-price">
+        <div class="sale-price">$${deal.sale_price.toFixed(2)}</div>
+        <div class="original-price">$${deal.original_price.toFixed(2)}</div>
+      </div>
+      <div class="discount-badge">${deal.discount_pct.toFixed(1)}% OFF</div>
+    </div>
+  `;
+}
+
+function renderCategories(storeFilter, categoryFilter, statusFilter, search) {
+  const content = document.getElementById('categoriesContent');
+  const deals = filterDeals(allData.deals, storeFilter, categoryFilter, statusFilter, search);
+  const categories = [...new Set(deals.map(d => d.category))].sort();
+
+  if (categories.length === 0) {
+    content.innerHTML = '<div class="empty-state">No deals match current filters</div>';
+    return;
+  }
+
+  content.innerHTML = categories.map(cat => {
+    const catDeals = deals.filter(d => d.category === cat).sort((a, b) => b.discount_pct - a.discount_pct);
+    const best = catDeals[0];
+    const store = allData.stores.find(s => s.id === best.store_id);
+    const bestImgHtml = best.image_url ? `<img class="best-deal-img" src="${escapeHtml(best.image_url)}" alt="" onerror="this.style.display='none'">` : '';
+
+    return `
+      <div class="category-section">
+        <div class="category-title">${escapeHtml(cat)} (${catDeals.length} deals)</div>
+        <div class="best-deal">
+          <div class="best-deal-header">
+            <div class="best-deal-img-col">${bestImgHtml}</div>
+            <div class="best-deal-info">
+              <div class="best-deal-name">${escapeHtml(best.name)}</div>
+              <div class="best-deal-price">
+                <span class="sale-price">$${best.sale_price.toFixed(2)}</span>
+                <span class="original-price">$${best.original_price.toFixed(2)}</span>
+                <span class="discount-badge">${best.discount_pct.toFixed(1)}% OFF</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px;">
+            <span class="store-badge">${escapeHtml(store?.name || best.store_id)}</span>
+            ${best.brand ? `<span>${escapeHtml(best.brand)}</span>` : ''}
+            ${best.thc_pct ? `<span>THC: ${best.thc_pct}%</span>` : ''}
+            ${best.weight ? `<span>${escapeHtml(best.weight)}</span>` : ''}
+          </div>
+          <details style="margin-top:12px; font-size:12px; color:var(--muted);">
+            <summary style="cursor:pointer; background:var(--card-bg); padding:8px; border-radius:4px; border:1px solid var(--border);">Show all ${catDeals.length} deals in this category</summary>
+            <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px; background:var(--card-bg); padding:12px; border-radius:4px; border:1px solid var(--border);">
+              ${catDeals.slice(1).map(d => {
+                const s = allData.stores.find(st => st.id === d.store_id);
+                return `
+                  <div style="display:flex; justify-content:space-between; padding:6px; background:var(--bg); border-radius:4px;">
+                    <span>${escapeHtml(d.name)}</span>
+                    <span style="display:flex; gap:12px; align-items:center;">
+                      <span class="sale-price">$${d.sale_price.toFixed(2)}</span>
+                      <span class="original-price">$${d.original_price.toFixed(2)}</span>
+                      <span class="discount-badge" style="font-size:10px; padding:1px 6px;">${d.discount_pct.toFixed(1)}%</span>
+                      <span class="store-badge" style="background:var(--border); color:var(--text); font-size:10px;">${escapeHtml(s?.name || d.store_id)}</span>
+                    </span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </details>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderWeekly() {
+  const content = document.getElementById('weeklyContent');
+  if (!allData.weeklyDiff) {
+    content.innerHTML = '<div class="empty-state">No weekly comparison data available yet. Run the scraper for at least 2 weeks.</div>';
+    return;
+  }
+
+  const diff = allData.weeklyDiff;
+  content.innerHTML = `
+    <div class="diff-card">
+      <h4><span class="diff-count diff-new">${diff.new_count}</span> New Items</h4>
+      <div class="diff-items">
+        ${diff.new_items.slice(0, 30).map(item => `
+          <div class="diff-item">
+            ${item.deal.image_url ? `<img class="diff-img" src="${escapeHtml(item.deal.image_url)}" alt="" onerror="this.style.display='none'">` : ''}
+            <span class="diff-item-name">${escapeHtml(item.deal.name)}</span>
+            <span class="diff-item-price">$${item.deal.sale_price.toFixed(2)} <span class="original-price" style="font-size:11px;">$${item.deal.original_price.toFixed(2)}</span></span>
+          </div>
+        `).join('')}
+        ${diff.new_items.length > 30 ? `<div style="color:var(--muted); font-size:11px;">+ ${diff.new_items.length - 30} more</div>` : ''}
+      </div>
+    </div>
+    <div class="diff-card">
+      <h4><span class="diff-count diff-carryover">${diff.carryover_count}</span> Carryover</h4>
+      <div class="diff-items">
+        ${diff.carryover_items.slice(0, 30).map(item => `
+          <div class="diff-item">
+            ${item.deal.image_url ? `<img class="diff-img" src="${escapeHtml(item.deal.image_url)}" alt="" onerror="this.style.display='none'">` : ''}
+            <span class="diff-item-name">${escapeHtml(item.deal.name)}</span>
+            <span class="diff-item-price">$${item.deal.sale_price.toFixed(2)}</span>
+          </div>
+        `).join('')}
+        ${diff.carryover_items.length > 30 ? `<div style="color:var(--muted); font-size:11px;">+ ${diff.carryover_items.length - 30} more</div>` : ''}
+      </div>
+    </div>
+    <div class="diff-card">
+      <h4><span class="diff-count diff-removed">${diff.removed_count}</span> Removed</h4>
+      <div class="diff-items">
+        ${diff.removed_items.slice(0, 30).map(deal => `
+          <div class="diff-item">
+            ${deal.image_url ? `<img class="diff-img" src="${escapeHtml(deal.image_url)}" alt="" onerror="this.style.display='none'">` : ''}
+            <span class="diff-item-name">${escapeHtml(deal.name)}</span>
+            <span class="diff-item-price" style="color:var(--danger);">$${deal.sale_price.toFixed(2)}</span>
+          </div>
+        `).join('')}
+        ${diff.removed_items.length > 30 ? `<div style="color:var(--muted); font-size:11px;">+ ${diff.removed_items.length - 30} more</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
