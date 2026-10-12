@@ -4,8 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dispo Browser - Multi-Store Product Browser</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<!-- Percent-encoded so the angle brackets cannot break out of the attribute.
+     The unencoded inline SVG ran past its closing quote and swallowed the
+     script tag that followed, which silently stopped Chart.js loading. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%BF%3C/text%3E%3C/svg%3E">
+<!-- Served from a local vendor copy so the dashboard does not depend on a CDN
+     being reachable, which it often is not on a self-hosted network. -->
+<script src="vendor/chart.umd.min.js"></script>
 <style>
 :root {
   --bg: #0d1117;
@@ -44,6 +49,16 @@ body {
   flex-direction: column;
   overflow-y: auto;
   flex-shrink: 0;
+  transition: width 0.2s ease, min-width 0.2s ease;
+}
+/* Collapsing to a zero-width slot keeps the layout flowing rather than leaving
+   a gap where the panel used to be. */
+.sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  border-right: none;
+  overflow: hidden;
+  pointer-events: none;
 }
 .sidebar-header {
   padding: 16px;
@@ -561,6 +576,103 @@ body {
     animation: fadeIn 0.5s ease-out both;
 }
 
+/* Deal insights: best categories / best brands */
+.insights {
+  margin: 0 0 14px 0;
+}
+.insights-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.insights-heading {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  margin: 0;
+}
+.insights-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+}
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 9px;
+  flex-shrink: 0;
+}
+.insights-toggle svg { transition: transform 0.2s ease; }
+.insights.collapsed .insights-toggle svg { transform: rotate(-90deg); }
+.insights-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 12px;
+}
+.insights.collapsed .insights-body { display: none; }
+.insight-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  animation: fadeIn 0.4s ease-out both;
+}
+.insight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.insight-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  margin: 0;
+}
+.insight-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.insight-select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.insight-select:hover { border-color: var(--primary); }
+/* Chart.js needs a bounded, positioned box to size into */
+.insight-canvas-wrap {
+  position: relative;
+  height: 220px;
+}
+.insight-canvas-wrap canvas { display: block; }
+.insight-empty {
+  padding: 40px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* Product cards */
 .product-card {
     animation: fadeIn 0.4s ease-out both;
@@ -628,6 +740,10 @@ html {
     <header class="header">
       <div class="header-row">
         <div class="header-left">
+          <button class="btn ghost sidebar-toggle" id="sidebarToggle"
+                  aria-expanded="true" aria-controls="sidebar" aria-label="Toggle stores, categories and brands panel">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
           <h1 id="pageTitle">All Products</h1>
         </div>
         <div class="header-actions">
@@ -676,10 +792,6 @@ html {
             <div class="stat-value" id="storesWithDeals">0</div>
             <div class="stat-label">Stores with Deals</div>
         </div>
-        <div class="stat charts-container" style="flex: 1; min-width: 300px; display: flex; gap: 12px;">
-            <canvas id="categoryChart" width="120" height="80"></canvas>
-            <canvas id="brandChart" width="120" height="80"></canvas>
-        </div>
     </div>
 
     <div class="products-area" id="productsArea">
@@ -695,6 +807,58 @@ html {
           <button class="btn secondary" onclick="loadData()">Refresh</button>
         </div>
       </div>
+
+      <!-- Deal insights: which categories and brands are actually worth watching.
+           Lives inside the scrollable area so it scrolls away with the products
+           rather than permanently consuming the top half of the screen. -->
+      <section class="insights" id="insightsSection">
+        <div class="insights-bar">
+          <h2 class="insights-heading">Deal Insights</h2>
+          <button class="btn ghost insights-toggle" id="insightsToggle"
+                  aria-expanded="true" aria-controls="insightsBody">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            <span id="insightsToggleLabel">Hide</span>
+          </button>
+        </div>
+
+        <div class="insights-body" id="insightsBody">
+          <div class="insight-card">
+            <div class="insight-head">
+              <h3 class="insight-title">Best Categories</h3>
+              <label class="insight-control">
+                <span>Rank by</span>
+                <select id="categoryMetric" class="insight-select">
+                  <option value="count">Most deals</option>
+                  <option value="avg" selected>Best average discount</option>
+                  <option value="best">Deepest single discount</option>
+                </select>
+              </label>
+            </div>
+            <div class="insight-canvas-wrap">
+              <canvas id="categoryChart"></canvas>
+            </div>
+            <div class="insight-empty" id="categoryChartEmpty" hidden>No deals to rank</div>
+          </div>
+
+          <div class="insight-card">
+            <div class="insight-head">
+              <h3 class="insight-title">Best Brands</h3>
+              <label class="insight-control">
+                <span>Rank by</span>
+                <select id="brandMetric" class="insight-select">
+                  <option value="count">Most deals</option>
+                  <option value="avg" selected>Best average discount</option>
+                  <option value="best">Deepest single discount</option>
+                </select>
+              </label>
+            </div>
+            <div class="insight-canvas-wrap">
+              <canvas id="brandChart"></canvas>
+            </div>
+            <div class="insight-empty" id="brandChartEmpty" hidden>No deals to rank</div>
+          </div>
+        </div>
+      </section>
 
       <div class="product-grid" id="productGrid">
         <div class="vg-loader" id="vgLoader" aria-hidden="true" style="display:none;">
@@ -1371,6 +1535,71 @@ function bindGridScroll() {
   }, { passive: true });
 }
 
+// ---- Collapsible panels ----
+const SIDEBAR_STATE_KEY = 'dispo-sidebar-open';
+const INSIGHTS_STATE_KEY = 'dispo-insights-open';
+
+function readStoredFlag(key, fallback) {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored === null ? fallback : stored === 'true';
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function storeFlag(key, value) {
+  try {
+    localStorage.setItem(key, value ? 'true' : 'false');
+  } catch (e) { /* private mode: the choice simply is not remembered */ }
+}
+
+function setSidebarOpen(open) {
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('sidebarToggle');
+  if (!sidebar) return;
+  // The class, and the aria state, are what the CSS and assistive tech read;
+  // the button has to stay reachable to bring the panel back.
+  sidebar.classList.toggle('collapsed', !open);
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.setAttribute('aria-label', open ? 'Hide stores and categories panel' : 'Show stores and categories panel');
+  }
+}
+
+function toggleSidebar() {
+  const open = document.getElementById('sidebar').classList.contains('collapsed');
+  setSidebarOpen(open);
+  storeFlag(SIDEBAR_STATE_KEY, open);
+}
+
+function setInsightsOpen(open) {
+  const section = document.getElementById('insightsSection');
+  const toggle = document.getElementById('insightsToggle');
+  const label = document.getElementById('insightsToggleLabel');
+  if (!section) return;
+  section.classList.toggle('collapsed', !open);
+  if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (label) label.textContent = open ? 'Hide' : 'Show';
+  // A hidden canvas has no size, so the charts are rebuilt on the way back in
+  // rather than left trusting Chart.js to notice the change.
+  if (open) {
+    updateCategoryChart();
+    updateBrandChart();
+  }
+}
+
+function toggleInsights() {
+  const open = document.getElementById('insightsSection').classList.contains('collapsed');
+  setInsightsOpen(open);
+  storeFlag(INSIGHTS_STATE_KEY, open);
+}
+
+function applyStoredPanelStates() {
+  setSidebarOpen(readStoredFlag(SIDEBAR_STATE_KEY, true));
+  setInsightsOpen(readStoredFlag(INSIGHTS_STATE_KEY, true));
+}
+
 function renderVirtualizedGrid() {
   const container = document.getElementById('productGrid');
   if (!container) return;
@@ -1551,143 +1780,199 @@ function updateStats() {
         updateBrandChart();
     }
     
-    function updateCategoryChart() {
-        const ctx = document.getElementById('categoryChart');
-        if (!ctx) return;
+    // Deal insights: rank categories and brands by how good their discounts
+    // are, not just how many they have. The ranking follows the current
+    // filters, so the charts answer "what is best right now" instead of
+    // always describing the whole catalogue.
+    const CHART_METRICS = {
+        count: {
+            label: 'Deals',
+            // A higher bar means more products on sale.
+            compute: deals => ({ value: deals.length, display: deals.length + ' deals' }),
+            format: value => value + ''
+        },
+        avg: {
+            label: 'Average discount',
+            compute: deals => {
+                const total = deals.reduce((sum, d) => sum + (d.discount_pct || 0), 0);
+                const value = deals.length ? total / deals.length : 0;
+                return { value: value, display: value.toFixed(1) + '% average' };
+            },
+            format: value => value.toFixed(1) + '%'
+        },
+        best: {
+            label: 'Deepest single discount',
+            compute: deals => {
+                const value = deals.reduce((max, d) => Math.max(max, d.discount_pct || 0), 0);
+                return { value: value, display: value.toFixed(1) + '% off' };
+            },
+            format: value => value.toFixed(1) + '%'
+        }
+    };
 
-        // Chart.js is loaded from a CDN. If it is unavailable the charts must
-        // not take the whole dashboard down with them, so bail out here.
-        if (typeof Chart === 'undefined') return;
+    const CHART_MAX_ROWS = 8;
 
-        // Count deals by category
-        const categoryCounts = {};
-        allData.products
+    function buildInsightChart(canvasId, chartSlot, emptyId, grouping, metricKey, palette) {
+        const canvas = document.getElementById(canvasId);
+        const emptyEl = document.getElementById(emptyId);
+        if (!canvas) return;
+
+        // Chart.js is vendored locally, but a missing or failed load must still
+        // only hide the charts rather than break the rest of the dashboard.
+        if (typeof Chart === 'undefined') {
+            if (emptyEl) {
+                emptyEl.hidden = false;
+                emptyEl.textContent = 'Chart library unavailable';
+            }
+            return;
+        }
+
+        const metric = CHART_METRICS[metricKey] || CHART_METRICS.count;
+
+        // displayedProducts already has the active filters applied, so the
+        // rankings describe what the user is looking at.
+        const buckets = {};
+        displayedProducts
             .filter(p => p.is_deal)
             .forEach(p => {
-                const cat = p.category || 'Uncategorized';
-                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+                const key = grouping(p);
+                if (!key) return;
+                if (!buckets[key]) buckets[key] = [];
+                buckets[key].push(p);
             });
-        
-        // Get top 5 categories
-        const sortedCategories = Object.entries(categoryCounts)
-            .sort(([,a], [,b]) => b - a)
-            .slice(0, 5);
-        
-        const labels = sortedCategories.map(([cat]) => cat);
-        const data = sortedCategories.map(([,count]) => count);
-        
-        // Destroy existing chart if any
-            if (window.categoryChart && typeof window.categoryChart.destroy === 'function') {
-                window.categoryChart.destroy();
-            }
-        
-        // Create new chart
-        window.categoryChart = new Chart(ctx, {
+
+        const ranked = Object.entries(buckets)
+            .map(([key, deals]) => ({ key: key, deals: deals, ...metric.compute(deals) }))
+            .filter(entry => entry.deals.length > 0)
+            .sort((a, b) => b.value - a.value || a.key.localeCompare(b.key))
+            .slice(0, CHART_MAX_ROWS);
+
+        // A grouping with a single row (say, one category selected) still tells
+        // you the ranking within it, so it is only truly empty at zero deals.
+        const hasData = ranked.length > 0;
+        if (emptyEl) {
+            emptyEl.hidden = hasData;
+            emptyEl.textContent = 'No deals to rank';
+        }
+        canvas.style.visibility = hasData ? 'visible' : 'hidden';
+
+        // Chart.js cannot re-use a canvas it has already drawn into, so the old
+        // instance is destroyed before a new one is created.
+        const existing = window[chartSlot];
+        if (existing && typeof existing.destroy === 'function') {
+            existing.destroy();
+            window[chartSlot] = null;
+        }
+        if (!hasData) return;
+
+        window[chartSlot] = new Chart(canvas, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: ranked.map(entry => entry.key),
                 datasets: [{
-                    label: 'Deals by Category',
-                    data: data,
-                    backgroundColor: 'rgba(63, 185, 80, 0.7)',
-                    borderColor: 'rgba(63, 185, 80, 1)',
-                    borderWidth: 1
+                    label: metric.label,
+                    data: ranked.map(entry => entry.value),
+                    backgroundColor: ranked.map((entry, index) =>
+                        palette[index % palette.length].fill),
+                    borderColor: ranked.map((entry, index) =>
+                        palette[index % palette.length].line),
+                    borderWidth: 1,
+                    borderRadius: 4
                 }]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: { duration: 300 },
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
-                                return context.parsed.y + ' deals';
+                            label: context => {
+                                const entry = ranked[context.dataIndex];
+                                const prefix = metricKey === 'count' ? '' : metric.label + ': ';
+                                return prefix + entry.display;
+                            },
+                            // The metric alone is not enough to judge a shelf,
+                            // so the underlying deal count is always shown.
+                            afterBody: context => {
+                                const entry = ranked[context[0].dataIndex];
+                                const parts = [entry.deals.length + ' deals', avgDiscountOf(entry.deals)];
+                                return parts;
                             }
                         }
                     }
                 },
                 scales: {
-                    y: {
+                    x: {
                         beginAtZero: true,
+                        grid: { color: 'rgba(48, 54, 61, 0.6)' },
+                        ticks: { color: '#8b949e', callback: value => metric.format(value) }
+                    },
+                    y: {
+                        grid: { display: false },
                         ticks: {
-                            precision: 0
+                            color: '#c9d1d9',
+                            // Shelf names can be long, and the label is
+                            // clipped rather than wrapped to keep rows equal.
+                            callback: value => {
+                                const raw = ranked[value] ? ranked[value].key : '';
+                                return raw.length > 22 ? raw.slice(0, 21) + '…' : raw;
+                            }
                         }
                     }
                 }
             }
         });
     }
-    
+
+    function avgDiscountOf(deals) {
+        if (!deals.length) return '—';
+        const total = deals.reduce((sum, d) => sum + (d.discount_pct || 0), 0);
+        return (total / deals.length).toFixed(1) + '% average';
+    }
+
+    const CATEGORY_PALETTE = [
+        { fill: 'rgba(63, 185, 80, 0.7)', line: 'rgba(63, 185, 80, 1)' },
+        { fill: 'rgba(88, 166, 255, 0.7)', line: 'rgba(88, 166, 255, 1)' },
+        { fill: 'rgba(210, 153, 34, 0.7)', line: 'rgba(210, 153, 34, 1)' },
+        { fill: 'rgba(163, 113, 247, 0.7)', line: 'rgba(163, 113, 247, 1)' },
+        { fill: 'rgba(248, 81, 73, 0.7)', line: 'rgba(248, 81, 73, 1)' }
+    ];
+
+    const BRAND_PALETTE = [
+        { fill: 'rgba(88, 166, 255, 0.7)', line: 'rgba(88, 166, 255, 1)' },
+        { fill: 'rgba(63, 185, 80, 0.7)', line: 'rgba(63, 185, 80, 1)' },
+        { fill: 'rgba(210, 153, 34, 0.7)', line: 'rgba(210, 153, 34, 1)' },
+        { fill: 'rgba(163, 113, 247, 0.7)', line: 'rgba(163, 113, 247, 1)' },
+        { fill: 'rgba(248, 81, 73, 0.7)', line: 'rgba(248, 81, 73, 1)' }
+    ];
+
+    function updateCategoryChart() {
+        const metric = document.getElementById('categoryMetric');
+        buildInsightChart(
+            'categoryChart', 'categoryChart', 'categoryChartEmpty',
+            // Grouped by the main shelf, matching the sidebar, so "Flower" and
+            // "Flower · premium" rank as one category rather than two.
+            p => categoryMain(p.category),
+            metric ? metric.value : 'avg',
+            CATEGORY_PALETTE
+        );
+    }
+
     function updateBrandChart() {
-        const ctx = document.getElementById('brandChart');
-        if (!ctx) return;
-
-        if (typeof Chart === 'undefined') return;
-
-        // Count deals by brand
-        const brandCounts = {};
-        allData.products
-            .filter(p => p.is_deal && p.brand)
-            .forEach(p => {
-                const brand = p.brand;
-                brandCounts[brand] = (brandCounts[brand] || 0) + 1;
-            });
-        
-        // Get top 5 brands
-        const sortedBrands = Object.entries(brandCounts)
-            .sort(([,a], [,b]) => b - a)
-            .slice(0, 5);
-        
-        const labels = sortedBrands.map(([brand]) => brand);
-        const data = sortedBrands.map(([,count]) => count);
-        
-        // Destroy existing chart if any
-            if (window.brandChart && typeof window.brandChart.destroy === 'function') {
-                window.brandChart.destroy();
-            }
-        
-        // Create new chart
-        window.brandChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Deals by Brand',
-                    data: data,
-                    backgroundColor: 'rgba(88, 166, 255, 0.7)',
-                    borderColor: 'rgba(88, 166, 255, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.parsed.y + ' deals';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    }
-                }
-            }
-        });
+        const metric = document.getElementById('brandMetric');
+        buildInsightChart(
+            'brandChart', 'brandChart', 'brandChartEmpty',
+            p => (p.brand || '').trim(),
+            metric ? metric.value : 'avg',
+            BRAND_PALETTE
+        );
     }
+
+
+
 
 function updateProductsCount() {
   document.getElementById('productsCount').textContent = `Showing ${displayedProducts.length} of ${allData.products.length} products`;
@@ -1935,8 +2220,15 @@ document.getElementById('brandFilter')?.addEventListener('change', () => {
 });
 document.getElementById('stockFilter')?.addEventListener('change', updateStockFilter);
 document.getElementById('sortSelect')?.addEventListener('change', updateSort);
+document.getElementById('categoryMetric')?.addEventListener('change', updateCategoryChart);
+document.getElementById('brandMetric')?.addEventListener('change', updateBrandChart);
+document.getElementById('insightsToggle')?.addEventListener('click', toggleInsights);
+document.getElementById('sidebarToggle')?.addEventListener('click', toggleSidebar);
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Panels must be restored before the first render so the charts are not sized
+  // for a panel that is about to be hidden.
+  applyStoredPanelStates();
   loadData();
   initVirtualizedGrid();
   document.getElementById('clearFiltersBtn')?.addEventListener('click', clearFilters);

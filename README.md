@@ -64,10 +64,19 @@ python api_server.py
 
 ## Dashboard Features
 
-- **By Store** tab: All deals grouped by store, filterable
+- **By Store** tab: All products grouped by store, filterable
 - **Best per Category** tab: Top deal in each category across all stores
 - **Weekly Diff** tab: NEW / CARRYOVER / REMOVED vs last week
-- Search, filter by store/category/status
+- **Deal insights**: two bar charts ranking categories and brands by deal depth
+  (most deals, best average discount, deepest single discount). Both follow the
+  active filters, so filtering to one store or one shelf re-ranks them within
+  it - filtering to Flower shows the best Flower brands. The panel collapsible
+  and scrolls away with the product grid.
+- **Collapsible side panel**: the stores/categories/brands nav collapses via the
+  header button, giving the grid the full width. It returns from the same
+  button, which stays visible while the panel is closed. Both panel states are
+  remembered between visits.
+- Search, filter by store/category/brand/status
 - Dark theme, translucent panels, tiling background, responsive
 
 ## Webhook Alerts
@@ -175,11 +184,21 @@ proprietary cuttings Leafly does not carry are only queried once.
 2. Register in `scrapers/__init__.py` `create_scraper()`
 3. Add to `config.yaml` with `enabled: true` and `webhook_enabled: false` (or true for alerts)
 
+## Dependencies
+
+Chart.js is **vendored** in `vendor/chart.umd.min.js` rather than loaded from a
+CDN, so the charts draw on a self-hosted network with no internet access. The
+vendor file is committed, so the dashboard has no third-party runtime
+dependency.
+
 ## Testing
 
 ```bash
 pytest tests/
 ```
+
+152 tests, including ones that extract the dashboard's inline JavaScript and run
+it under Node, so `dashboard.html` is a test fixture as well as the UI.
 
 ## Production Notes
 

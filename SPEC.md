@@ -202,6 +202,16 @@ def compute_weekly_diff(current: List[Deal], previous: List[Deal]) -> List[MenuI
 - The dashboard renders phenotype, potency, effects, flavours and terpenes per
   product, with attribution back to Leafly
 
+## Deal Insight Charts
+
+- Two bar charts rank categories and brands by deal quality rather than by
+  volume alone: most deals, best average discount, deepest single discount
+- Ranked over the currently filtered products, so a store or shelf filter
+  re-ranks both charts within that selection
+- Chart.js is vendored locally (`vendor/chart.umd.min.js`); a missing library
+  hides the charts rather than breaking the dashboard
+- A single-row grouping (one category selected) still ranks what is inside it
+
 ## Error Handling
 - Scraper failures: log, continue other stores, alert on repeated failures
 - Webhook failures: retry with exponential backoff (max 3)
