@@ -10,7 +10,7 @@ from urllib3.util.retry import Retry
 from models import Deal, MenuItem, StoreConfig, NotificationMode
 from utils.diff import WeeklyDiff
 from config import Config, WebhookConfig
-from utils.images import download_image, resize_image, get_mime_type, hash_url
+from utils.images import download_image, resize_image, get_mime_type, hash_url, save_image_cache, load_image_cache
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +39,14 @@ class WebhookPayload:
 
 
 class WebhookNotifier:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, storage=None):
         self.config = config
         self.webhook_url = config.webhook_url
         self.webhook_config = config.webhook
         self.session = self._create_session()
+        self.storage = storage
         self.image_cache: Dict[str, bytes] = {}
+        self._cache_dir = config.images.cache_dir
 
     def _create_session(self) -> requests.Session:
         session = requests.Session()
@@ -90,24 +92,71 @@ class WebhookNotifier:
             return False
 
     def _get_store_logo(self, store: StoreConfig) -> Optional[bytes]:
-        if store.id in self.image_cache:
-            return self.image_cache[store.id]
+        cache_key = f"logo:{store.id}"
+        if cache_key in self.image_cache:
+            return self.image_cache[cache_key]
 
+        # Try SQLite cache first
+        if self.storage:
+            logo_data = self.storage.get_store_logo(store.id)
+            if logo_data:
+                self.image_cache[cache_key] = logo_data
+                return logo_data
+
+        # Try file cache
+        url_hash = hash_url(store.logo_url)
+        logo_data = load_image_cache(self._cache_dir, url_hash)
+        if logo_data:
+            if self.storage:
+                mime = get_mime_type(logo_data)
+                self.storage.save_store_logo(store.id, logo_data, mime)
+            self.image_cache[cache_key] = logo_data
+            return logo_data
+
+        # Download fresh
         logo_data = download_image(store.logo_url)
         if logo_data:
             logo_data = resize_image(logo_data, max_width=200, max_size_kb=100)
-            self.image_cache[store.id] = logo_data
+            # Save to both caches
+            if self.storage:
+                mime = get_mime_type(logo_data)
+                self.storage.save_store_logo(store.id, logo_data, mime)
+            save_image_cache(logo_data, self._cache_dir, url_hash)
+            self.image_cache[cache_key] = logo_data
         return logo_data
 
     def _get_product_image(self, deal: Deal) -> Optional[bytes]:
         url_hash = hash_url(deal.image_url)
-        if url_hash in self.image_cache:
-            return self.image_cache[url_hash]
+        cache_key = f"product:{url_hash}"
+        if cache_key in self.image_cache:
+            return self.image_cache[cache_key]
 
+        # Try SQLite cache first
+        if self.storage:
+            img_data = self.storage.get_product_image(url_hash)
+            if img_data:
+                self.image_cache[cache_key] = img_data
+                return img_data
+
+        # Try file cache
+        img_data = load_image_cache(self._cache_dir, url_hash)
+        if img_data:
+            if self.storage:
+                mime = get_mime_type(img_data)
+                self.storage.save_product_image(url_hash, img_data, mime)
+            self.image_cache[cache_key] = img_data
+            return img_data
+
+        # Download fresh
         img_data = download_image(deal.image_url)
         if img_data:
             img_data = resize_image(img_data, max_width=400, max_size_kb=200)
-            self.image_cache[url_hash] = img_data
+            # Save to both caches
+            if self.storage:
+                mime = get_mime_type(img_data)
+                self.storage.save_product_image(url_hash, img_data, mime)
+            save_image_cache(img_data, self._cache_dir, url_hash)
+            self.image_cache[cache_key] = img_data
         return img_data
 
     def send_store_notification(self, store: StoreConfig, new_deals: List[Deal], weekly_diff: Optional[WeeklyDiff] = None) -> bool:

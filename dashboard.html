@@ -478,7 +478,7 @@ function renderStores(storeFilter, categoryFilter, statusFilter, search) {
       return `
         <div class="store-card">
           <div class="store-header">
-            <img class="store-logo" src="${store.logo_url || ''}" alt="" onerror="this.style.display='none'">
+            <img class="store-logo" src="${storeLogoSrc(store)}" alt="" onerror="handleImageError(this)">
             <div class="store-info">
               <div class="store-name">${escapeHtml(store.name)}</div>
               <div class="store-meta">No deals match current filters</div>
@@ -492,7 +492,7 @@ function renderStores(storeFilter, categoryFilter, statusFilter, search) {
     return `
       <div class="store-card">
         <div class="store-header">
-          <img class="store-logo" src="${store.logo_url || ''}" alt="" onerror="this.style.display='none'">
+          <img class="store-logo" src="${storeLogoSrc(store)}" alt="" onerror="handleImageError(this)">
           <div class="store-info">
             <div class="store-name">${escapeHtml(store.name)}</div>
             <div class="store-meta">${deals.length} deal${deals.length !== 1 ? 's' : ''}</div>
@@ -513,7 +513,7 @@ function renderDealRow(deal) {
   const brandHtml = deal.brand ? `<span>${escapeHtml(deal.brand)}</span>` : '';
   const thcHtml = deal.thc_pct ? `<span>THC: ${deal.thc_pct}%</span>` : '';
   const weightHtml = deal.weight ? `<span>${escapeHtml(deal.weight)}</span>` : '';
-  const imgHtml = deal.image_url ? `<img class="deal-img" src="${escapeHtml(deal.image_url)}" alt="" onerror="this.style.display='none'">` : '';
+  const imgHtml = deal.image_url ? `<img class="deal-img" src="${productImageSrc(deal)}" alt="" onerror="handleImageError(this)">` : '';
 
   return `
     <div class="deal-row">
@@ -545,7 +545,7 @@ function renderCategories(storeFilter, categoryFilter, statusFilter, search) {
     const catDeals = deals.filter(d => d.category === cat).sort((a, b) => b.discount_pct - a.discount_pct);
     const best = catDeals[0];
     const store = allData.stores.find(s => s.id === best.store_id);
-    const bestImgHtml = best.image_url ? `<img class="best-deal-img" src="${escapeHtml(best.image_url)}" alt="" onerror="this.style.display='none'">` : '';
+    const bestImgHtml = best.image_url ? `<img class="best-deal-img" src="${productImageSrc(best)}" alt="" onerror="handleImageError(this)">` : '';
 
     return `
       <div class="category-section">
@@ -607,7 +607,7 @@ function renderWeekly() {
       <div class="diff-items">
         ${diff.new_items.slice(0, 30).map(item => `
           <div class="diff-item">
-            ${item.deal.image_url ? `<img class="diff-img" src="${escapeHtml(item.deal.image_url)}" alt="" onerror="this.style.display='none'">` : ''}
+            ${item.deal.image_url ? `<img class="diff-img" src="${productImageSrc(item.deal)}" alt="" onerror="handleImageError(this)">` : ''}
             <span class="diff-item-name">${escapeHtml(item.deal.name)}</span>
             <span class="diff-item-price">$${item.deal.sale_price.toFixed(2)} <span class="original-price" style="font-size:11px;">$${item.deal.original_price.toFixed(2)}</span></span>
           </div>
@@ -620,7 +620,7 @@ function renderWeekly() {
       <div class="diff-items">
         ${diff.carryover_items.slice(0, 30).map(item => `
           <div class="diff-item">
-            ${item.deal.image_url ? `<img class="diff-img" src="${escapeHtml(item.deal.image_url)}" alt="" onerror="this.style.display='none'">` : ''}
+            ${item.deal.image_url ? `<img class="diff-img" src="${productImageSrc(item.deal)}" alt="" onerror="handleImageError(this)">` : ''}
             <span class="diff-item-name">${escapeHtml(item.deal.name)}</span>
             <span class="diff-item-price">$${item.deal.sale_price.toFixed(2)}</span>
           </div>
@@ -633,7 +633,7 @@ function renderWeekly() {
       <div class="diff-items">
         ${diff.removed_items.slice(0, 30).map(deal => `
           <div class="diff-item">
-            ${deal.image_url ? `<img class="diff-img" src="${escapeHtml(deal.image_url)}" alt="" onerror="this.style.display='none'">` : ''}
+            ${deal.image_url ? `<img class="diff-img" src="${productImageSrc(deal)}" alt="" onerror="handleImageError(this)">` : ''}
             <span class="diff-item-name">${escapeHtml(deal.name)}</span>
             <span class="diff-item-price" style="color:var(--danger);">$${deal.sale_price.toFixed(2)}</span>
           </div>
@@ -643,12 +643,43 @@ function renderWeekly() {
     </div>
   `;
 }
-
 function escapeHtml(text) {
   if (!text) return '';
+
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Inline placeholder so a failed image never leaves an empty box in the grid.
+const IMAGE_PLACEHOLDER = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">' +
+  '<rect width="80" height="80" rx="8" fill="#161b22"/>' +
+  '<path d="M40 22c6 0 11 5 11 11 0 4-2 7-5 9 3 3 4 6 4 9v7H30v-7c0-3 1-6 4-9-3-2-5-5-5-9 0-6 5-11 11-11z" fill="#3fb950"/>' +
+  '</svg>'
+);
+
+// Route images through the local proxy (server supplies the cache key) so
+// downloads are cached server-side and CORS/mixed-content failures cannot
+// leave a broken image box.
+function productImageSrc(deal) {
+  const key = deal && deal.image_key;
+  if (!key) return IMAGE_PLACEHOLDER;
+  return '/api/image/' + key;
+}
+
+// Store logos come from the config URL, which may 404; serve through the local
+// cache so a bad URL degrades to the placeholder instead of a broken image.
+function storeLogoSrc(store) {
+  if (!store || !store.id) return IMAGE_PLACEHOLDER;
+  return '/api/logo/' + encodeURIComponent(store.id);
+}
+
+function handleImageError(img) {
+  if (img.dataset.fallbackApplied) return;
+  img.dataset.fallbackApplied = 'true';
+  img.style.display = '';
+  img.src = IMAGE_PLACEHOLDER;
 }
 </script>
 </body>

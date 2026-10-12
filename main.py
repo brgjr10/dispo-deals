@@ -27,7 +27,7 @@ class DispoDeals:
     def __init__(self, config: Config):
         self.config = config
         self.storage = SQLiteStorage()
-        self.notifier = WebhookNotifier(config)
+        self.notifier = WebhookNotifier(config, self.storage)
         self.running = True
 
         signal.signal(signal.SIGINT, self._signal_handler)

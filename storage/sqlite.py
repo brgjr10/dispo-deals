@@ -18,7 +18,9 @@ class SQLiteStorage:
         self._init_db()
 
     def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        # timeout guards against "database is locked" when the scraper and api
+        # containers share the data volume.
+        conn = sqlite3.connect(self.db_path, timeout=30)
         conn.row_factory = sqlite3.Row
         return conn
 

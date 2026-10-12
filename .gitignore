@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -35,7 +35,6 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
-git-helpers/
 
-git-helpers/
-
+# Agent / editor state
+.kilo/

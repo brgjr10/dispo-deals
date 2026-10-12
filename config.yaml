@@ -8,7 +8,7 @@ stores:
   name: Culture Cannabis Club — Akron
   url: https://dutchie.com/stores/culture-cannabis-club-akron
   scraper: dutchie
-  logo_url: https://dutchie.com/assets/images/dutchie-logo.svg
+  logo_url: https://images.dutchie.com/ab380b9ce28f85bf47b41f2998bd0a70
   notification_mode: per-store
   enabled: true
   webhook_enabled: true
@@ -16,7 +16,7 @@ stores:
   name: Supergood — Ravenna
   url: https://dutchie.com/stores/supergood-ravenna
   scraper: dutchie
-  logo_url: https://dutchie.com/assets/images/dutchie-logo.svg
+  logo_url: https://images.dutchie.com/b2141efd7070af28073e28e45f18c67d
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -24,7 +24,7 @@ stores:
   name: Bliss Ohio — Kent
   url: https://dutchie.com/stores/bliss-ohio-kent/products
   scraper: dutchie
-  logo_url: https://dutchie.com/assets/images/dutchie-logo.svg
+  logo_url: https://images.dutchie.com/cc7deb9f0683e8c87e51c208de82ea65
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -38,7 +38,7 @@ stores:
   webhook_enabled: false
 scrapers:
   dutchie:
-    graphql_endpoint: https://dutchie.com/graphql
+    graphql_endpoint: https://api.dutchie.com/graphql
     timeout: 30
     headers:
       User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36

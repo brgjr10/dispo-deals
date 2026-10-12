@@ -25,10 +25,24 @@ services:
       - FLARESOLVERR_URL=http://flaresolverr:8191
       - LOG_LEVEL=INFO
       - TZ=America/New_York
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./data:/app/data
       - ./cache:/app/cache
       - ./config.yaml:/app/config.yaml:ro
+      # Source is bind-mounted so code changes (dashboard.html, api_server.py,
+      # scrapers/) take effect without rebuilding the image.
+      - ./api_server.py:/app/api_server.py:ro
+      - ./dashboard.html:/app/dashboard.html:ro
+      - ./config.py:/app/config.py:ro
+      - ./main.py:/app/main.py:ro
+      - ./models.py:/app/models.py:ro
+      - ./scrapers:/app/scrapers:ro
+      - ./storage:/app/storage:ro
+      - ./notifier:/app/notifier:ro
+      - ./utils:/app/utils:ro
+      - ./requirements.txt:/app/requirements.txt:ro
     depends_on:
       flaresolverr:
         condition: service_healthy
@@ -43,11 +57,23 @@ services:
       - "4040:4040"
     environment:
       - LOG_LEVEL=INFO
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./data:/app/data
       - ./cache:/app/cache
-    command: python api_server.py --port 4040
+      # config.yaml drives the logo lookup for /api/logo/<store_id>.
+      - ./config.yaml:/app/config.yaml:ro
+      - ./api_server.py:/app/api_server.py:ro
+      - ./dashboard.html:/app/dashboard.html:ro
+      - ./config.py:/app/config.py:ro
+      - ./models.py:/app/models.py:ro
+      - ./scrapers:/app/scrapers:ro
+      - ./storage:/app/storage:ro
+      - ./notifier:/app/notifier:ro
+      - ./utils:/app/utils:ro
     restart: unless-stopped
+    command: python api_server.py --port 4040
 
   # Optional: Manual trigger service
   manual-scrape:
@@ -57,10 +83,21 @@ services:
       - WEBHOOK_URL=${WEBHOOK_URL:-}
       - FLARESOLVERR_URL=http://flaresolverr:8191
       - LOG_LEVEL=INFO
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./data:/app/data
       - ./cache:/app/cache
       - ./config.yaml:/app/config.yaml:ro
+      - ./api_server.py:/app/api_server.py:ro
+      - ./dashboard.html:/app/dashboard.html:ro
+      - ./config.py:/app/config.py:ro
+      - ./main.py:/app/main.py:ro
+      - ./models.py:/app/models.py:ro
+      - ./scrapers:/app/scrapers:ro
+      - ./storage:/app/storage:ro
+      - ./notifier:/app/notifier:ro
+      - ./utils:/app/utils:ro
     depends_on:
       flaresolverr:
         condition: service_healthy
