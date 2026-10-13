@@ -90,6 +90,50 @@ class LRUCache:
             return len(self.cache)
 
 
+def _product_dedupe_key(product):
+    """Key identifying the same physical product within one store.
+
+    Dutchie sometimes carries a product under two ids: the same name, image and
+    prices, but a different product id and product url. Keying on the id would
+    keep both, so a store's product count and its menu would both double-count
+    it.
+
+    Name and image have to agree rather than either alone: a stock photo is
+    shared by unrelated products across a catalogue, so an image alone would
+    merge distinct items. With no image, the price pair is the fallback.
+    """
+    name = (product.get("name") or "").strip().lower()
+    if not name:
+        return None
+
+    image = product.get("image_key") or product.get("image_url") or ""
+    if image:
+        return (product.get("store_id"), name, image)
+
+    return (product.get("store_id"), name, product.get("sale_price"), product.get("original_price"))
+
+
+def dedupe_products(products):
+    """Collapse a store's duplicate listings of the same product.
+
+    The first occurrence wins, so which copy survives is stable as long as the
+    source order is. Applied on read rather than at write time, so a catalogue
+    already stored with duplicates is corrected without a re-scrape.
+    """
+    seen = set()
+    unique = []
+    for product in products:
+        key = _product_dedupe_key(product)
+        if key is None:
+            unique.append(product)
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(product)
+    return unique
+
+
 class DashboardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         self.storage = SQLiteStorage()
@@ -755,7 +799,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         return {
             "stores": stores,
-            "deals": deals,
+            "deals": dedupe_products(deals),
             "snapshots": [],
             "weeklyDiff": weekly_diff.to_dict() if weekly_diff else None
         }
@@ -897,7 +941,18 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             # different spellings and would otherwise split into several rows.
             deal["brand"] = self._brand_canonicalizer()(deal.get("brand"))
             deals.append(deal)
-        return self._attach_strains(deals)
+        return self._attach_strains(dedupe_products(deals))
+
+    def _enabled_store_ids(self) -> set:
+        """Store ids that should appear in the dashboard.
+
+        A store is shown when it is enabled in config or was added at runtime.
+        Snapshots outlive the config entry that made them, so the menu and the
+        store list both have to be filtered by this set or a disabled store's
+        products still appear in the grid while the store itself is missing
+        from the sidebar.
+        """
+        return {store['id'] for store in self.get_stores()}
 
     def get_full_menu(self):
         """Get the complete menu from latest weekly snapshots across all stores."""
@@ -915,9 +970,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         finally:
             conn.close()
 
+        enabled = self._enabled_store_ids()
+
         all_products = []
         for row in rows:
             data = dict(row)
+            # A snapshot outlives the config entry that made it. Skipping the
+            # disabled store here keeps the grid in step with the sidebar,
+            # instead of listing products for a store that cannot be found.
+            if data["store_id"] not in enabled:
+                logger.info(
+                    f"Skipping {data['store_id']} - it is not an enabled store"
+                )
+                continue
             try:
                 items = json.loads(data["items"])
                 for item in items:
@@ -944,6 +1009,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         # Snapshots are written before the strain import ran, so a stored item
         # may not carry its strain yet; the live deals table has the newer data.
+        # Dutchie can list the same product under two ids, so the menu is
+        # deduplicated after the stores and canonicalisation are decided.
+        all_products = dedupe_products(all_products)
         self._attach_strains(all_products)
         return all_products
 
@@ -959,11 +1027,17 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         finally:
             conn.close()
 
+        # Only stores the dashboard lists can be diffed, so a disabled store's
+        # snapshot cannot appear in the weekly menu or the deals digest.
+        enabled = self._enabled_store_ids()
+
         all_new = []
         all_carryover = []
         all_removed = []
 
         for (store_id,) in store_rows:
+            if store_id not in enabled:
+                continue
             current = self.storage.get_weekly_snapshot(store_id, week_start)
             previous = self.storage.get_weekly_snapshot(store_id, prev_week_start)
 
@@ -989,25 +1063,40 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         # Create a combined diff object
         class CombinedDiff:
-            def __init__(self, new, carryover, removed):
+            def __init__(self, new, carryover, removed, week_start=None, prev_week_start=None):
                 self.new_items = [type('obj', (object,), {'deal': d}) for d in new]
                 self.carryover_items = [type('obj', (object,), {'deal': d}) for d in carryover]
                 self.removed_items = removed
                 self.new_count = len(new)
                 self.carryover_count = len(carryover)
                 self.removed_count = len(removed)
+                # The payload describes a specific week, so it says which one.
+                # Without these the consumer has to guess, and a digest would
+                # be labelled by whatever week the request happened to land in.
+                self.week_start = week_start
+                self.prev_week_start = prev_week_start
 
             def to_dict(self):
                 return {
                     "new_count": self.new_count,
                     "carryover_count": self.carryover_count,
                     "removed_count": self.removed_count,
+                    "week_start": self.week_start.isoformat() if self.week_start else None,
+                    "prev_week_start": self.prev_week_start.isoformat() if self.prev_week_start else None,
                     "new_items": [{"deal": d.deal.to_dict()} for d in self.new_items],
                     "carryover_items": [{"deal": d.deal.to_dict()} for d in self.carryover_items],
                     "removed_items": [d.to_dict() for d in self.removed_items],
                 }
 
-        return CombinedDiff(all_new, all_carryover, all_removed)
+        # The diff is built from the same snapshot items the menu is, so a
+        # product listed twice would show twice in the weekly menu as well.
+        return CombinedDiff(
+            dedupe_products(all_new),
+            dedupe_products(all_carryover),
+            dedupe_products(all_removed),
+            week_start,
+            prev_week_start,
+        )
 
     def log_message(self, format, *args):
         # Suppress default log messages

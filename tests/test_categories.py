@@ -141,6 +141,7 @@ class TestApiCanonicalisesCategories:
     def _handler(storage):
         """A handler bound to scratch storage, without running __init__."""
         import threading
+        from pathlib import Path
 
         from api_server import DashboardHandler
 
@@ -149,6 +150,9 @@ class TestApiCanonicalisesCategories:
         # Set by __init__; the cache starts empty and is filled on first use.
         handler._strain_index = None
         handler._strain_index_lock = threading.Lock()
+        # get_full_menu resolves the enabled store set, which reads config.yaml
+        # from the project root.
+        handler.project_root = Path(__file__).resolve().parent.parent
         return handler
 
     def test_deal_rows_are_canonicalised_on_the_way_out(self, tmp_path):
@@ -178,6 +182,9 @@ class TestApiCanonicalisesCategories:
             store_id="s", week_start=date.today() - timedelta(days=date.today().weekday()),
             items=[deal],
         ))
+        # A store only the dashboard lists is served, so the snapshot's store
+        # has to be a real one here.
+        storage.save_seen_deal(deal)
 
         products = self._handler(storage).get_full_menu()
 

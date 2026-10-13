@@ -377,14 +377,44 @@ strains); 651 of 2980 deals carry a `strain_name`.
 
 ### 8.4 New pages
 
-- [ ] **Landing page** with three explicit entry points: browse per store, add a
-      store, or browse all stores' products together.
-- [ ] **"The Weekly Menu" page** — all newly added products for each store for
-      the week, presented like a restaurant menu, **without** the bloat of
-      prior weeks' items. Distinct from the weekly deals *digest* webhook and
-      from the Weekly Deals ranking page.
-- [ ] **Weekly Deals page** — the best deals per category across the entire
-      catalogue.
+- [x] **View switcher** across Overview, Products, Weekly Menu and Weekly Deals.
+      The sidebar, filter bar and grid belong to the product browser and are
+      hidden on the other pages, which are full width.
+- [x] **Landing page** with the three entry points: browse per store, add a
+      store, or browse all stores' products together, plus a portfolio tile per
+      store showing product count, deal count and deepest discount.
+- [x] **"The Weekly Menu" page** — every product that landed this week, grouped
+      per store as a store header with a printed-menu style row list (name,
+      dotted leader, price, discount flag). Prior weeks' products are not
+      repeated. On the first week there is nothing to diff against, so the page
+      says so rather than implying a comparison it cannot make.
+      `week_start` / `prev_week_start` are now part of the `/api/data` payload so
+      the page can name the week it describes instead of guessing.
+- [x] **Weekly Deals page** — the deepest discount in each category across the
+      whole catalogue, ranked, top five per shelf. Categories are grouped by main
+      category so `Flower · premium` and `Flower · shake-trim` rank together.
+
+### Bugs found and fixed while building the pages
+
+- [x] **Products from stores that are not listed leaked into the menu.**
+      `get_full_menu` and `get_weekly_diff` walked `weekly_snapshots` for every
+      store, while `get_stores` listed only enabled ones. A disabled store's
+      snapshot still served its products into the grid while the store was
+      missing from the sidebar, which is why the header said "4 stores with
+      deals" next to a sidebar of 3. Both now filter to the enabled store set.
+- [x] **The same product was listed twice.** Dutchie carries some products under
+      two ids — identical name, image and prices, different product id and url —
+      so Bliss was showing 982 products for 522 real ones. `dedupe_products`
+      collapses a listing only when name *and* image agree, because a stock photo
+      is shared by unrelated products. 2936 → 1709 products across the catalogue.
+      The four remaining same-name pairs are genuinely different sizes, kept.
+- [x] **Weekly Menu read the wrong payload keys.** The diff nests each item under
+      `deal` and uses `new_items`/`carryover_items`, so the page rendered empty.
+- [x] **Stale fake snapshots.** `weekly_snapshots` held placeholder rows from
+      before real scraping worked (generated names like "Cresco Edibles #13",
+      `example.com` urls, Unsplash images), including 10 Klutch items for a
+      store that is disabled. Using them as the previous week made the diff mark
+      the entire catalogue as new. They are removed.
 
 ### 8.5 Additional store sources
 

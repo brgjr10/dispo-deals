@@ -150,6 +150,304 @@ body {
    of the app, but text sitting straight on a busy pattern loses contrast. A
    blurred, slightly opaque panel gives readable text while the pattern still
    shows through, which is the glass treatment used elsewhere in the UI. */
+/* ---- View switcher ---- */
+.view-nav {
+  display: flex;
+  gap: 2px;
+  padding: 8px 20px 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.view-tab:hover { color: var(--text); }
+.view-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ---- Pages ---- */
+.view-page {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 20px 100px;
+}
+.view-page[hidden] { display: none; }
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.page-head h2 { margin: 0; font-size: 20px; font-weight: 700; }
+.page-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.page-actions { display: flex; gap: 8px; }
+
+/* Weekly menu, laid out like a restaurant menu: a store per section with its
+   logo and a compact list of what arrived, not a grid of cards. */
+.menu-body { display: flex; flex-direction: column; gap: 14px; }
+.menu-store {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.menu-store-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(88, 166, 255, 0.04);
+}
+.menu-store-logo {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  object-fit: contain;
+  padding: 3px;
+  flex: none;
+}
+.menu-store-name { font-size: 14px; font-weight: 700; }
+.menu-store-meta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+.menu-store-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--primary);
+  background: rgba(63, 185, 80, 0.12);
+  border: 1px solid rgba(63, 185, 80, 0.35);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.menu-list { display: flex; flex-direction: column; }
+.menu-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+}
+.menu-row:last-child { border-bottom: none; }
+.menu-row:hover { background: var(--card-hover); }
+.menu-row-name {
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-row-leader { flex: none; color: var(--border); font-size: 12px; letter-spacing: 2px; }
+.menu-row-price { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.menu-row-price s { color: var(--muted); font-weight: 400; margin-right: 6px; }
+.menu-row-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--bg);
+  background: var(--primary);
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.menu-empty {
+  padding: 40px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Weekly deals: one card per category, ranked by depth. */
+.deals-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.deal-cat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.deal-cat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.deal-cat-name {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.deal-cat-count { font-size: 11px; color: var(--muted); }
+.deal-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  border-radius: 6px;
+}
+.deal-cat-row:hover { background: var(--card-hover); }
+.deal-cat-row + .deal-cat-row { border-top: 1px solid rgba(48, 54, 61, 0.4); }
+.deal-rank {
+  width: 22px; height: 22px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.deal-cat-row:first-child .deal-rank {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--bg);
+}
+.deal-cat-main { min-width: 0; flex: 1; }
+.deal-cat-item-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.deal-cat-item-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.deal-off { font-size: 13px; font-weight: 700; color: var(--primary); white-space: nowrap; }
+
+/* ---- Landing / overview ---- */
+.view-landing { display: flex; align-items: flex-start; justify-content: center; }
+.landing-inner { max-width: 900px; width: 100%; padding: 28px 0 40px; }
+.landing-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.landing-inner h2 {
+  margin: 10px 0 0;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+.landing-lede { margin: 10px 0 26px; font-size: 14px; color: var(--muted); }
+.landing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+.landing-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 18px;
+  text-align: left;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.landing-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.landing-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: rgba(63, 185, 80, 0.12);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  color: var(--primary);
+  margin-bottom: 2px;
+}
+.landing-card-title { font-size: 15px; font-weight: 700; }
+.landing-card-sub { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.landing-stores {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.landing-store {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.landing-store:hover { border-color: var(--primary); transform: translateY(-2px); }
+.landing-store img {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  object-fit: contain;
+  padding: 3px;
+  background: var(--bg);
+  flex: none;
+}
+.landing-store-name { font-size: 13px; font-weight: 600; }
+.landing-store-meta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+.landing-store-deals { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--primary); white-space: nowrap; }
+
+@media (max-width: 768px) {
+  .view-nav { padding: 8px 12px 0; }
+  .view-page { padding: 16px 12px 100px; }
+  .landing-inner h2 { font-size: 24px; }
+}
+
 .main {
   flex: 1;
   display: flex;
@@ -1162,6 +1460,28 @@ html {
 
   <!-- Main content -->
   <main class="main">
+    <!-- View switcher. The dashboard is several pages, not one long scroll:
+         the product browser, the weekly menu, the weekly deals ranking, and
+         the portfolio landing page. -->
+    <nav class="view-nav" aria-label="Views">
+      <button class="view-tab" data-view="landing" aria-label="Overview">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>Overview</span>
+      </button>
+      <button class="view-tab active" data-view="browser" aria-label="Products">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Products</span>
+      </button>
+      <button class="view-tab" data-view="weekly-menu" aria-label="Weekly menu">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v4H4zM4 12h16v4H4zM4 20h10"/></svg>
+        <span>Weekly Menu</span>
+      </button>
+      <button class="view-tab" data-view="weekly-deals" aria-label="Weekly deals">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 18V9M10 18V5M16 18v-6M22 18H2"/></svg>
+        <span>Weekly Deals</span>
+      </button>
+    </nav>
+
     <header class="header">
       <div class="header-row">
         <div class="header-left">
@@ -1308,6 +1628,70 @@ html {
         <div class="vg-sentinel" id="vgSentinel" aria-hidden="true"></div>
       </div>
     </div>
+
+    <!-- Weekly Menu: this week's new products, per store, like a restaurant menu.
+         Only new items are listed; last week's products are not repeated here. -->
+    <section class="view-page" id="view-weekly-menu" aria-labelledby="weeklyMenuTitle" hidden>
+      <div class="page-head">
+        <div>
+          <h2 id="weeklyMenuTitle">The Weekly Menu</h2>
+          <p class="page-sub" id="weeklyMenuSub">Everything that landed on the shelves this week, store by store.</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn secondary" onclick="loadData()">Refresh</button>
+        </div>
+      </div>
+      <div id="weeklyMenuBody" class="menu-body"></div>
+    </section>
+
+    <!-- Weekly Deals: the best discount per category, across the whole catalogue. -->
+    <section class="view-page" id="view-weekly-deals" aria-labelledby="weeklyDealsTitle" hidden>
+      <div class="page-head">
+        <div>
+          <h2 id="weeklyDealsTitle">Weekly Deals</h2>
+          <p class="page-sub">The deepest discount in each category, across every store.</p>
+        </div>
+        <div class="page-actions">
+          <button class="btn secondary" onclick="loadData()">Refresh</button>
+        </div>
+      </div>
+      <div id="weeklyDealsBody" class="deals-body"></div>
+    </section>
+
+    <!-- Overview: the portfolio landing page. -->
+    <section class="view-page view-landing" id="view-landing" aria-labelledby="landingTitle" hidden>
+      <div class="landing-inner">
+        <p class="landing-eyebrow">Dispo Browser</p>
+        <h2 id="landingTitle">Every store, every product, one board.</h2>
+        <p class="landing-lede">
+          <span id="landingStats">Loading the portfolio…</span>
+        </p>
+        <div class="landing-cards">
+          <button class="landing-card" onclick="showStorePicker()">
+            <span class="landing-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l2-5h14l2 5M3 9v11h18V9M3 9h18M9 20v-6h6v6"/></svg>
+            </span>
+            <span class="landing-card-title">Browse per store</span>
+            <span class="landing-card-sub">Open one dispensary's full menu</span>
+          </button>
+          <button class="landing-card" onclick="browseAllStores()">
+            <span class="landing-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            </span>
+            <span class="landing-card-title">Browse all stores</span>
+            <span class="landing-card-sub">Every product across the portfolio</span>
+          </button>
+          <button class="landing-card" onclick="openAddStoreModal()">
+            <span class="landing-card-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+            </span>
+            <span class="landing-card-title">Add a store</span>
+            <span class="landing-card-sub">Bring in a dispensary by its Dutchie link</span>
+          </button>
+        </div>
+        <div id="landingStores" class="landing-stores"></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -1482,15 +1866,309 @@ async function loadData() {
     const response = await fetch('/api/menu');
     if (!response.ok) throw new Error('Failed to load menu');
     allData = await response.json();
+    // A refresh invalidates the weekly diff too, so it is re-fetched rather
+    // than showing last week's list as this week's.
+    weeklyMenuCache = null;
     populateSidebar();
     populateFilters();
     restoreUrlState();
     applyFilters();
+    renderLandingStats();
+    // Re-render whichever page is on screen so a refresh is not a no-op.
+    if (currentView === 'weekly-menu') renderWeeklyMenu();
+    if (currentView === 'weekly-deals') renderWeeklyDeals();
+    if (currentView === 'landing') renderLanding();
   } catch (e) {
     console.error(e);
     const grid = document.getElementById('productGrid');
     if (grid) grid.innerHTML = '<div class="vg-empty">Failed to load menu. Is the API server running?</div>';
   }
+}
+
+// ---- View router ----
+// The dashboard is several pages sharing one dataset. Each page is a section
+// that is shown or hidden, so only the visible one does any work.
+const VIEWS = ['landing', 'browser', 'weekly-menu', 'weekly-deals'];
+
+let currentView = 'landing';
+
+function showView(name) {
+  if (!VIEWS.includes(name)) name = 'browser';
+  currentView = name;
+
+  VIEWS.forEach(view => {
+    const section = document.getElementById('view-' + view);
+    if (section) section.hidden = view !== name;
+  });
+
+  // The sidebar, the filter bar and the product grid all belong to the product
+  // browser. The other pages are full-width, so they are hidden rather than
+  // left as a narrow column of empty space beside them.
+  const isBrowser = name === 'browser';
+  const sidebar = document.getElementById('sidebar');
+  const header = document.querySelector('.header');
+  const productsArea = document.getElementById('productsArea');
+  if (sidebar) sidebar.style.display = isBrowser ? '' : 'none';
+  if (header) header.style.display = isBrowser ? '' : 'none';
+  if (productsArea) productsArea.style.display = isBrowser ? '' : 'none';
+
+  document.querySelectorAll('.view-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.view === name);
+    tab.setAttribute('aria-current', tab.dataset.view === name ? 'page' : 'false');
+  });
+
+  // The pages that need their own rendering are rendered on entry, so switching
+  // is never a blank screen while data is fetched.
+  if (name === 'weekly-menu') renderWeeklyMenu();
+  if (name === 'weekly-deals') renderWeeklyDeals();
+  if (name === 'landing') renderLanding();
+}
+
+function browseAllStores() {
+  // Clear the store filter so every product across the portfolio is shown.
+  currentFilters.store = '';
+  updateActiveStore('');
+  updateFilterSelects();
+  setUrlState(currentFilters);
+  applyFilters();
+  showView('browser');
+}
+
+function showStorePicker() {
+  // Landing already lists the stores, so jump there and let the user pick.
+  showView('landing');
+  const list = document.getElementById('landingStores');
+  if (list) list.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function openStore(storeId) {
+  currentFilters.store = currentFilters.store === storeId ? '' : storeId;
+  updateActiveStore(currentFilters.store);
+  updateFilterSelects();
+  setUrlState(currentFilters);
+  applyFilters();
+  showView('browser');
+}
+
+function renderLandingStats() {
+  const el = document.getElementById('landingStats');
+  if (!el) return;
+  const products = allData.products || [];
+  const stores = allData.stores || [];
+  const deals = products.filter(p => p.is_deal).length;
+  const pct = products.length ? Math.round((deals / products.length) * 100) : 0;
+  el.innerHTML = `<strong>${products.length.toLocaleString()}</strong> products across
+    <strong>${stores.length}</strong> stores &middot;
+    <strong>${deals.toLocaleString()}</strong> on offer (${pct}%)`;
+}
+
+function renderLanding() {
+  renderLandingStats();
+  const host = document.getElementById('landingStores');
+  if (!host) return;
+  const stores = allData.stores || [];
+  if (!stores.length) {
+    host.innerHTML = '<div class="menu-empty">No stores yet. Add one to get started.</div>';
+    return;
+  }
+  // Deepest discount per store, so the portfolio can be ranked at a glance.
+  host.innerHTML = stores.map(store => {
+    const products = (allData.products || []).filter(p => p.store_id === store.id);
+    const deals = products.filter(p => p.is_deal);
+    const best = deals.length ? Math.max(...deals.map(p => p.discount_pct || 0)) : 0;
+    const badge = deals.length
+      ? `<span class="landing-store-deals">${deals.length} deals<br><span style="color:var(--muted);font-weight:500">best -${best.toFixed(0)}%</span></span>`
+      : '<span class="landing-store-deals" style="color:var(--muted)">no deals</span>';
+    return `
+      <button class="landing-store" onclick="openStore('${escapeHtml(store.id)}')">
+        ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" onerror="this.style.display='none'">` : ''}
+        <span>
+          <span class="landing-store-name">${escapeHtml(store.name)}</span>
+          <span class="landing-store-meta">${products.length.toLocaleString()} products</span>
+        </span>
+        ${badge}
+      </button>
+    `;
+  }).join('');
+}
+
+// ---- Weekly Menu page ----
+// Only this week's new products, grouped per store, set out like a printed
+// menu. Last week's products are deliberately not repeated here, so the page
+// answers "what landed this week" rather than "what is on the shelf".
+let weeklyMenuCache = null;
+
+async function renderWeeklyMenu() {
+  const host = document.getElementById('weeklyMenuBody');
+  const sub = document.getElementById('weeklyMenuSub');
+  if (!host) return;
+
+  host.innerHTML = '<div class="menu-empty">Loading this week\'s menu…</div>';
+
+  // The weekly diff is a separate payload from the full menu, so it is fetched
+  // once and reused for as long as the data has not been refreshed.
+  if (!weeklyMenuCache) {
+    try {
+      const response = await fetch('/api/data');
+      if (!response.ok) throw new Error('Failed to load the weekly diff');
+      weeklyMenuCache = await response.json();
+    } catch (e) {
+      console.error(e);
+      host.innerHTML = '<div class="menu-empty">Could not load the weekly menu. Is the API server running?</div>';
+      return;
+    }
+  }
+
+  const diff = weeklyMenuCache.weeklyDiff;
+  // The payload nests each item under "deal" and uses *_items, so the deals
+  // have to be unwrapped rather than read as a flat list.
+  const newItems = ((diff && diff.new_items) || []).map(entry => entry.deal);
+  const carryover = ((diff && diff.carryover_items) || []).map(entry => entry.deal);
+  if (sub) {
+    const weekLabel = diff && diff.week_start ? formatWeekLabel(diff.week_start) : 'this week';
+    // With no previous week to compare against there is nothing to diff, so
+    // everything is new. Saying so is honest about why the list is the whole
+    // menu rather than a handful of lines.
+    const firstWeek = !(diff && diff.prev_week_start) || carryover.length === 0;
+    sub.textContent = firstWeek
+      ? `First full week — everything here is new, because there is no earlier menu to compare against.`
+      : `Everything that landed on the shelves ${weekLabel}, store by store.`;
+  }
+
+  if (!newItems.length) {
+    host.innerHTML = '<div class="menu-empty">Nothing new this week yet. The menu will fill in as stores are scraped.</div>';
+    return;
+  }
+
+  const byStore = new Map();
+  newItems.forEach(item => {
+    if (!byStore.has(item.store_id)) byStore.set(item.store_id, []);
+    byStore.get(item.store_id).push(item);
+  });
+
+  const storeById = new Map((allData.stores || []).map(s => [s.id, s]));
+  const blocks = [...byStore.keys()].sort().map(storeId => {
+    const store = storeById.get(storeId) || { name: storeId, logo_url: '' };
+    const items = byStore.get(storeId)
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const rows = items.map(item => {
+      const price = item.is_deal
+        ? `<span class="menu-row-price"><s>$${item.original_price.toFixed(2)}</s>$${item.sale_price.toFixed(2)}</span>
+           <span class="menu-row-badge">-${item.discount_pct.toFixed(0)}%</span>`
+        : `<span class="menu-row-price">$${item.original_price.toFixed(2)}</span>`;
+      return `
+        <div class="menu-row" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
+          <span class="menu-row-name">${escapeHtml(item.name)}</span>
+          <span class="menu-row-leader" aria-hidden="true">·············</span>
+          ${price}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <section class="menu-store">
+        <header class="menu-store-head">
+          ${store.logo_url ? `<img class="menu-store-logo" src="${escapeHtml(store.logo_url)}" onerror="this.style.display='none'">` : ''}
+          <span>
+            <span class="menu-store-name">${escapeHtml(store.name)}</span>
+            <span class="menu-store-meta">${items.length} new ${items.length === 1 ? 'item' : 'items'}</span>
+          </span>
+          <span class="menu-store-count">New this week</span>
+        </header>
+        <div class="menu-list">${rows}</div>
+      </section>
+    `;
+  }).join('');
+
+  host.innerHTML = blocks;
+}
+
+function formatWeekLabel(isoWeekStart) {
+  try {
+    const d = new Date(`${isoWeekStart}T00:00:00`);
+    const end = new Date(d);
+    end.setDate(end.getDate() + 6);
+    const fmt = (x) => x.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `week of ${fmt(d)} – ${fmt(end)}`;
+  } catch (e) {
+    return 'this week';
+  }
+}
+
+// ---- Weekly Deals page ----
+// The deepest discount in each category, across the whole catalogue, so the
+// best offer per shelf can be seen without filtering down to it.
+const DEALS_PER_CATEGORY = 5;
+
+function renderWeeklyDeals() {
+  const host = document.getElementById('weeklyDealsBody');
+  if (!host) return;
+
+  const products = (allData.products || []).filter(p => p.is_deal);
+  if (!products.length) {
+    host.innerHTML = '<div class="menu-empty">No deals in the catalogue yet.</div>';
+    return;
+  }
+
+  // Group by main category so "Flower · premium" and "Flower · shake-trim" rank
+  // together rather than as separate shelves.
+  const byCategory = new Map();
+  products.forEach(p => {
+    const main = categoryMain(p.category) || 'Other';
+    if (!byCategory.has(main)) byCategory.set(main, []);
+    byCategory.get(main).push(p);
+  });
+
+  const cards = [...byCategory.keys()]
+    .sort((a, b) => byCategory.get(b).length - byCategory.get(a).length)
+    .map(main => {
+      const items = byCategory.get(main)
+        .slice()
+        .sort((a, b) => (b.discount_pct || 0) - (a.discount_pct || 0))
+        .slice(0, DEALS_PER_CATEGORY);
+
+      const rows = items.map((item, index) => `
+        <div class="deal-cat-row" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
+          <span class="deal-rank">${index + 1}</span>
+          <span class="deal-cat-main">
+            <span class="deal-cat-item-name">${escapeHtml(item.name)}</span>
+            <span class="deal-cat-item-meta">${escapeHtml(item.storeName || storeName(item.store_id))}</span>
+          </span>
+          <span class="deal-off">-${(item.discount_pct || 0).toFixed(0)}%</span>
+        </div>
+      `).join('');
+
+      const total = byCategory.get(main).length;
+      return `
+        <section class="deal-cat-card">
+          <header class="deal-cat-head">
+            <span class="deal-cat-name">${escapeHtml(main)}</span>
+            <span class="deal-cat-count">${total} ${total === 1 ? 'deal' : 'deals'}</span>
+          </header>
+          ${rows}
+        </section>
+      `;
+    }).join('');
+
+  host.innerHTML = cards;
+}
+
+function openQuickViewByHash(hash) {
+  // The weekly pages draw their rows from the weekly diff payload rather than
+  // the full menu, so a product may not be in allData.products.
+  let product = (allData.products || []).find(p => p.hash === hash);
+  if (!product && weeklyMenuCache && weeklyMenuCache.weeklyDiff) {
+    const d = weeklyMenuCache.weeklyDiff;
+    // Items are nested under "deal" in this payload.
+    const pool = [
+      ...((d.new_items || []).map(e => e.deal)),
+      ...((d.carryover_items || []).map(e => e.deal)),
+    ];
+    product = pool.find(p => p.hash === hash);
+  }
+  if (product) openQuickView(product);
 }
 
 function restoreUrlState() {
@@ -2993,6 +3671,9 @@ document.getElementById('categoryMetric')?.addEventListener('change', updateCate
 document.getElementById('brandMetric')?.addEventListener('change', updateBrandChart);
 document.getElementById('insightsToggle')?.addEventListener('click', toggleInsights);
 document.getElementById('sidebarToggle')?.addEventListener('click', toggleSidebar);
+document.querySelectorAll('.view-tab').forEach(tab => {
+  tab.addEventListener('click', () => showView(tab.dataset.view));
+});
 document.getElementById('addStoreBtn')?.addEventListener('click', openAddStoreModal);
 document.getElementById('addStoreClose')?.addEventListener('click', closeAddStoreModal);
 document.getElementById('addStoreCancel')?.addEventListener('click', closeAddStoreModal);
@@ -3118,6 +3799,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadData();
   initVirtualizedGrid();
   document.getElementById('clearFiltersBtn')?.addEventListener('click', clearFilters);
+  // The overview is the entry point, so the app opens on the portfolio view
+  // rather than dropping straight into the product grid.
+  showView('landing');
 });
 
 // ---- Compare Mode ----
