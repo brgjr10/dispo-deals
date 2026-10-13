@@ -460,20 +460,47 @@ class StrainResolver:
 
     # ---- cache freshness ----
 
+    @staticmethod
+    def _as_utc(value):
+        """Return a UTC-aware datetime for a value read from the database.
+
+        `fetched_at` is stored as an ISO string, so it may arrive as either a
+        datetime already parsed by `Strain.from_dict` or the raw string. It may
+        also be naive: rows written before timestamps were stored UTC-aware
+        carry a naive value, and subtracting a naive one from an aware one
+        raises. Reading a naive value as UTC is what the writer meant, since
+        every value the app writes is UTC.
+        """
+        if isinstance(value, str):
+            try:
+                value = datetime.fromisoformat(value)
+            except ValueError:
+                return None
+        if not isinstance(value, datetime):
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+
     def _is_stale(self, strain: Strain) -> bool:
         if not strain.fetched_at:
             return True
-        age = datetime.now(timezone.utc) - strain.fetched_at
+        fetched_at = self._as_utc(strain.fetched_at)
+        if fetched_at is None:
+            return True
+        age = datetime.now(timezone.utc) - fetched_at
         return age > timedelta(days=self.cache_days)
 
     def _is_miss_stale(self, attempted_at: Optional[str]) -> bool:
         if not attempted_at:
             return True
-        try:
-            attempted = datetime.fromisoformat(attempted_at)
-        except ValueError:
+        attempted = self._as_utc(attempted_at)
+        if attempted is None:
             return True
-        return datetime.now(timezone.utc) - attempted > timedelta(days=self.cache_days)
+        return (
+            datetime.now(timezone.utc) - attempted
+            > timedelta(days=self.cache_days)
+        )
 
 
 def enrich_deals(

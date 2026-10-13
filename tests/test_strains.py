@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -404,6 +404,77 @@ class TestResolver:
         deal = Deal(store_id="s1", product_id="1", name="Blue Dream", category="Flower",
                     original_price=50, sale_price=40, discount_pct=20, image_url="", product_url="")
         assert enrich_deals([deal], None) == [deal]
+
+
+class TestCacheFreshness:
+    """A cached strain's age decides whether it is re-fetched.
+
+    `fetched_at` reaches this code in more than one shape: as a parsed datetime,
+    and as the ISO string the database actually stores, written either before or
+    after timestamps became UTC-aware. Subtracting a naive value from an aware
+    one raises, and every one of those shapes has to give the same answer.
+    """
+
+    resolver = None
+
+    @classmethod
+    def setup_class(cls):
+        resolver = StrainResolver.__new__(StrainResolver)
+        resolver.cache_days = 30
+        cls.resolver = resolver
+
+    def _strain(self, fetched_at):
+        from models import Strain
+        return Strain(name="x", slug="x", category="Hybrid", fetched_at=fetched_at)
+
+    @pytest.mark.parametrize("label,days,expected", [
+        ("recent", 1, False),
+        ("old", 90, True),
+    ])
+    def test_aware_datetimes(self, label, days, expected):
+        value = datetime.now(timezone.utc) - timedelta(days=days)
+        assert self.resolver._is_stale(self._strain(value)) is expected
+
+    @pytest.mark.parametrize("label,days,expected", [
+        ("recent", 1, False),
+        ("old", 90, True),
+    ])
+    def test_naive_datetimes(self, label, days, expected):
+        # Rows written before timestamps were stored UTC-aware.
+        value = (datetime.now(timezone.utc) - timedelta(days=days)).replace(tzinfo=None)
+        assert self.resolver._is_stale(self._strain(value)) is expected
+
+    @pytest.mark.parametrize("label,days,expected", [
+        ("recent", 1, False),
+        ("old", 90, True),
+    ])
+    def test_iso_strings(self, label, days, expected):
+        # The database stores fetched_at as text, so a string can arrive raw.
+        value = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        assert self.resolver._is_stale(self._strain(value)) is expected
+
+    def test_naive_iso_string(self):
+        value = (datetime.now(timezone.utc) - timedelta(days=1)).replace(tzinfo=None).isoformat()
+        assert self.resolver._is_stale(self._strain(value)) is False
+
+    def test_unparseable_value_is_stale(self):
+        # Nothing can be concluded about a value that will not parse, so the
+        # strain is re-fetched rather than trusted for cache_days.
+        assert self.resolver._is_stale(self._strain("not-a-date")) is True
+        assert self.resolver._is_stale(self._strain(None)) is True
+        assert self.resolver._is_stale(self._strain(12345)) is True
+
+    @pytest.mark.parametrize("label,days,expected", [
+        ("recent", 1, False),
+        ("old", 90, True),
+    ])
+    def test_miss_freshness(self, label, days, expected):
+        value = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        assert self.resolver._is_miss_stale(value) is expected
+
+    def test_miss_freshness_with_garbage(self):
+        assert self.resolver._is_miss_stale("not-a-date") is True
+        assert self.resolver._is_miss_stale(None) is True
 
 
 if __name__ == "__main__":

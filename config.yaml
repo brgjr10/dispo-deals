@@ -28,13 +28,45 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
-- id: klutch
-  name: Klutch Cannabis
-  url: https://www.klutchcannabis.com/
-  scraper: klutch
-  logo_url: https://www.klutchcannabis.com/logo.png
+- id: klutch-canton-oh
+  name: Klutch Cannabis — Canton
+  url: https://dutchie.com/stores/klutch-canton-oh
+  scraper: dutchie
+  logo_url: ''
   notification_mode: per-store
-  enabled: false
+  enabled: true
+  webhook_enabled: false
+- id: klutch-akron-oh
+  name: Klutch Cannabis — Akron
+  url: https://dutchie.com/stores/klutch-akron-oh
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: klutch-columbus-oh
+  name: Klutch Cannabis — Columbus
+  url: https://dutchie.com/stores/klutch-columbus-oh
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: klutch-grandview-oh
+  name: Klutch Cannabis — Grandview
+  url: https://dutchie.com/stores/klutch-grandview-oh
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: klutch-cleveland-oh
+  name: Klutch Cannabis — Cleveland
+  url: https://dutchie.com/stores/klutch-cleveland-oh
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
   webhook_enabled: false
 scrapers:
   dutchie:

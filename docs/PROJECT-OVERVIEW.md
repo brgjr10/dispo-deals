@@ -418,24 +418,44 @@ strains); 651 of 2980 deals carry a `strain_name`.
 
 ### 8.5 Additional store sources
 
-- [ ] **Klutch Cannabis** — `klutchcannabis.com` / `shopklutch.com`. Not a
-      Dutchie store. **Currently produces zero real deals.**
-  - All six `/collections/*` URLs return **404** on both
-    `www.klutchcannabis.com` and `shopklutch.com`, so `fetch_menu` returns
-    nothing and `seen_deals` has no `klutch` row at all.
-  - `weekly_snapshots` holds two stale **placeholder** snapshots (4 items from
-    2026-09-28, 10 from 2026-10-05) built from `example.com` product URLs and
-    Unsplash stock images — fake data that must never be shown as real.
-  - Needs the real shop URL structure discovered and the stale snapshots cleared.
+- [x] **Klutch Cannabis** — **fixed.** It was configured against
+      `klutchcannabis.com` with the Klutch HTML scraper, and every
+      `/collections/*` path returned **404** on both that domain and
+      `shopklutch.com`, so the store produced nothing and was disabled.
+      Both sites are WordPress that embed a **Dutchie** menu, so Klutch is a
+      Dutchie store under another name. Its five locations are now configured
+      for the Dutchie scraper by cName and all scrape for real:
+
+      | Store | cName |
+      |-------|-------|
+      | Klutch Cannabis — Akron | `klutch-akron-oh` |
+      | Klutch Cannabis — Canton | `klutch-canton-oh` |
+      | Klutch Cannabis — Columbus | `klutch-columbus-oh` |
+      | Klutch Cannabis — Grandview | `klutch-grandview-oh` |
+      | Klutch Cannabis — Cleveland | `klutch-cleveland-oh` |
+
+      The old `klutch` id and the dead HTML scraper entry are gone.
 - [ ] **High Intentions** — `https://www.highintentions.life/collection/?sort=popular`
-  (local glass shop, not a Dutchie store).
+      (local glass shop, not a Dutchie store).
 - [ ] **Puffco** — `https://www.puffco.com/products/`
 - [ ] **CannaStyle** — `https://shopcannastyle.com/`
 - [ ] **MJ Arsenal** — `https://mjarsenal.com/`
 - [ ] **DeMatteo Art** — `https://dematteoart.com/collections/all`
 
-  These four are accessory and brand sites rather than dispensaries: product
-  catalogues to browse, not deal feeds.
+  These are accessory and brand sites rather than dispensaries: product
+  catalogues to browse, not deal feeds. They belong in the "every product from
+  every source" model rather than the notifier.
+
+### Bug found while enabling Klutch
+
+- [x] **`datetime` comparison crash.** Switching the scan times to
+      `datetime.now(timezone.utc)` broke reading rows written before that,
+      which carry a naive `fetched_at`: subtracting the two raises
+      `TypeError: can't subtract offset-naive and offset-aware datetimes`, and
+      strain resolution failed for every candidate. `_as_utc` now normalises a
+      value that may be a naive datetime, an ISO string (what the database
+      stores), or unparseable, treating naive values as UTC, which is what the
+      writer meant.
 
 ### 8.6 Look and feel
 
