@@ -365,7 +365,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "brands": brands
             }, default=str, ensure_ascii=False).encode('utf-8'))
         except Exception as e:
-            self.send_error(500, str(e))
+            logger.error(f"send_full_menu failed: {e}")
+            self._send_json_error(500, str(e))
 
     def resolve_dutchie_store(self, url: str) -> Optional[Dict[str, Any]]:
         """Resolve a Dutchie store URL to its real name, id and address.
@@ -853,6 +854,25 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             })
         return stores
 
+    def _brand_canonicalizer(self):
+        """Build the brand canonicaliser for the current catalogue once.
+
+        Every product is served through the same function so the sidebar, the
+        brand list and brand filtering all agree on one spelling per brand.
+        """
+        if getattr(self, "_brand_canon", None) is None:
+            from utils.brands import make_brand_canonicalizer
+            conn = self.storage._get_connection()
+            try:
+                rows = conn.execute(
+                    "SELECT DISTINCT brand FROM seen_deals "
+                    "WHERE brand IS NOT NULL AND brand != ''"
+                ).fetchall()
+            finally:
+                conn.close()
+            self._brand_canon = make_brand_canonicalizer(r[0] for r in rows)
+        return self._brand_canon
+
     def get_all_deals(self):
         conn = self.storage._get_connection()
         try:
@@ -873,6 +893,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             # Rows written before the canonical names existed keep the raw one,
             # so normalise here too or the sidebar still splits the shelf.
             deal["category"] = canonical_category(deal.get("category"))
+            # Brands are typed per store, so the same brand arrives with
+            # different spellings and would otherwise split into several rows.
+            deal["brand"] = self._brand_canonicalizer()(deal.get("brand"))
             deals.append(deal)
         return self._attach_strains(deals)
 
@@ -911,6 +934,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     # an older scraper can still carry a stale one, so the
                     # category is canonicalised on the way out.
                     item["category"] = canonical_category(item.get("category"))
+                    # Snapshots store the brand exactly as it was typed when
+                    # the menu was scraped, so the same canonicalisation has to
+                    # be applied here or the menu view splits brands again.
+                    item["brand"] = self._brand_canonicalizer()(item.get("brand"))
                     all_products.append(item)
             except Exception as e:
                 logger.warning(f"Failed to parse snapshot for {data['store_id']}: {e}")

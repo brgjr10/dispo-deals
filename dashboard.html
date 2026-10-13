@@ -145,7 +145,22 @@ body {
 .nav-sub-item.active { color: var(--bg); }
 
 /* Main */
-.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+/* The tiled body background stays visible through this. The main column needs
+   its own translucent surface rather than a solid fill: the tile is the look
+   of the app, but text sitting straight on a busy pattern loses contrast. A
+   blurred, slightly opaque panel gives readable text while the pattern still
+   shows through, which is the glass treatment used elsewhere in the UI. */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  background: rgba(13, 17, 23, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-left: 1px solid var(--border);
+}
 
 /* Header */
 .header {
@@ -156,6 +171,16 @@ body {
   z-index: 100;
 }
 .header-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+/* The header controls had no rule of their own, so they fell back to
+   display:block and each one dropped onto its own line. Laying them out as a
+   flex row with a shared gap keeps every control on one baseline. */
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
 .header-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .header h1 {
   font-size: 18px;
@@ -449,16 +474,125 @@ body {
 }
 .product-store-badge img { width: 14px; height: 14px; border-radius: 3px; }
 .product-card:hover .product-store-badge { border-color: var(--primary); }
-.product-tag {
+/* The tags used to be absolutely positioned at the same top-right corner as
+   the compare checkbox, so the deal, stock and strain badges all stacked
+   underneath it. They now flow in a row at the top-left of the image and
+   reserve the checkbox's width on the right, so nothing overlaps. */
+.product-card-header .product-tags {
   position: absolute;
   top: 8px;
-  right: 8px;
+  left: 8px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  /* Room for the compare checkbox that stays in the top-right corner. */
+  padding-right: 28px;
+  max-width: calc(100% - 16px);
+  z-index: 5;
+  pointer-events: none;
+}
+/* Inside the tags row these are normal flow, not absolute. */
+.product-tags > .product-tag {
+  position: static;
+  pointer-events: auto;
+}
+.product-tags > .strain-badge {
+  position: static;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Phenotype badge row, in normal flow beneath the image header. */
+.product-type-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 0;
+  flex-wrap: wrap;
+  min-height: 0;
+}
+.product-type-row:empty { display: none; }
+/* Sidebar phenotype rows reuse the same colour language as the card badge. */
+.strain-nav-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.strain-nav-label .type-badge-short {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--bg);
+  flex: none;
+}
+.strain-nav-label.type-sativa .type-badge-short { background: #e3b341; }
+.strain-nav-label.type-indica .type-badge-short { background: #c297ff; }
+.strain-nav-label.type-hybrid .type-badge-short { background: var(--primary); }
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.type-badge .type-badge-short {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--bg);
+}
+.type-badge.type-sativa {
+  background: rgba(210, 153, 34, 0.16);
+  border-color: rgba(210, 153, 34, 0.5);
+  color: #e3b341;
+}
+.type-badge.type-sativa .type-badge-short { background: #e3b341; }
+.type-badge.type-indica {
+  background: rgba(188, 140, 255, 0.16);
+  border-color: rgba(188, 140, 255, 0.5);
+  color: #c297ff;
+}
+.type-badge.type-indica .type-badge-short { background: #c297ff; }
+.type-badge.type-hybrid {
+  background: rgba(63, 185, 80, 0.16);
+  border-color: rgba(63, 185, 80, 0.5);
+  color: var(--primary);
+}
+.type-badge.type-hybrid .type-badge-short { background: var(--primary); }
+
+/* Base tag look. Positioning comes from the tags row, so this no longer
+   positions itself absolutely against the card corner. */
+.product-tag {
   background: var(--danger);
   color: white;
   padding: 3px 7px;
   border-radius: 4px;
   font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 .product-tag.deal { background: var(--danger); }
 .product-tag.new { background: var(--success); color: var(--bg); }
@@ -1016,6 +1150,11 @@ html {
     </nav>
 
     <nav class="nav-section">
+      <div class="nav-section-title">Types</div>
+      <div id="strainNavList"></div>
+    </nav>
+
+    <nav class="nav-section">
       <div class="nav-section-title">Brands</div>
       <div id="brandNavList"></div>
     </nav>
@@ -1032,7 +1171,7 @@ html {
           </button>
           <h1 id="pageTitle">All Products</h1>
         </div>
-<div class="header-actions">
+        <div class="header-actions">
           <input type="search" class="search-input" id="searchInput" placeholder="Search products, brands, categories...">
           <button class="btn ghost location-btn" id="addStoreBtn" aria-label="Add a Dutchie dispensary by URL" title="Add a Dutchie dispensary by URL">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -1046,6 +1185,12 @@ html {
           </select>
           <select class="filter-select" id="brandFilter">
             <option value="">All Brands</option>
+          </select>
+          <select class="filter-select" id="strainFilter">
+            <option value="">All Types</option>
+            <option value="sativa">Sativa</option>
+            <option value="indica">Indica</option>
+            <option value="hybrid">Hybrid</option>
           </select>
           <select class="filter-select" id="sortSelect">
           </select>
@@ -1268,15 +1413,16 @@ function getProductStrain(product) {
 }
 
 // Filtering / sorting state
-let currentFilters = {
-  store: '',
-  category: '',
-  brand: '',
-  dealOnly: false,
-  stock: 'all',
-  search: '',
-  sort: 'discount-desc'
-};
+  let currentFilters = {
+    store: '',
+    category: '',
+    brand: '',
+    strainType: '',
+    dealOnly: false,
+    stock: 'all',
+    search: '',
+    sort: 'discount-desc'
+  };
 
 // Virtualized grid state
 let displayedProducts = [];
@@ -1297,7 +1443,7 @@ let focusedElementBeforeModal = null;
 let preloadedImages = new Set();
 
 // ---- URL state ----
-const URL_PARAMS = { store: 'store', category: 'cat', brand: 'brand', deal: 'deal', stock: 'stock', sort: 'sort', search: 'q' };
+const URL_PARAMS = { store: 'store', category: 'cat', brand: 'brand', strainType: 'type', deal: 'deal', stock: 'stock', sort: 'sort', search: 'q' };
 
 function getUrlState() {
   const params = new URLSearchParams(window.location.search);
@@ -1305,6 +1451,7 @@ function getUrlState() {
     store: params.get(URL_PARAMS.store) || '',
     category: params.get(URL_PARAMS.category) || '',
     brand: params.get(URL_PARAMS.brand) || '',
+    strainType: params.get(URL_PARAMS.strainType) || '',
     // The key must match `currentFilters.dealOnly`. Returning `deal` here left
     // the restored filter stranded on a key nothing reads, so "Deals Only"
     // never survived a reload or a shared link.
@@ -1320,6 +1467,7 @@ function setUrlState(state) {
   if (state.store) params.set(URL_PARAMS.store, state.store);
   if (state.category) params.set(URL_PARAMS.category, state.category);
   if (state.brand) params.set(URL_PARAMS.brand, state.brand);
+  if (state.strainType) params.set(URL_PARAMS.strainType, state.strainType);
   if (state.dealOnly !== undefined) params.set(URL_PARAMS.deal, state.dealOnly);
   if (state.stock && state.stock !== 'all') params.set(URL_PARAMS.stock, state.stock);
   if (state.sort && state.sort !== 'discount-desc') params.set(URL_PARAMS.sort, state.sort);
@@ -1364,10 +1512,8 @@ function dropFiltersForMissingStores() {
   if (currentFilters.store && !knownStores.includes(currentFilters.store)) {
     currentFilters.store = '';
   }
-  if (currentFilters.store) {
-    // A store filter is exclusive: its other facets only apply within it.
-    return;
-  }
+  // Filters stack, so a store selection does not make the category and brand
+  // filters irrelevant — they narrow inside that store and are validated too.
   if (currentFilters.category && knownCategories.length
       && !knownCategories.includes(currentFilters.category)) {
     currentFilters.category = '';
@@ -1388,6 +1534,7 @@ function updateFilterControls() {
   document.getElementById('storeFilter').value = currentFilters.store;
   document.getElementById('categoryFilter').value = currentFilters.category;
   document.getElementById('brandFilter').value = currentFilters.brand;
+  document.getElementById('strainFilter').value = currentFilters.strainType;
   document.getElementById('stockFilter').value = currentFilters.stock;
   document.getElementById('sortSelect').value = currentFilters.sort;
   document.getElementById('searchInput').value = currentFilters.search;
@@ -1414,10 +1561,10 @@ function populateSidebar() {
     item.className = 'nav-item';
     item.dataset.storeId = store.id;
     item.onclick = () => {
+      // Filters stack: choosing a store adds it alongside whatever category,
+      // brand, type and deal filters are already set, so nothing the user
+      // picked is silently cleared.
       currentFilters.store = currentFilters.store === store.id ? '' : store.id;
-      currentFilters.category = '';
-      currentFilters.brand = '';
-      currentFilters.dealOnly = false;
       updateActiveStore(currentFilters.store);
       updateFilterSelects();
       setUrlState(currentFilters);
@@ -1464,24 +1611,30 @@ function populateSidebar() {
     const header = document.createElement('div');
     header.className = 'nav-item nav-group-header';
     header.dataset.group = main;
+    // The row itself is the toggle, and the chevron is only its indicator. A
+    // small chevron target made collapsing a matter of hitting a few pixels;
+    // clicking anywhere on the row is the forgiving target.
     header.innerHTML = `
       <span class="nav-group-label">
-        <span class="nav-chevron"></span>
+        <span class="nav-chevron" aria-hidden="true"></span>
         <span>${escapeHtml(main)}</span>
       </span>
       <span class="nav-item-count">${group.count}</span>
     `;
+    header.setAttribute('role', 'button');
+    header.setAttribute('tabindex', '0');
+    header.setAttribute('aria-expanded', expanded.has(main) ? 'true' : 'false');
+    header.setAttribute('aria-label', `${escapeHtml(main)}, ${group.count} products`);
     wrap.appendChild(header);
 
-    // The label selects the whole group; the chevron only opens and closes it,
-    // so expanding a group never disturbs the current filter.
-    header.querySelector('.nav-group-label').addEventListener('click', (e) => {
-      e.stopPropagation();
-      selectCategoryGroup(main);
-    });
-    header.querySelector('.nav-chevron').addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleCategoryGroup(main);
+    // Clicking the row opens or closes the group without changing the filter,
+    // so expanding a group never disturbs what is being shown.
+    header.addEventListener('click', () => toggleCategoryGroup(main));
+    header.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleCategoryGroup(main);
+      }
     });
 
     if (group.subs.length) {
@@ -1519,10 +1672,9 @@ function populateSidebar() {
     item.className = 'nav-item';
     item.dataset.brand = brand;
     item.onclick = () => {
+      // Filters stack, so this adds to whatever store, category, type and deal
+      // filters are already applied.
       currentFilters.brand = currentFilters.brand === brand ? '' : brand;
-      currentFilters.store = '';
-      currentFilters.category = '';
-      currentFilters.dealOnly = false;
       updateActiveBrand(currentFilters.brand);
       updateFilterSelects();
       setUrlState(currentFilters);
@@ -1577,6 +1729,8 @@ function populateFilters() {
     brandSelect.innerHTML += `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`;
   });
 
+  populateStrainNav();
+
   const sortSelect = document.getElementById('sortSelect');
   const SORT_OPTIONS = [
     { value: 'discount-desc', label: 'Best discount first' },
@@ -1595,6 +1749,59 @@ function populateFilters() {
 
 function storeCount(storeId) {
   return allData.products.filter(p => p.store_id === storeId).length;
+}
+
+// ---- Sidebar: phenotype types ----
+// Counted from the same detection the cards and the filter use, so the sidebar
+// total always matches what the grid would show for that type.
+const STRAIN_TYPE_ORDER = ['sativa', 'indica', 'hybrid'];
+
+function strainCounts() {
+  const counts = { sativa: 0, indica: 0, hybrid: 0 };
+  allData.products.forEach(p => {
+    const type = strainTypeOf(p);
+    if (type && counts[type] !== undefined) counts[type] += 1;
+  });
+  return counts;
+}
+
+function populateStrainNav() {
+  const nav = document.getElementById('strainNavList');
+  if (!nav) return;
+  nav.innerHTML = '';
+  const counts = strainCounts();
+
+  STRAIN_TYPE_ORDER.forEach(type => {
+    const item = document.createElement('div');
+    item.className = 'nav-item';
+    item.dataset.strainType = type;
+    item.onclick = () => {
+      // Filters stack, so this toggles alongside store, category, brand and
+      // deal filters rather than replacing them.
+      currentFilters.strainType = currentFilters.strainType === type ? '' : type;
+      updateActiveStrain(currentFilters.strainType);
+      updateFilterSelects();
+      setUrlState(currentFilters);
+      applyFilters();
+    };
+    const { label, short } = STRAIN_TYPES[type];
+    item.innerHTML = `
+      <span class="strain-nav-label type-${type}">
+        <span class="type-badge-short" aria-hidden="true">${short}</span>
+        <span>${escapeHtml(label)}</span>
+      </span>
+      <span class="nav-item-count">${counts[type]}</span>
+    `;
+    nav.appendChild(item);
+  });
+
+  updateActiveStrain(currentFilters.strainType);
+}
+
+function updateActiveStrain(type) {
+  document.querySelectorAll('#strainNavList .nav-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.strainType === type);
+  });
 }
 
 function updateActiveStore(storeId) {
@@ -1695,6 +1902,7 @@ function updateFilterSelects() {
   sync('storeFilter', currentFilters.store);
   sync('categoryFilter', currentFilters.category);
   sync('brandFilter', currentFilters.brand);
+  sync('strainFilter', currentFilters.strainType);
   sync('stockFilter', currentFilters.stock);
   sync('sortSelect', currentFilters.sort);
 }
@@ -1703,9 +1911,6 @@ function selectCategoryGroup(main) {
   // Selecting a group filters to every subcategory under it, matching the
   // toggle behaviour the store and category rows already use.
   currentFilters.category = currentFilters.category === main ? '' : main;
-  currentFilters.store = '';
-  currentFilters.brand = '';
-  currentFilters.dealOnly = false;
   if (currentFilters.category) {
     rememberExpandedGroup(main);
     const wrap = document.querySelector(`#categoryNavList .nav-group[data-group="${CSS.escape(main)}"]`);
@@ -1718,10 +1923,9 @@ function selectCategoryGroup(main) {
 }
 
 function selectCategory(cat) {
+  // Filters stack, so a category selection keeps any store, brand, type and
+  // deal filters the user already set.
   currentFilters.category = currentFilters.category === cat ? '' : cat;
-  currentFilters.store = '';
-  currentFilters.brand = '';
-  currentFilters.dealOnly = false;
   updateActiveCategory(currentFilters.category);
   updateFilterSelects();
   setUrlState(currentFilters);
@@ -1784,19 +1988,21 @@ function updateSearch(e) {
 }
 
 function clearFilters() {
-  currentFilters = {
-    store: '', category: '', brand: '', dealOnly: false, stock: 'all', sort: 'discount-desc', search: ''
-  };
-  document.getElementById('storeFilter').value = '';
-  document.getElementById('categoryFilter').value = '';
-  document.getElementById('brandFilter').value = '';
-  document.getElementById('stockFilter').value = 'all';
-  document.getElementById('sortSelect').value = 'discount-desc';
-  document.getElementById('searchInput').value = '';
-  // The sidebar rows keep their own active state, so they must be cleared too.
-  updateActiveStore('');
-  updateActiveCategory('');
-  updateActiveBrand('');
+    currentFilters = {
+      store: '', category: '', brand: '', strainType: '', dealOnly: false, stock: 'all', sort: 'discount-desc', search: ''
+    };
+    document.getElementById('storeFilter').value = '';
+    document.getElementById('categoryFilter').value = '';
+    document.getElementById('brandFilter').value = '';
+    document.getElementById('strainFilter').value = '';
+    document.getElementById('stockFilter').value = 'all';
+    document.getElementById('sortSelect').value = 'discount-desc';
+    document.getElementById('searchInput').value = '';
+    // The sidebar rows keep their own active state, so they must be cleared too.
+    updateActiveStore('');
+    updateActiveCategory('');
+    updateActiveBrand('');
+    updateActiveStrain('');
   const dealBtn = document.getElementById('dealFilterBtn');
   const dealsOnlyBtn = document.getElementById('dealsOnlyBtn');
   dealBtn.classList.add('active');
@@ -1820,8 +2026,12 @@ function filterProducts(products) {
         return false;
       }
     }
-    if (currentFilters.brand && p.brand !== currentFilters.brand) return false;
-    if (currentFilters.dealOnly && !p.is_deal) return false;
+       if (currentFilters.brand && p.brand !== currentFilters.brand) return false;
+       // A phenotype filter is strict: only products whose type is confirmed
+       // are kept, so filtering to Sativa shows Sativas rather than everything
+       // that is not Indica or Hybrid.
+       if (currentFilters.strainType && strainTypeOf(p) !== currentFilters.strainType) return false;
+       if (currentFilters.dealOnly && !p.is_deal) return false;
     if (currentFilters.stock === 'in-stock' && !p.in_stock) return false;
     if (currentFilters.stock === 'out-of-stock' && p.in_stock) return false;
     if (currentFilters.search) {
@@ -2059,11 +2269,98 @@ function createProductSkeleton() {
   return '<div class="vg-skeleton product-skeleton"><div class="product-skeleton-img"></div><div class="vg-skeleton-content"><div class="product-skeleton-title"></div><div class="product-skeleton-meta"></div></div></div>';
 }
 
+// ---- Strain type (phenotype) detection ----
+// The type can come from three places, in order of authority:
+//   1. The Leafly strain record, which is the only source that is actually about
+//      genetics rather than a shelf label.
+//   2. The product name, which stores write in several shapes: the full word
+//      ("... Sativa"), a bracketed short form ("... (I)", "... [H]"), and the
+//      standalone words some dispensaries use.
+// Anything else is untyped.
+const STRAIN_TYPES = {
+  sativa: { label: 'Sativa', short: 'S' },
+  indica: { label: 'Indica', short: 'I' },
+  hybrid: { label: 'Hybrid', short: 'H' }
+};
+
+// Word forms. The bracketed/abbreviated forms are patterns because they can be
+// followed by a price or a size, e.g. "GG#4 (I) 3.5g".
+const STRAIN_NAME_PATTERNS = [
+  { type: 'sativa', re: /\(?\s*\[\s*s\s*\]\s*\)?/i },
+  { type: 'indica', re: /\(?\s*\[\s*i\s*\]\s*\)?/i },
+  { type: 'hybrid', re: /\(?\s*\[\s*h\s*\]\s*\)?/i },
+  // A parenthesised single letter, e.g. "(H)".
+  { type: 'sativa', re: /\(\s*s\s*\)/i },
+  { type: 'indica', re: /\(\s*i\s*\)/i },
+  { type: 'hybrid', re: /\(\s*h\s*\)/i },
+  // Full words, which must sit on a word boundary so "Indica" inside another
+  // word cannot match.
+  { type: 'sativa', re: /\bsativa\b/i },
+  { type: 'indica', re: /\bindica\b/i },
+  { type: 'hybrid', re: /\bhybrid\b/i }
+];
+
+function strainTypeFromName(name) {
+  if (!name) return '';
+  for (const { type, re } of STRAIN_NAME_PATTERNS) {
+    if (re.test(name)) return type;
+  }
+  return '';
+}
+
+function getStrainOf(product) {
+  // The strain object is attached by the API; fall back to a bare name.
+  if (product && product.strain) return product.strain;
+  return null;
+}
+
+function strainTypeOf(product) {
+  // The product name wins when it explicitly states a type: it is the store's
+  // own label for that exact product, so it can be more specific than the
+  // strain's general phenotype. Only when the name is silent does the Leafly
+  // record supply the type.
+  const fromName = strainTypeFromName(product && product.name);
+  if (fromName) return fromName;
+
+  const strain = getStrainOf(product);
+  if (strain) {
+    if (strain.category) {
+      const cat = String(strain.category).toLowerCase();
+      if (cat in STRAIN_TYPES) return cat;
+    }
+    // Checked outside the category branch: a profile can carry its own type
+    // without also naming a category.
+    if (strain.strain_type && strain.strain_type in STRAIN_TYPES) {
+      return strain.strain_type;
+    }
+  }
+  return '';
+}
+
+function strainTypeLabel(type) {
+  return STRAIN_TYPES[type] ? STRAIN_TYPES[type].label : 'Strain';
+}
+
 function renderStrainBadge(strain) {
   if (!strain) return '';
   const type = strain.strain_type || 'hybrid';
   const label = strain.category || 'Strain';
   return `<span class="strain-badge strain-${type}" title="${escapeHtml(strain.name)}">${escapeHtml(label)}</span>`;
+}
+
+// The phenotype badge is deliberately rendered in its own row inside the card
+// header rather than absolutely positioned with the deal and stock tags, so it
+// cannot overlap the compare checkbox that sits in the top-right corner.
+function renderTypeBadge(product) {
+  const type = strainTypeOf(product);
+  if (!type) return '';
+  const { label, short } = STRAIN_TYPES[type];
+  // The short form is the accessible name so the badge still reads correctly
+  // when only one letter is shown.
+  return `<span class="type-badge type-${type}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">
+    <span class="type-badge-short" aria-hidden="true">${short}</span>
+    <span class="type-badge-full">${escapeHtml(label)}</span>
+  </span>`;
 }
 
 function renderStrainInfo(strain) {
@@ -2108,10 +2405,15 @@ function renderProductCard(product) {
     <div class="product-card deal-row-clickable" data-deal-hash="${escapeHtml(product.hash)}" tabindex="0" role="button" aria-label="${escapeHtml(product.name)}">
       ${compareCheckbox(product.hash)}
       <div class="product-card-header">
-        ${dealBadge}
-        ${stockBadge}
-        ${strain ? renderStrainBadge(strain) : ''}
+        <div class="product-tags">
+          ${dealBadge}
+          ${stockBadge}
+          ${strain ? renderStrainBadge(strain) : ''}
+        </div>
         <img class="product-img" src="${imgSrc}" alt="" onerror="handleImageError(this)">
+      </div>
+      <div class="product-type-row">
+        ${renderTypeBadge(product)}
       </div>
       <div class="product-info">
         <div class="product-name">${escapeHtml(product.name)}</div>
@@ -2366,6 +2668,9 @@ function renderFilterChips() {
   if (currentFilters.brand) {
     chips.push({ label: 'Brand', value: currentFilters.brand, key: 'brand' });
   }
+  if (currentFilters.strainType) {
+    chips.push({ label: 'Type', value: strainTypeLabel(currentFilters.strainType), key: 'strainType' });
+  }
   if (currentFilters.dealOnly) {
     chips.push({ label: 'Filter', value: 'Deals only', key: 'dealOnly' });
   }
@@ -2406,14 +2711,16 @@ function removeFilter(key) {
     case 'store': currentFilters.store = ''; document.getElementById('storeFilter').value = ''; break;
     case 'category': currentFilters.category = ''; document.getElementById('categoryFilter').value = ''; break;
     case 'brand': currentFilters.brand = ''; document.getElementById('brandFilter').value = ''; break;
+    case 'strainType': currentFilters.strainType = ''; document.getElementById('strainFilter').value = ''; break;
     case 'dealOnly': currentFilters.dealOnly = false; break;
     case 'stock': currentFilters.stock = 'all'; document.getElementById('stockFilter').value = 'all'; break;
     case 'sort': currentFilters.sort = 'discount-desc'; document.getElementById('sortSelect').value = 'discount-desc'; break;
-  }
-  // Update sidebar active states
-  updateActiveStore(currentFilters.store);
-  updateActiveCategory(currentFilters.category);
-  updateActiveBrand(currentFilters.brand);
+    }
+    // Update sidebar active states
+    updateActiveStore(currentFilters.store);
+    updateActiveCategory(currentFilters.category);
+    updateActiveBrand(currentFilters.brand);
+    updateActiveStrain(currentFilters.strainType);
   // Update deal toggle buttons
   const dealBtn = document.getElementById('dealFilterBtn');
   const dealsOnlyBtn = document.getElementById('dealsOnlyBtn');
@@ -2663,12 +2970,7 @@ document.getElementById('modalNext')?.addEventListener('click', function(e) { e.
 document.getElementById('searchInput')?.addEventListener('input', updateSearch);
 document.getElementById('storeFilter')?.addEventListener('change', () => {
   currentFilters.store = document.getElementById('storeFilter').value;
-  currentFilters.category = '';
-  currentFilters.brand = '';
-  currentFilters.dealOnly = false;
   updateActiveStore(currentFilters.store);
-  updateActiveCategory('');
-  updateActiveBrand('');
   setUrlState(currentFilters); applyFilters();
 });
 document.getElementById('categoryFilter')?.addEventListener('change', () => {
@@ -2676,14 +2978,13 @@ document.getElementById('categoryFilter')?.addEventListener('change', () => {
   // sync, including the group-versus-subcategory matching rule.
   selectCategory(document.getElementById('categoryFilter').value);
 });
+document.getElementById('strainFilter')?.addEventListener('change', () => {
+  currentFilters.strainType = document.getElementById('strainFilter').value;
+  setUrlState(currentFilters); applyFilters();
+});
 document.getElementById('brandFilter')?.addEventListener('change', () => {
   currentFilters.brand = document.getElementById('brandFilter').value;
-  currentFilters.store = '';
-  currentFilters.category = '';
-  currentFilters.dealOnly = false;
   updateActiveBrand(currentFilters.brand);
-  updateActiveStore('');
-  updateActiveCategory('');
   setUrlState(currentFilters); applyFilters();
 });
 document.getElementById('stockFilter')?.addEventListener('change', updateStockFilter);
