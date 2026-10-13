@@ -20,6 +20,7 @@ from collections import OrderedDict
 from typing import Any, Dict, List, Optional
 
 import requests
+import yaml
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -201,7 +202,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def _find_store_logo_url(self, store_id):
         """Read the configured logo URL for a store from config.yaml."""
         try:
-            import yaml
             config_path = self.project_root / "config.yaml"
             config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         except Exception:
@@ -296,7 +296,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def _image_config(self, key, default):
         try:
-            import yaml
             if not hasattr(self, "_images_config"):
                 config = yaml.safe_load(
                     (self.project_root / "config.yaml").read_text(encoding="utf-8")
@@ -470,6 +469,86 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     return slug
         return ''
 
+    def _canonical_store_id(self, cname: str) -> str:
+        """The id the dashboard should use for a dispensary.
+
+        A store is identified by its cName, not by Dutchie's internal id: a
+        hand-written config entry (`bliss-kent`) has no internal id, so keying
+        on that would give the same dispensary two entries. This walks the
+        existing entries and reuses the id of whichever one already points at
+        this cName, falling back to the slug itself for a genuinely new store.
+        """
+        slug = re.sub(r'[^a-z0-9]+', '-', (cname or '').strip().lower()).strip('-')
+
+        # An already-added store wins: its id is what its products are keyed on.
+        for known in self.storage.list_known_stores():
+            if known.get('cname') == cname or known.get('id') == slug:
+                return known['id']
+
+        try:
+            with open(self.project_root / 'config.yaml', encoding='utf-8') as f:
+                config = yaml.safe_load(f) or {}
+        except OSError:
+            config = {}
+
+        for entry in config.get('stores', []):
+            entry_slug = self._extract_dutchie_slug(entry.get('url', ''))
+            if entry_slug and entry_slug == cname:
+                return entry['id']
+
+        # Fall back to the slug, which is both readable and stable.
+        return slug or 'unknown-store'
+
+    def _refresh_store(self, store_id: str, store_info: Dict[str, Any]) -> Dict[str, Any]:
+        """Re-scrape a store that is already on the dashboard.
+
+        Re-adding a store should refresh its menu rather than silently do
+        nothing, otherwise a stale menu can never be corrected from the UI.
+        """
+        from models import StoreConfig, NotificationMode
+        from config import Config
+        from scrapers import create_scraper
+
+        store_config = StoreConfig(
+            id=store_id,
+            name=store_info['name'],
+            url=store_info['url'],
+            scraper='dutchie',
+            logo_url=store_info.get('logo_url', ''),
+            notification_mode=NotificationMode.PER_STORE,
+            enabled=True,
+            webhook_enabled=False,
+        )
+        try:
+            config = Config.load(str(self.project_root / 'config.yaml'))
+        except Exception as e:
+            logger.warning(f"Could not load config.yaml while refreshing: {e}")
+            config = Config()
+
+        scraper = create_scraper(store_config, config)
+        deals = scraper.fetch_menu() or []
+
+        for deal in deals:
+            if self.storage.is_new_deal(deal, False):
+                self.storage.save_seen_deal(deal)
+            else:
+                self.storage.update_seen_deal(deal, notify=False)
+
+        try:
+            today = date.today()
+            week_start = today - timedelta(days=today.weekday())
+            self.storage.save_weekly_snapshot(
+                WeeklySnapshot(store_id=store_id, week_start=week_start, items=deals)
+            )
+        except Exception as e:
+            logger.warning(f"Failed to snapshot {store_id}: {e}")
+
+        return {
+            'store': store_info,
+            'product_count': len(deals),
+            'new_products': 0,
+        }
+
     def add_store(self, url: str) -> Dict[str, Any]:
         """Resolve, scrape and persist a store added at runtime.
 
@@ -480,15 +559,20 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if not store_info:
             raise ValueError('No Dutchie dispensary found at that link')
 
-        # Already in the dashboard? Skip the scrape but still report it, so
-        # re-adding a store is cheap and idempotent.
-        existing_ids = {s['id'] for s in self.get_stores()}
-        if store_info['id'] in existing_ids:
-            return {
-                'store': store_info,
-                'product_count': self.storage.count_store_products(store_info['id']),
-                'already_added': True,
-            }
+        # The store id has to be the *same* one an existing entry uses, or the
+        # same dispensary appears twice under two ids. Dutchie's internal id is
+        # not usable for that because a hand-written config entry never has it,
+        # so the cName slug is what identities a store.
+        store_id = self._canonical_store_id(store_info['cname'] or store_info['name'])
+        store_info['id'] = store_id
+
+        if any(s['id'] == store_id for s in self.get_stores()):
+            # Already on the dashboard: refresh its metadata and menu rather
+            # than adding a second copy of the same dispensary.
+            self.storage.save_known_store(store_info)
+            result = self._refresh_store(store_id, store_info)
+            result['already_added'] = True
+            return result
 
         self.storage.save_known_store(store_info)
 
@@ -497,7 +581,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         from scrapers import create_scraper
 
         store_config = StoreConfig(
-            id=store_info['id'],
+            id=store_id,
             name=store_info['name'],
             url=store_info['url'],
             scraper='dutchie',
@@ -530,15 +614,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         try:
             logo = scraper.fetch_logo()
             if logo:
-                self.storage.save_store_logo(store_config.id, logo, get_mime_type(logo))
+                self.storage.save_store_logo(store_id, logo, get_mime_type(logo))
         except Exception as e:
-            logger.warning(f"Failed to fetch logo for {store_config.id}: {e}")
+            logger.warning(f"Failed to fetch logo for {store_id}: {e}")
 
         # The logo is served through the local proxy whether or not the source
         # had one, so record that path rather than the empty value resolved
         # earlier. Re-saving keeps the stored row in step with what the
         # dashboard will actually request.
-        store_info['logo_url'] = f'/api/logo/{store_config.id}'
+        store_info['logo_url'] = f'/api/logo/{store_id}'
         self.storage.save_known_store(store_info)
 
         # A weekly snapshot keyed on today's week means the new store shows up
@@ -571,6 +655,60 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.receive_add_store()
         else:
             self._send_json_error(404, 'Not found')
+
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        prefix = '/api/stores/'
+        if not parsed.path.startswith(prefix):
+            self._send_json_error(404, 'Not found')
+            return
+
+        store_id = unquote(parsed.path[len(prefix):].split('?')[0])
+        self.receive_delete_store(store_id)
+
+    def receive_delete_store(self, store_id: str):
+        """Remove a store that was added at runtime, along with its products."""
+        try:
+            if not store_id:
+                self._send_json_error(400, 'A store id is required')
+                return
+
+            # A configured store cannot be deleted here: the next scheduled
+            # scrape would simply bring it back.
+            try:
+                with open(self.project_root / 'config.yaml', encoding='utf-8') as f:
+                    config = yaml.safe_load(f) or {}
+            except OSError:
+                config = {}
+            configured_ids = {
+                s.get('id') for s in config.get('stores', []) if s.get('enabled', True)
+            }
+            if store_id in configured_ids:
+                self._send_json_error(
+                    403,
+                    'This store is set in config.yaml, so it would be re-added on '
+                    'the next scrape. Remove it there instead.',
+                )
+                return
+
+            product_count = self.storage.count_store_products(store_id)
+            if not self.storage.delete_store_data(store_id):
+                self._send_json_error(500, 'Could not remove that store')
+                return
+
+            logger.info("Removed store %s (%s products)", store_id, product_count)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "removed": store_id,
+                "product_count": product_count,
+            }, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            logger.error(f"delete_store failed: {e}")
+            self._send_json_error(500, str(e))
 
     def receive_add_store(self):
         """Read the JSON body, add the store, and report the outcome."""
@@ -663,7 +801,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         store_ids = [r[0] for r in rows]
 
         # Also include configured stores
-        import yaml
         try:
             with open(self.project_root / "config.yaml", encoding='utf-8') as f:
                 config = yaml.safe_load(f) or {}
@@ -682,14 +819,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             if sid not in store_ids:
                 store_ids.append(sid)
 
+        # A configured store cannot be removed from the dashboard because the
+        # next scrape would re-add it, so only runtime stores are removable.
+        configured_ids = {
+            s.get("id") for s in config.get("stores", []) if s.get("enabled", True)
+        }
+
         stores = []
         for sid in store_ids:
             cfg = next((s for s in config.get("stores", []) if s["id"] == sid), {})
             added = known.get(sid)
+            removable = added is not None and sid not in configured_ids
             if added:
                 # The local /api/logo proxy is preferred so the logo is served
                 # from this server rather than hotlinked.
-                logo = cfg.get("logo_url") or f"/api/logo/{sid}"
+                logo = added.get("logo_url") or f"/api/logo/{sid}"
                 stores.append({
                     "id": sid,
                     "name": added.get("name") or cfg.get("name", sid),
@@ -697,13 +841,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     "enabled": cfg.get("enabled", True),
                     "address": added.get("address") or "",
                     "phone": added.get("phone") or "",
+                    "removable": removable,
                 })
                 continue
             stores.append({
                 "id": sid,
                 "name": cfg.get("name", sid),
                 "logo_url": cfg.get("logo_url", ""),
-                "enabled": cfg.get("enabled", True)
+                "enabled": cfg.get("enabled", True),
+                "removable": False,
             })
         return stores
 

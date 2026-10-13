@@ -10,6 +10,7 @@ added store survive a restart.
 from datetime import date, timedelta
 
 import pytest
+import yaml
 
 from api_server import DashboardHandler
 from models import WeeklySnapshot
@@ -358,6 +359,140 @@ class TestAddStore:
         result = handler.add_store("https://dutchie.com/stores/culture-cannabis-club-akron")
         assert result["product_count"] == 0
         assert stored_stores
+
+
+class TestCanonicalStoreId:
+    """The duplicate-store bug, pinned down.
+
+    Adding a store with Dutchie's internal id while config.yaml names the same
+    dispensary `bliss-kent` produced two rows for one dispensary. The id has to
+    come from whatever entry already points at that cName.
+    """
+
+    CONFIG = {
+        "stores": [
+            {"id": "bliss-kent", "name": "Bliss Ohio — Kent",
+             "url": "https://dutchie.com/stores/bliss-ohio-kent/products",
+             "enabled": True},
+            {"id": "culture-akron", "name": "Culture Cannabis Club — Akron",
+             "url": "https://dutchie.com/stores/culture-cannabis-club-akron",
+             "enabled": True},
+        ]
+    }
+
+    def _handler(self, storage, tmp_path, config=None):
+        (tmp_path / "config.yaml").write_text(
+            yaml.safe_dump(config if config is not None else self.CONFIG),
+            encoding="utf-8",
+        )
+        return make_handler(storage, tmp_path)
+
+    def test_reuses_the_config_id_for_the_same_cname(self, tmp_path):
+        import yaml
+
+        handler = self._handler(SQLiteStorage(db_path=str(tmp_path / "a.db")), tmp_path)
+        assert handler._canonical_store_id("bliss-ohio-kent") == "bliss-kent"
+
+    def test_falls_back_to_the_slug_for_an_unknown_store(self, tmp_path):
+        import yaml
+
+        handler = self._handler(SQLiteStorage(db_path=str(tmp_path / "b.db")), tmp_path)
+        assert handler._canonical_store_id("some-new-dispensary") == "some-new-dispensary"
+
+    def test_reuses_an_added_store_id(self, tmp_path):
+        import yaml
+
+        storage = SQLiteStorage(db_path=str(tmp_path / "c.db"))
+        storage.save_known_store({
+            "id": "bliss-kent", "name": "Bliss Ohio — Kent",
+            "cname": "bliss-ohio-kent", "url": "https://dutchie.com/stores/bliss-ohio-kent",
+        })
+        handler = self._handler(storage, tmp_path)
+        assert handler._canonical_store_id("bliss-ohio-kent") == "bliss-kent"
+
+    def test_slug_is_normalised(self, tmp_path):
+        import yaml
+
+        handler = self._handler(SQLiteStorage(db_path=str(tmp_path / "d.db")), tmp_path)
+        assert handler._canonical_store_id("Some New Store!") == "some-new-store"
+
+    def test_a_disabled_config_entry_is_still_matched(self, tmp_path):
+        import yaml
+
+        config = {
+            "stores": [
+                {"id": "bliss-kent", "name": "Bliss Ohio — Kent",
+                 "url": "https://dutchie.com/stores/bliss-ohio-kent/products",
+                 "enabled": False},
+            ]
+        }
+        handler = self._handler(SQLiteStorage(db_path=str(tmp_path / "e.db")), tmp_path, config)
+        # Reuse the id even though the entry is disabled: using a fresh id would
+        # put the same dispensary in the dashboard twice, and re-enabling the
+        # entry later would then create a second set of products alongside it.
+        assert handler._canonical_store_id("bliss-ohio-kent") == "bliss-kent"
+
+    def test_missing_config_still_yields_a_slug(self, tmp_path):
+        handler = make_handler(SQLiteStorage(db_path=str(tmp_path / "f.db")), tmp_path)
+        assert handler._canonical_store_id("some-new-dispensary") == "some-new-dispensary"
+
+
+class TestRemoveStore:
+    def _store(self, sid="store-1", name="Bliss Ohio - Kent"):
+        return {
+            "id": sid, "name": name, "cname": "bliss-ohio-kent",
+            "url": "https://dutchie.com/stores/bliss-ohio-kent",
+            "logo_url": "/api/logo/store-1",
+        }
+
+    def test_deletes_every_trace(self, storage):
+        from models import Deal
+
+        storage.save_known_store(self._store())
+        storage.save_seen_deal(Deal(
+            store_id="store-1", product_id="p1", name="Blue Dream", category="Flower",
+            original_price=50.0, sale_price=35.0, discount_pct=0.0,
+            image_url="", product_url="",
+        ))
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+        storage.save_weekly_snapshot(
+            WeeklySnapshot(store_id="store-1", week_start=week_start, items=[])
+        )
+        assert storage.claim_weekly_summary("store-1", week_start) is True
+
+        assert storage.delete_store_data("store-1") is True
+        assert storage.list_known_stores() == []
+        assert storage.count_store_products("store-1") == 0
+        assert storage.get_weekly_snapshot("store-1", week_start) is None
+        # A claimed week that was deleted can be claimed again.
+        assert storage.claim_weekly_summary("store-1", week_start) is True
+
+    def test_leaves_other_stores_alone(self, storage):
+        from models import Deal
+
+        storage.save_known_store(self._store(sid="store-1"))
+        storage.save_known_store(self._store(sid="store-2", name="Culture Akron"))
+        storage.save_seen_deal(Deal(
+            store_id="store-2", product_id="p2", name="GMO", category="Flower",
+            original_price=50.0, sale_price=35.0, discount_pct=0.0,
+            image_url="", product_url="",
+        ))
+
+        storage.delete_store_data("store-1")
+
+        remaining = {k["id"] for k in storage.list_known_stores()}
+        assert remaining == {"store-2"}
+        assert storage.count_store_products("store-2") == 1
+
+    def test_delete_is_idempotent(self, storage):
+        assert storage.delete_store_data("never-existed") is True
+        assert storage.delete_store_data("never-existed") is True
+
+    def test_is_added_store(self, storage):
+        storage.save_known_store(self._store())
+        assert storage.is_added_store("store-1") is True
+        assert storage.is_added_store("store-2") is False
 
 
 class TestApiErrorsAreJson:

@@ -779,12 +779,34 @@ body {
 .nav-item:hover { transform: translateX(2px); }
 .nav-item.active { transform: translateX(2px); }
 .nav-group-header {
-    transition: background 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 .nav-sub-item {
-    transition: color 0.12s ease, padding-left 0.12s ease;
+  transition: color 0.12s ease, padding-left 0.12s ease;
 }
 .nav-sub-item:hover { padding-left: 14px; }
+
+/* Remove control for stores added at runtime. Hidden until the row is hovered
+   or focused so it does not clutter the list, and never shown for a store that
+   came from config.yaml, since that one would be re-added on the next scrape. */
+.nav-item-remove {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-left: auto;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-item:hover .nav-item-remove,
+.nav-item-remove:focus-visible { display: inline-flex; }
+.nav-item-remove:hover { background: rgba(248, 81, 73, 0.18); color: var(--danger); }
 
 /* Button and interactive element transitions */
 .btn {
@@ -1283,7 +1305,10 @@ function getUrlState() {
     store: params.get(URL_PARAMS.store) || '',
     category: params.get(URL_PARAMS.category) || '',
     brand: params.get(URL_PARAMS.brand) || '',
-    deal: params.get(URL_PARAMS.deal) === 'true',
+    // The key must match `currentFilters.dealOnly`. Returning `deal` here left
+    // the restored filter stranded on a key nothing reads, so "Deals Only"
+    // never survived a reload or a shared link.
+    dealOnly: params.get(URL_PARAMS.deal) === 'true',
     stock: params.get(URL_PARAMS.stock) || 'all',
     sort: params.get(URL_PARAMS.sort) || 'discount-desc',
     search: params.get(URL_PARAMS.search) || ''
@@ -1295,7 +1320,7 @@ function setUrlState(state) {
   if (state.store) params.set(URL_PARAMS.store, state.store);
   if (state.category) params.set(URL_PARAMS.category, state.category);
   if (state.brand) params.set(URL_PARAMS.brand, state.brand);
-  if (state.deal !== undefined) params.set(URL_PARAMS.deal, state.deal);
+  if (state.dealOnly !== undefined) params.set(URL_PARAMS.deal, state.dealOnly);
   if (state.stock && state.stock !== 'all') params.set(URL_PARAMS.stock, state.stock);
   if (state.sort && state.sort !== 'discount-desc') params.set(URL_PARAMS.sort, state.sort);
   if (state.search) params.set(URL_PARAMS.search, state.search);
@@ -1323,6 +1348,43 @@ async function loadData() {
 function restoreUrlState() {
   const state = getUrlState();
   currentFilters = { ...currentFilters, ...state };
+  dropFiltersForMissingStores();
+  updateFilterControls();
+}
+
+function dropFiltersForMissingStores() {
+  // A store, category or brand can disappear between visits: it was removed
+  // from the dashboard, or the link was saved before it existed. Restoring such
+  // a filter would leave the grid permanently empty with no visible reason, so
+  // the filter is dropped instead.
+  const knownStores = (allData.stores || []).map(s => s.id);
+  const knownCategories = (allData.categories || []);
+  const knownBrands = (allData.brands || []);
+
+  if (currentFilters.store && !knownStores.includes(currentFilters.store)) {
+    currentFilters.store = '';
+  }
+  if (currentFilters.store) {
+    // A store filter is exclusive: its other facets only apply within it.
+    return;
+  }
+  if (currentFilters.category && knownCategories.length
+      && !knownCategories.includes(currentFilters.category)) {
+    currentFilters.category = '';
+  }
+  if (currentFilters.brand && knownBrands.length
+      && !knownBrands.includes(currentFilters.brand)) {
+    currentFilters.brand = '';
+  }
+  if (currentFilters.store || currentFilters.category || currentFilters.brand) {
+    setUrlState(currentFilters);
+  }
+}
+
+// Push the current filter values into every control that displays them. Kept in
+// one place because the header selects, the toggle buttons and the title have
+// to agree, and they were drifting apart before.
+function updateFilterControls() {
   document.getElementById('storeFilter').value = currentFilters.store;
   document.getElementById('categoryFilter').value = currentFilters.category;
   document.getElementById('brandFilter').value = currentFilters.brand;
@@ -1367,6 +1429,7 @@ function populateSidebar() {
         <span>${escapeHtml(store.name)}</span>
       </div>
       <span class="nav-item-count">${storeCount(store.id)}</span>
+      ${store.removable ? `<button class="nav-item-remove" data-remove-store="${escapeHtml(store.id)}" title="Remove ${escapeHtml(store.name)}" aria-label="Remove ${escapeHtml(store.name)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>` : ''}
     `;
     storeNav.appendChild(item);
   });
@@ -2640,6 +2703,16 @@ document.getElementById('addStoreUrl')?.addEventListener('keydown', function(e) 
   if (e.key === 'Enter') { e.preventDefault(); submitAddStore(); }
 });
 
+// The sidebar store rows are rebuilt on every load, so removal is handled by
+// delegation rather than per-row listeners.
+document.getElementById('storeNavList')?.addEventListener('click', function(e) {
+  const button = e.target.closest('.nav-item-remove');
+  if (!button) return;
+  // The row itself is the store filter, so stop the click reaching it.
+  e.stopPropagation();
+  removeStore(button.dataset.removeStore);
+});
+
 // ---- Add Store (by Dutchie URL) ----
 function openAddStoreModal() {
   const backdrop = document.getElementById('addStoreModal');
@@ -2702,6 +2775,38 @@ async function submitAddStore() {
     setAddStoreStatus(err.message || 'Could not add that store.', 'error');
   } finally {
     confirmBtn.classList.remove('loading');
+  }
+}
+
+// ---- Remove a store that was added at runtime ----
+async function removeStore(storeId) {
+  const store = (allData.stores || []).find(s => s.id === storeId);
+  const name = store ? store.name : storeId;
+  if (!confirm(`Remove ${name} and all of its products from the dashboard?`)) return;
+
+  try {
+    const response = await fetch(`/api/stores/${encodeURIComponent(storeId)}`, { method: 'DELETE' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || ('Request failed with status ' + response.status));
+    }
+    // Drop the store from the loaded data so the sidebar and filters reflect
+    // the removal immediately, then reload from the server.
+    allData.stores = (allData.stores || []).filter(s => s.id !== storeId);
+    populateSidebar();
+    populateFilters();
+    if (currentFilters.store === storeId) {
+      // The active filter pointed at the store being removed. Clear it and
+      // rewrite the URL, or the reload below would restore the stale filter
+      // and leave the grid empty with nothing selected.
+      currentFilters.store = '';
+      updateFilterControls();
+      setUrlState(currentFilters);
+    }
+    applyFilters();
+    loadData();
+  } catch (err) {
+    alert(err.message || 'Could not remove that store.');
   }
 }
 

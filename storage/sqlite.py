@@ -377,6 +377,36 @@ class SQLiteStorage:
             ).fetchone()
         return row[0] if row else 0
 
+    def delete_store_data(self, store_id: str) -> bool:
+        """Remove every trace of a store that was added at runtime.
+
+        Product *images* are deliberately left alone: they are cached by URL
+        hash, and another store can legitimately serve the same image, so
+        deleting them here could drop a still-referenced cache entry. They are
+        a cache, so leaving them costs only disk space.
+        """
+        with self._get_connection() as conn:
+            try:
+                conn.execute("DELETE FROM known_stores WHERE id = ?", (store_id,))
+                conn.execute("DELETE FROM seen_deals WHERE store_id = ?", (store_id,))
+                conn.execute("DELETE FROM weekly_snapshots WHERE store_id = ?", (store_id,))
+                conn.execute("DELETE FROM weekly_summaries WHERE store_id = ?", (store_id,))
+                conn.execute("DELETE FROM store_logos WHERE store_id = ?", (store_id,))
+                conn.commit()
+                return True
+            except Exception as e:
+                logger.error(f"Failed to delete store {store_id}: {e}")
+                conn.rollback()
+                return False
+
+    def is_added_store(self, store_id: str) -> bool:
+        """True when this store came from the runtime Add Store flow."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM known_stores WHERE id = ?", (store_id,)
+            ).fetchone()
+        return row is not None
+
     def save_store_logo(self, store_id: str, image_data: bytes, mime_type: str = "image/png"):
         with self._get_connection() as conn:
             conn.execute("""
