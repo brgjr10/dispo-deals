@@ -201,6 +201,8 @@ class DispoDeals:
                     new_deals.append(deal)
             else:
                 self.storage.update_seen_deal(deal, notify=False)
+            # Record price history for every product so we can chart trends
+            self.storage.record_price_history(deal)
         return new_deals
 
     def _save_weekly_snapshot(self, store: StoreConfig, deals: List[Deal]):

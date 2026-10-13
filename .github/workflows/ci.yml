@@ -1,0 +1,114 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff mypy pytest pytest-asyncio
+
+      - name: Run Ruff (lint)
+        run: ruff check .
+
+      - name: Run MyPy (type check)
+        run: mypy --ignore-missing-imports --no-error-summary .
+
+      - name: Run tests
+        run: pytest -v --tb=short
+
+  build-docker:
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: dispo-deals:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  schema-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Generate schema documentation
+        run: |
+          mkdir -p data
+          python -c "
+import sys
+sys.path.insert(0, '.')
+from storage.sqlite import SQLiteStorage
+storage = SQLiteStorage('./data/dispo_deals.db')
+print('Database initialized with current schema')
+          "
+          python -m utils.generate_schema > docs/schema.md
+
+      - name: Check for schema changes
+        run: |
+          if [ -n "$(git status --porcelain docs/schema.md)" ]; then
+            echo "::warning::Schema documentation has changed. Please commit the updated docs/schema.md"
+            git diff docs/schema.md
+          else
+            echo "Schema documentation is up to date"
+          fi
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Run dependency audit
+        run: pip-audit -r requirements.txt || true

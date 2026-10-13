@@ -136,8 +136,28 @@ class SQLiteStorage:
                     attempts INTEGER DEFAULT 1
                 );
 
+                -- Favorites / wishlist: user can mark products to track across sessions
+                CREATE TABLE IF NOT EXISTS favorites (
+                    store_id TEXT NOT NULL,
+                    product_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (store_id, product_id)
+                );
+
+                -- Price history: records price points for charting trends
+                CREATE TABLE IF NOT EXISTS price_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    store_id TEXT NOT NULL,
+                    product_id TEXT NOT NULL,
+                    original_price REAL NOT NULL,
+                    sale_price REAL NOT NULL,
+                    discount_pct REAL NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_seen_deals_store ON seen_deals(store_id);
                 CREATE INDEX IF NOT EXISTS idx_snapshots_store_week ON weekly_snapshots(store_id, week_start);
+                CREATE INDEX IF NOT EXISTS idx_price_history_store_product ON price_history(store_id, product_id, recorded_at);
             """)
             conn.commit()
         self._migrate_schema()
@@ -698,3 +718,80 @@ class SQLiteStorage:
                 (cutoff.isoformat(),)
             )
             conn.commit()
+
+    # ---- Favorites / Wishlist ----
+
+    def add_favorite(self, store_id: str, product_id: str) -> bool:
+        """Add a product to favorites."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO favorites (store_id, product_id, created_at) VALUES (?, ?, ?)",
+                (store_id, product_id, now),
+            )
+            conn.commit()
+        return True
+
+    def remove_favorite(self, store_id: str, product_id: str) -> bool:
+        """Remove a product from favorites."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "DELETE FROM favorites WHERE store_id = ? AND product_id = ?",
+                (store_id, product_id),
+            )
+            conn.commit()
+        return True
+
+    def get_favorites(self) -> List[Dict[str, Any]]:
+        """Get all favorited products with their details."""
+        with self._get_connection() as conn:
+            rows = conn.execute("""
+                SELECT f.store_id, f.product_id, f.created_at,
+                       s.name, s.category, s.original_price, s.sale_price,
+                       s.discount_pct, s.image_url, s.product_url, s.in_stock,
+                       s.thc_pct, s.cbd_pct, s.weight, s.brand, s.strain_name
+                FROM favorites f
+                JOIN seen_deals s ON s.store_id = f.store_id AND s.product_id = f.product_id
+                ORDER BY f.created_at DESC
+            """).fetchall()
+        return [dict(row) for row in rows]
+
+    def is_favorite(self, store_id: str, product_id: str) -> bool:
+        """Check if a product is favorited."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM favorites WHERE store_id = ? AND product_id = ?",
+                (store_id, product_id),
+            ).fetchone()
+        return row is not None
+
+    # ---- Price History ----
+
+    def record_price_history(self, deal: Deal) -> bool:
+        """Record a price point for a product."""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO price_history (store_id, product_id, original_price, sale_price, discount_pct, recorded_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (deal.store_id, deal.product_id, deal.original_price, deal.sale_price, deal.discount_pct, now),
+            )
+            conn.commit()
+        return True
+
+    def get_price_history(self, store_id: str, product_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get price history for a product."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT original_price, sale_price, discount_pct, recorded_at
+                FROM price_history
+                WHERE store_id = ? AND product_id = ?
+                ORDER BY recorded_at DESC
+                LIMIT ?
+                """,
+                (store_id, product_id, limit),
+            ).fetchall()
+        return [dict(row) for row in rows]

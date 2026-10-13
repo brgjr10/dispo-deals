@@ -68,6 +68,46 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+- id: high-intentions
+  name: High Intentions
+  url: https://www.highintentions.life/collection/?sort=popular
+  scraper: shoplightspeed
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: puffco
+  name: Puffco
+  url: https://www.puffco.com/products/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: cannastyle
+  name: CannaStyle
+  url: https://shopcannastyle.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: mj-arsenal
+  name: MJ Arsenal
+  url: https://mjarsenal.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: dematteo-art
+  name: DeMatteo Art
+  url: https://dematteoart.com/collections/all
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
 scrapers:
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql

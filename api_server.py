@@ -54,7 +54,7 @@ SECURITY_HEADERS = {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'",
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self'",
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
 }
@@ -102,15 +102,22 @@ def _product_dedupe_key(product):
     shared by unrelated products across a catalogue, so an image alone would
     merge distinct items. With no image, the price pair is the fallback.
     """
-    name = (product.get("name") or "").strip().lower()
+    def _get(product, key, default=""):
+        """Get a value from a dict or dataclass attribute."""
+        if isinstance(product, dict):
+            return product.get(key, default)
+        return getattr(product, key, default)
+
+    name = (_get(product, "name") or "").strip().lower()
     if not name:
         return None
 
-    image = product.get("image_key") or product.get("image_url") or ""
+    image = (_get(product, "image_key") or _get(product, "image_url") or "")
     if image:
-        return (product.get("store_id"), name, image)
+        return (_get(product, "store_id"), name, image)
 
-    return (product.get("store_id"), name, product.get("sale_price"), product.get("original_price"))
+    return (_get(product, "store_id"), name,
+            _get(product, "sale_price"), _get(product, "original_price"))
 
 
 def dedupe_products(products):
@@ -181,6 +188,12 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_api_data()
         elif path == '/api/menu':
             self.send_full_menu()
+        elif path == '/api/favorites':
+            self.send_favorites()
+        elif path.startswith('/api/favorites/'):
+            self.send_favorite(path[len('/api/favorites/'):])
+        elif path.startswith('/api/price-history/'):
+            self.send_price_history(path[len('/api/price-history/'):])
         elif path.startswith('/api/image/'):
             self.send_image(path[len('/api/image/'):])
         elif path.startswith('/api/logo/'):
@@ -410,6 +423,58 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             }, default=str, ensure_ascii=False).encode('utf-8'))
         except Exception as e:
             logger.error(f"send_full_menu failed: {e}")
+            self._send_json_error(500, str(e))
+
+    def send_favorites(self):
+        """Return all favorited products."""
+        try:
+            favorites = self.storage.get_favorites()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"favorites": favorites}, default=str, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            logger.error(f"send_favorites failed: {e}")
+            self._send_json_error(500, str(e))
+
+    def send_favorite(self, path: str):
+        """Handle GET /api/favorites/<store_id>/<product_id> - check if favorited."""
+        try:
+            parts = path.strip('/').split('/')
+            if len(parts) != 2:
+                self._send_json_error(400, 'Invalid path')
+                return
+            store_id, product_id = parts
+            is_fav = self.storage.is_favorite(store_id, product_id)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"favorite": is_fav}, default=str, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            logger.error(f"send_favorite failed: {e}")
+            self._send_json_error(500, str(e))
+
+    def send_price_history(self, path: str):
+        """Return price history for a product."""
+        try:
+            parts = path.strip('/').split('/')
+            if len(parts) != 2:
+                self._send_json_error(400, 'Invalid path')
+                return
+            store_id, product_id = parts
+            history = self.storage.get_price_history(store_id, product_id)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"history": history}, default=str, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            logger.error(f"send_price_history failed: {e}")
             self._send_json_error(500, str(e))
 
     def resolve_dutchie_store(self, url: str) -> Optional[Dict[str, Any]]:
@@ -698,18 +763,61 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         if path == '/api/stores/add':
             self.receive_add_store()
+        elif path.startswith('/api/favorites/'):
+            self.receive_add_favorite(path[len('/api/favorites/'):])
         else:
             self._send_json_error(404, 'Not found')
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
-        prefix = '/api/stores/'
-        if not parsed.path.startswith(prefix):
-            self._send_json_error(404, 'Not found')
-            return
+        path = parsed.path
 
-        store_id = unquote(parsed.path[len(prefix):].split('?')[0])
-        self.receive_delete_store(store_id)
+        if path.startswith('/api/stores/'):
+            prefix = '/api/stores/'
+            store_id = unquote(parsed.path[len(prefix):].split('?')[0])
+            self.receive_delete_store(store_id)
+        elif path.startswith('/api/favorites/'):
+            self.receive_delete_favorite(path[len('/api/favorites/'):])
+        else:
+            self._send_json_error(404, 'Not found')
+
+    def receive_add_favorite(self, path: str):
+        """Add a product to favorites. POST /api/favorites/<store_id>/<product_id>"""
+        try:
+            parts = path.strip('/').split('/')
+            if len(parts) != 2:
+                self._send_json_error(400, 'Invalid path')
+                return
+            store_id, product_id = parts
+            self.storage.add_favorite(store_id, product_id)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"added": True}, default=str, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            logger.error(f"receive_add_favorite failed: {e}")
+            self._send_json_error(500, str(e))
+
+    def receive_delete_favorite(self, path: str):
+        """Remove a product from favorites. DELETE /api/favorites/<store_id>/<product_id>"""
+        try:
+            parts = path.strip('/').split('/')
+            if len(parts) != 2:
+                self._send_json_error(400, 'Invalid path')
+                return
+            store_id, product_id = parts
+            self.storage.remove_favorite(store_id, product_id)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps({"removed": True}, default=str, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            logger.error(f"receive_delete_favorite failed: {e}")
+            self._send_json_error(500, str(e))
 
     def receive_delete_store(self, store_id: str):
         """Remove a store that was added at runtime, along with its products."""
@@ -797,9 +905,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         deals = self.get_all_deals()
         weekly_diff = self.get_weekly_diff()
 
+        # Ensure is_deal is set on the final deduplicated list
+        for deal in deals:
+            deal["is_deal"] = (deal.get("discount_pct") or 0) > 0
+
         return {
             "stores": stores,
-            "deals": dedupe_products(deals),
+            "deals": deals,
             "snapshots": [],
             "weeklyDiff": weekly_diff.to_dict() if weekly_diff else None
         }
@@ -937,6 +1049,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             # Rows written before the canonical names existed keep the raw one,
             # so normalise here too or the sidebar still splits the shelf.
             deal["category"] = canonical_category(deal.get("category"))
+            # Mark whether this product is actually on sale.
+            deal["is_deal"] = (deal.get("discount_pct") or 0) > 0
             # Brands are typed per store, so the same brand arrives with
             # different spellings and would otherwise split into several rows.
             deal["brand"] = self._brand_canonicalizer()(deal.get("brand"))

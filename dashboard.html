@@ -442,6 +442,29 @@ body {
 .landing-store-meta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
 .landing-store-deals { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--primary); white-space: nowrap; }
 
+.landing-header { text-align: center; margin-bottom: 32px; }
+.landing-metrics { display: flex; justify-content: center; gap: 24px; margin-top: 24px; flex-wrap: wrap; }
+.landing-metric { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 16px; }
+.landing-metric-value { font-size: 32px; font-weight: 700; color: var(--text); line-height: 1; }
+.landing-metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.landing-section { margin-top: 48px; }
+.landing-section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 16px; }
+
+.landing-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.landing-feature { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.landing-feature-icon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: rgba(88, 166, 255, 0.12); border: 1px solid rgba(88, 166, 255, 0.3); color: var(--primary); }
+.landing-feature h4 { font-size: 15px; font-weight: 700; margin: 0; }
+.landing-feature p { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0; }
+
+.landing-tech { display: flex; flex-wrap: wrap; gap: 8px; }
+.tech-badge { padding: 6px 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.3px; }
+
+.landing-arch { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.landing-arch-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.landing-arch-item h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--primary); }
+.landing-arch-item p { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0; }
+
 @media (max-width: 768px) {
   .view-nav { padding: 8px 12px 0; }
   .view-page { padding: 16px 12px 100px; }
@@ -746,6 +769,41 @@ body {
   aspect-ratio: 1/1;
   overflow: hidden;
   background: var(--bg);
+}
+/* Favorite button in top-right of product card */
+.favorite-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(13, 17, 23, 0.8);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.favorite-btn:hover {
+  background: rgba(13, 17, 23, 0.95);
+  border-color: var(--primary);
+  transform: scale(1.1);
+}
+.favorite-btn.active {
+  border-color: var(--danger);
+}
+.favorite-btn.active:hover {
+  background: rgba(248, 81, 73, 0.15);
+}
+.favorite-btn svg {
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
 }
 .product-img {
   width: 100%;
@@ -1411,25 +1469,113 @@ html {
     transition: box-shadow 0.2s, border-color 0.2s;
 }
 
+/* Keyboard shortcuts help modal */
+.shortcuts-modal {
+  position: fixed; inset: 0; background: rgba(13, 17, 23, 0.9); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 2000;
+  opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.shortcuts-modal.open { opacity: 1; visibility: visible; }
+.shortcuts-content {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  max-width: 600px; width: 100%; max-height: 80vh; overflow: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4); transform: scale(0.98); opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.shortcuts-modal.open .shortcuts-content { transform: scale(1); opacity: 1; }
+.shortcuts-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+.shortcuts-header h2 { font-size: 18px; font-weight: 600; }
+.shortcuts-close { background: transparent; border: none; color: var(--muted); font-size: 28px; cursor: pointer; padding: 0; line-height: 1; }
+.shortcuts-close:hover { color: var(--text); }
+.shortcuts-body { padding: 20px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.shortcuts-category { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.shortcuts-category h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 12px; }
+.shortcuts-list { display: flex; flex-direction: column; gap: 8px; }
+.shortcut-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(48, 54, 61, 0.5); }
+.shortcut-item:last-child { border-bottom: none; }
+.shortcut-key { display: inline-flex; gap: 4px; }
+.shortcut-key kbd { background: var(--card-bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: inherit; color: var(--text); white-space: nowrap; }
+.shortcut-desc { font-size: 13px; color: var(--muted); text-align: right; flex: 1; margin-left: 12px; }
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.4);
+  border-radius: 4px;
+}
+.product-card:focus-visible {
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.4), 0 6px 16px rgba(0,0,0,0.25);
+  border-color: var(--primary);
+  z-index: 10;
+}
+
 /* Smooth scroll */
 html {
     scroll-behavior: smooth;
 }
+@media (max-width: 1024px) {
+  .sidebar { width: 240px; }
+  .header-actions { gap: 8px; }
+  .filter-select { min-width: 120px; }
+}
 @media (max-width: 768px) {
   .app { flex-direction: column; }
-  .sidebar { display: none; }
+  .sidebar { 
+    position: fixed; 
+    left: -280px; 
+    top: 0; 
+    bottom: 0; 
+    width: 280px; 
+    z-index: 1000; 
+    transform: translateX(-100%); 
+    transition: transform 0.3s ease; 
+    display: flex; 
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay { 
+    display: none; 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0,0,0,0.5); 
+    z-index: 999; 
+  }
+  .sidebar-overlay.open { display: block; }
   .header h1 { font-size: 16px; }
   .header-left { min-width: 0; }
   .products-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .products-header-actions { width: 100%; }
+  .products-header-actions { width: 100%; justify-content: space-between; }
   .modal-content { grid-template-columns: 1fr; }
   .modal-image-wrapper { max-width: min(80vw, 360px); margin: 0 auto; }
   .modal-nav { opacity: 1; }
+  .shortcuts-body { grid-template-columns: 1fr; }
+  .filter-row { flex-wrap: wrap; gap: 8px; }
+  .deal-segment { width: 100%; justify-content: space-between; }
+  .filter-select { flex: 1; min-width: 120px; }
+  .compare-panel { right: -100%; width: 100%; max-width: 320px; }
+  .compare-panel.open { right: 0; }
+  .product-card { min-width: 160px; }
+  .header-actions { flex-wrap: wrap; gap: 8px; }
+  .search-input { flex: 1; min-width: 150px; }
+  #addStoreBtn .location-btn-text { display: none; }
+  .stats-bar { flex-wrap: wrap; }
+  .stat { min-width: calc(33% - 8px) !important; }
+}
+@media (max-width: 480px) {
+  .stat { min-width: calc(50% - 8px) !important; }
+  .compare-actions { flex-wrap: wrap; gap: 8px; }
+  .compare-actions .btn { flex: 1; min-width: calc(50% - 4px); }
+  .header-actions { flex-direction: column; align-items: stretch; }
+  .search-input { width: 100%; }
+  .filter-select { width: 100%; }
+  .deal-segment { flex-direction: column; }
+  .deal-segment .btn { width: 100%; }
 }
 </style>
 </head>
 <body>
 <div class="app">
+  <!-- Sidebar overlay for mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
   <!-- Sidebar: stores + categories -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -1527,6 +1673,10 @@ html {
             Deals Only
           </button>
         </div>
+        <button class="btn btn-toggle" id="favoritesOnlyBtn" onclick="toggleFavoritesFilter()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          <span id="favoritesOnlyLabel">Favorites</span>
+        </button>
         <select class="filter-select" id="stockFilter">
           <option value="all">All Stock</option>
           <option value="in-stock">In Stock</option>
@@ -1661,11 +1811,32 @@ html {
     <!-- Overview: the portfolio landing page. -->
     <section class="view-page view-landing" id="view-landing" aria-labelledby="landingTitle" hidden>
       <div class="landing-inner">
-        <p class="landing-eyebrow">Dispo Browser</p>
-        <h2 id="landingTitle">Every store, every product, one board.</h2>
-        <p class="landing-lede">
-          <span id="landingStats">Loading the portfolio…</span>
-        </p>
+        <header class="landing-header">
+          <p class="landing-eyebrow">Dispo Browser</p>
+          <h2 id="landingTitle">Every store, every product, one board.</h2>
+          <p class="landing-lede">
+            A self-hosted, multi-dispensary menu browser built for cannabis consumers who want to compare prices, track deals, and discover products across every Dutchie-powered store in their area.
+          </p>
+          <div class="landing-metrics" id="landingMetrics">
+            <div class="landing-metric">
+              <span class="landing-metric-value" id="landingTotalProducts">—</span>
+              <span class="landing-metric-label">Products Tracked</span>
+            </div>
+            <div class="landing-metric">
+              <span class="landing-metric-value" id="landingTotalStores">—</span>
+              <span class="landing-metric-label">Dispensaries</span>
+            </div>
+            <div class="landing-metric">
+              <span class="landing-metric-value" id="landingTotalDeals">—</span>
+              <span class="landing-metric-label">Active Deals</span>
+            </div>
+            <div class="landing-metric">
+              <span class="landing-metric-value" id="landingTotalBrands">—</span>
+              <span class="landing-metric-label">Brands</span>
+            </div>
+          </div>
+        </header>
+
         <div class="landing-cards">
           <button class="landing-card" onclick="showStorePicker()">
             <span class="landing-card-icon">
@@ -1689,6 +1860,91 @@ html {
             <span class="landing-card-sub">Bring in a dispensary by its Dutchie link</span>
           </button>
         </div>
+
+        <section class="landing-section">
+          <h3 class="landing-section-title">Key Features</h3>
+          <div class="landing-features">
+            <div class="landing-feature">
+              <div class="landing-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+              <h4>Unified Product Browser</h4>
+              <p>Search, filter, and sort across all dispensaries at once. Virtualized grid handles 10,000+ products smoothly.</p>
+            </div>
+            <div class="landing-feature">
+              <div class="landing-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
+              <h4>Deal Intelligence</h4>
+              <p>Automatic discount detection, category/brand rankings, and weekly deal summaries. Know where the value is.</p>
+            </div>
+            <div class="landing-feature">
+              <div class="landing-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+              </div>
+              <h4>Favorites & Wishlist</h4>
+              <p>Save products across sessions. Get notified when favorited items go on sale or come back in stock.</p>
+            </div>
+            <div class="landing-feature">
+              <div class="landing-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </div>
+              <h4>Price History</h4>
+              <p>Track price changes over time with interactive charts. Spot patterns and time your purchases.</p>
+            </div>
+            <div class="landing-feature">
+              <div class="landing-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <h4>Compare & Export</h4>
+              <p>Side-by-side comparison of up to 4 products. Export to CSV/JSON or share a compare link.</p>
+            </div>
+            <div class="landing-feature">
+              <div class="landing-feature-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              </div>
+              <h4>Keyboard-First UX</h4>
+              <p>Full keyboard navigation: arrow keys to browse, Enter to view, C/F/R/A shortcuts. Press ? for help.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="landing-section">
+          <h3 class="landing-section-title">Tech Stack</h3>
+          <div class="landing-tech">
+            <span class="tech-badge">Python</span>
+            <span class="tech-badge">FastAPI</span>
+            <span class="tech-badge">SQLite</span>
+            <span class="tech-badge">Chart.js</span>
+            <span class="tech-badge">Vanilla JS</span>
+            <span class="tech-badge">Docker</span>
+            <span class="tech-badge">Dutchie API</span>
+            <span class="tech-badge">Leafly Strains</span>
+          </div>
+        </section>
+
+        <section class="landing-section">
+          <h3 class="landing-section-title">Architecture</h3>
+          <div class="landing-arch">
+            <div class="landing-arch-item">
+              <h4>Scrapers</h4>
+              <p>Modular scraper classes per platform (Shopify, Dutchie, Lightspeed, WooCommerce) with shared base.</p>
+            </div>
+            <div class="landing-arch-item">
+              <h4>API Server</h4>
+              <p>FastAPI backend serving menu data, favorites, price history, and store management endpoints.</p>
+            </div>
+            <div class="landing-arch-item">
+              <h4>Scheduler</h4>
+              <p>APScheduler runs incremental scrapes every 15 minutes. Full re-index nightly.</p>
+            </div>
+            <div class="landing-arch-item">
+              <h4>Frontend</h4>
+              <p>Single-file HTML dashboard with virtualized grid, Chart.js visualizations, zero build step.</p>
+            </div>
+          </div>
+        </section>
+
         <div id="landingStores" class="landing-stores"></div>
       </div>
     </section>
@@ -1700,11 +1956,64 @@ html {
   <div class="compare-header">
     <h3>Compare Products</h3>
     <div class="compare-actions">
+      <button class="btn ghost" onclick="exportCompare('csv')" title="Export as CSV"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> CSV</button>
+      <button class="btn ghost" onclick="exportCompare('json')" title="Export as JSON"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> JSON</button>
+      <button class="btn ghost" onclick="shareCompare()" title="Share compare link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share</button>
       <button class="btn secondary" onclick="clearCompare()">Clear All</button>
       <button class="btn" onclick="closeComparePanel()">Done</button>
     </div>
   </div>
   <div class="compare-grid" id="compareGrid"></div>
+</div>
+
+<!-- Keyboard Shortcuts Help Modal -->
+<div id="shortcutsModal" class="shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="shortcutsTitle">
+  <div class="shortcuts-content" role="document">
+    <div class="shortcuts-header">
+      <h2 id="shortcutsTitle">Keyboard Shortcuts</h2>
+      <button class="shortcuts-close" onclick="closeShortcutsModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="shortcuts-body">
+      <div class="shortcuts-category">
+        <h3>Navigation</h3>
+        <div class="shortcuts-list">
+          <div class="shortcut-item"><span class="shortcut-desc">Focus search</span><span class="shortcut-key"><kbd>/</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Move right</span><span class="shortcut-key"><kbd>→</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Move left</span><span class="shortcut-key"><kbd>←</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Move down (row)</span><span class="shortcut-key"><kbd>↓</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Move up (row)</span><span class="shortcut-key"><kbd>↑</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">First product</span><span class="shortcut-key"><kbd>Home</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Last product</span><span class="shortcut-key"><kbd>End</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Open quick view</span><span class="shortcut-key"><kbd>Enter</kbd> / <kbd>Space</kbd></span></div>
+        </div>
+      </div>
+      <div class="shortcuts-category">
+        <h3>Actions</h3>
+        <div class="shortcuts-list">
+          <div class="shortcut-item"><span class="shortcut-desc">Add to compare</span><span class="shortcut-key"><kbd>C</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Toggle favorite</span><span class="shortcut-key"><kbd>F</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Refresh data</span><span class="shortcut-key"><kbd>R</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Add store</span><span class="shortcut-key"><kbd>A</kbd></span></div>
+        </div>
+      </div>
+      <div class="shortcuts-category">
+        <h3>Views</h3>
+        <div class="shortcuts-list">
+          <div class="shortcut-item"><span class="shortcut-desc">Overview (landing)</span><span class="shortcut-key"><kbd>1</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Products browser</span><span class="shortcut-key"><kbd>2</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Weekly menu</span><span class="shortcut-key"><kbd>3</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Weekly deals</span><span class="shortcut-key"><kbd>4</kbd></span></div>
+        </div>
+      </div>
+      <div class="shortcuts-category">
+        <h3>General</h3>
+        <div class="shortcuts-list">
+          <div class="shortcut-item"><span class="shortcut-desc">Close modal / panel</span><span class="shortcut-key"><kbd>Esc</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Show this help</span><span class="shortcut-key"><kbd>?</kbd></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Add Store Modal -->
@@ -1761,6 +2070,13 @@ html {
             <div class="modal-savings" id="modalSavings"></div>
           </div>
         </div>
+        <div class="modal-section" id="modalPriceHistorySection" style="display:none;">
+          <div class="modal-section-title">Price History</div>
+          <div class="insight-canvas-wrap" style="height: 200px;">
+            <canvas id="modalPriceChart"></canvas>
+          </div>
+          <div class="insight-empty" id="modalPriceChartEmpty" hidden>No price history available</div>
+        </div>
         <div class="modal-section" id="modalStrainSection">
           <div class="modal-section-title">Strain Profile</div>
           <div id="modalStrainGrid" class="strain-info"></div>
@@ -1803,6 +2119,7 @@ function getProductStrain(product) {
     brand: '',
     strainType: '',
     dealOnly: false,
+    favoritesOnly: false,
     stock: 'all',
     search: '',
     sort: 'discount-desc'
@@ -1811,13 +2128,16 @@ function getProductStrain(product) {
 // Virtualized grid state
 let displayedProducts = [];
 let renderedCount = 0;
-const BATCH_SIZE = 60;
+const BATCH_SIZE = 20;
 let isLoadingBatch = false;
 let observer = null;
 let observedSentinel = null;
 
 // Compare mode
 let compareSelection = new Set();
+
+// Favorites
+let favorites = new Set();
 
 // Modal state
 let modalOpen = false;
@@ -1827,7 +2147,7 @@ let focusedElementBeforeModal = null;
 let preloadedImages = new Set();
 
 // ---- URL state ----
-const URL_PARAMS = { store: 'store', category: 'cat', brand: 'brand', strainType: 'type', deal: 'deal', stock: 'stock', sort: 'sort', search: 'q' };
+const URL_PARAMS = { store: 'store', category: 'cat', brand: 'brand', strainType: 'type', deal: 'deal', fav: 'fav', compare: 'compare', stock: 'stock', sort: 'sort', search: 'q' };
 
 function getUrlState() {
   const params = new URLSearchParams(window.location.search);
@@ -1840,6 +2160,7 @@ function getUrlState() {
     // the restored filter stranded on a key nothing reads, so "Deals Only"
     // never survived a reload or a shared link.
     dealOnly: params.get(URL_PARAMS.deal) === 'true',
+    favoritesOnly: params.get(URL_PARAMS.fav) === 'true',
     stock: params.get(URL_PARAMS.stock) || 'all',
     sort: params.get(URL_PARAMS.sort) || 'discount-desc',
     search: params.get(URL_PARAMS.search) || ''
@@ -1853,11 +2174,31 @@ function setUrlState(state) {
   if (state.brand) params.set(URL_PARAMS.brand, state.brand);
   if (state.strainType) params.set(URL_PARAMS.strainType, state.strainType);
   if (state.dealOnly !== undefined) params.set(URL_PARAMS.deal, state.dealOnly);
+  if (state.favoritesOnly !== undefined) params.set(URL_PARAMS.fav, state.favoritesOnly);
   if (state.stock && state.stock !== 'all') params.set(URL_PARAMS.stock, state.stock);
   if (state.sort && state.sort !== 'discount-desc') params.set(URL_PARAMS.sort, state.sort);
   if (state.search) params.set(URL_PARAMS.search, state.search);
   const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
   history.replaceState(null, '', newUrl);
+}
+
+function restoreCompareFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const compareParam = params.get(URL_PARAMS.compare);
+  if (compareParam) {
+    const hashes = compareParam.split(',').filter(h => h);
+    hashes.forEach(hash => {
+      const product = allData.products.find(p => p.hash === hash);
+      if (product && compareSelection.size < 4) {
+        compareSelection.add(hash);
+      }
+    });
+    if (compareSelection.size > 0) {
+      updateCompareCount();
+      updateCompareCheckboxes();
+      openComparePanel();
+    }
+  }
 }
 
 // ---- Data loading ----
@@ -1872,6 +2213,7 @@ async function loadData() {
     populateSidebar();
     populateFilters();
     restoreUrlState();
+    restoreCompareFromUrl();
     applyFilters();
     renderLandingStats();
     // Re-render whichever page is on screen so a refresh is not a no-op.
@@ -1951,15 +2293,27 @@ function openStore(storeId) {
 }
 
 function renderLandingStats() {
-  const el = document.getElementById('landingStats');
-  if (!el) return;
   const products = allData.products || [];
   const stores = allData.stores || [];
   const deals = products.filter(p => p.is_deal).length;
+  const brands = new Set(products.map(p => p.brand).filter(Boolean)).size;
+  
+  setText('landingTotalProducts', products.length.toLocaleString());
+  setText('landingTotalStores', stores.length);
+  setText('landingTotalDeals', deals.toLocaleString());
+  setText('landingTotalBrands', brands);
+  
+  const el = document.getElementById('landingStats');
+  if (!el) return;
   const pct = products.length ? Math.round((deals / products.length) * 100) : 0;
   el.innerHTML = `<strong>${products.length.toLocaleString()}</strong> products across
     <strong>${stores.length}</strong> stores &middot;
     <strong>${deals.toLocaleString()}</strong> on offer (${pct}%)`;
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
 }
 
 function renderLanding() {
@@ -1981,7 +2335,7 @@ function renderLanding() {
       : '<span class="landing-store-deals" style="color:var(--muted)">no deals</span>';
     return `
       <button class="landing-store" onclick="openStore('${escapeHtml(store.id)}')">
-        ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" onerror="this.style.display='none'">` : ''}
+        ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
         <span>
           <span class="landing-store-name">${escapeHtml(store.name)}</span>
           <span class="landing-store-meta">${products.length.toLocaleString()} products</span>
@@ -2250,7 +2604,7 @@ function populateSidebar() {
     };
     item.innerHTML = `
       <div class="nav-item-store">
-        ${store.logo_url ? `<img src="${store.logo_url}" onerror="this.style.display='none'">` : ''}
+        ${store.logo_url ? `<img src="${store.logo_url}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
         <span>${escapeHtml(store.name)}</span>
       </div>
       <span class="nav-item-count">${storeCount(store.id)}</span>
@@ -2462,7 +2816,8 @@ function populateStrainNav() {
       setUrlState(currentFilters);
       applyFilters();
     };
-    const { label, short } = STRAIN_TYPES[type];
+    const strainInfo = STRAIN_TYPES[type] || { label: type, short: type[0]?.toUpperCase() || '?' };
+    const { label, short } = strainInfo;
     item.innerHTML = `
       <span class="strain-nav-label type-${type}">
         <span class="type-badge-short" aria-hidden="true">${short}</span>
@@ -2647,6 +3002,21 @@ function toggleDealFilter(showAll) {
   applyFilters();
 }
 
+function toggleFavoritesFilter() {
+  currentFilters.favoritesOnly = !currentFilters.favoritesOnly;
+  const btn = document.getElementById('favoritesOnlyBtn');
+  const label = document.getElementById('favoritesOnlyLabel');
+  if (currentFilters.favoritesOnly) {
+    btn.classList.add('active');
+    label.textContent = 'Favorites (' + favorites.size + ')';
+  } else {
+    btn.classList.remove('active');
+    label.textContent = 'Favorites';
+  }
+  setUrlState(currentFilters);
+  applyFilters();
+}
+
 function updateStockFilter() {
   currentFilters.stock = document.getElementById('stockFilter').value;
   setUrlState(currentFilters);
@@ -2669,7 +3039,7 @@ function clearFilters() {
     currentFilters = {
       store: '', category: '', brand: '', strainType: '', dealOnly: false, stock: 'all', sort: 'discount-desc', search: ''
     };
-    document.getElementById('storeFilter').value = '';
+document.getElementById('storeFilter').value = '';
     document.getElementById('categoryFilter').value = '';
     document.getElementById('brandFilter').value = '';
     document.getElementById('strainFilter').value = '';
@@ -2683,8 +3053,12 @@ function clearFilters() {
     updateActiveStrain('');
   const dealBtn = document.getElementById('dealFilterBtn');
   const dealsOnlyBtn = document.getElementById('dealsOnlyBtn');
+  const favoritesBtn = document.getElementById('favoritesOnlyBtn');
+  const favoritesLabel = document.getElementById('favoritesOnlyLabel');
   dealBtn.classList.add('active');
   dealsOnlyBtn.classList.remove('active');
+  favoritesBtn.classList.remove('active');
+  if (favoritesLabel) favoritesLabel.textContent = 'Favorites';
   document.getElementById('pageTitle').textContent = 'All Products';
   setUrlState(currentFilters);
   applyFilters();
@@ -2710,6 +3084,7 @@ function filterProducts(products) {
        // that is not Indica or Hybrid.
        if (currentFilters.strainType && strainTypeOf(p) !== currentFilters.strainType) return false;
        if (currentFilters.dealOnly && !p.is_deal) return false;
+       if (currentFilters.favoritesOnly && !favorites.has(p.hash)) return false;
     if (currentFilters.stock === 'in-stock' && !p.in_stock) return false;
     if (currentFilters.stock === 'out-of-stock' && p.in_stock) return false;
     if (currentFilters.search) {
@@ -2817,11 +3192,14 @@ function storeFlag(key, value) {
 
 function setSidebarOpen(open) {
   const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
   const toggle = document.getElementById('sidebarToggle');
   if (!sidebar) return;
   // The class, and the aria state, are what the CSS and assistive tech read;
   // the button has to stay reachable to bring the panel back.
   sidebar.classList.toggle('collapsed', !open);
+  sidebar.classList.toggle('open', open);
+  if (overlay) overlay.classList.toggle('open', open);
   if (toggle) {
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     toggle.setAttribute('aria-label', open ? 'Hide stores and categories panel' : 'Show stores and categories panel');
@@ -2829,7 +3207,8 @@ function setSidebarOpen(open) {
 }
 
 function toggleSidebar() {
-  const open = document.getElementById('sidebar').classList.contains('collapsed');
+  const sidebar = document.getElementById('sidebar');
+  const open = sidebar.classList.contains('collapsed') || !sidebar.classList.contains('open');
   setSidebarOpen(open);
   storeFlag(SIDEBAR_STATE_KEY, open);
 }
@@ -3032,7 +3411,8 @@ function renderStrainBadge(strain) {
 function renderTypeBadge(product) {
   const type = strainTypeOf(product);
   if (!type) return '';
-  const { label, short } = STRAIN_TYPES[type];
+  const strainInfo = STRAIN_TYPES[type] || { label: type, short: type[0]?.toUpperCase() || '?' };
+  const { label, short } = strainInfo;
   // The short form is the accessible name so the badge still reads correctly
   // when only one letter is shown.
   return `<span class="type-badge type-${type}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">
@@ -3078,17 +3458,20 @@ function renderProductCard(product) {
     ? `<span class="product-tag in-stock">In stock</span>`
     : `<span class="product-tag out-of-stock">Out of stock</span>`;
   const imgSrc = product.image_url ? productImageSrc(product) : IMAGE_PLACEHOLDER;
+  const isFavorite = favorites.has(product.hash);
+  const favoriteBtn = `<button class="favorite-btn ${isFavorite ? 'active' : ''}" data-deal-hash="${escapeHtml(product.hash)}" onclick="event.stopPropagation(); toggleFavorite('${escapeHtml(product.hash)}')" aria-label="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="${isFavorite ? 'var(--danger)' : 'none'}" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>`;
 
   return `
     <div class="product-card deal-row-clickable" data-deal-hash="${escapeHtml(product.hash)}" tabindex="0" role="button" aria-label="${escapeHtml(product.name)}">
       ${compareCheckbox(product.hash)}
+      ${favoriteBtn}
       <div class="product-card-header">
         <div class="product-tags">
           ${dealBadge}
           ${stockBadge}
           ${strain ? renderStrainBadge(strain) : ''}
         </div>
-        <img class="product-img" src="${imgSrc}" alt="" onerror="handleImageError(this)">
+        <img class="product-img" src="${imgSrc}" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">
       </div>
       <div class="product-type-row">
         ${renderTypeBadge(product)}
@@ -3123,11 +3506,18 @@ function updateStats() {
         const total = allData.products.length;
         const deals = allData.products.filter(p => p.is_deal).length;
         const storesWithDeals = new Set(allData.products.filter(p => p.is_deal).map(p => p.store_id)).size;
+        const brands = new Set(allData.products.map(p => p.brand).filter(Boolean)).size;
         
         // Update text stats
         document.getElementById('totalProducts').textContent = total;
         document.getElementById('totalDeals').textContent = deals;
         document.getElementById('storesWithDeals').textContent = storesWithDeals;
+        
+        // Update landing metrics
+        setText('landingTotalProducts', total.toLocaleString());
+        setText('landingTotalStores', (allData.stores || []).length);
+        setText('landingTotalDeals', deals.toLocaleString());
+        setText('landingTotalBrands', brands);
         
         // Update charts
         updateCategoryChart();
@@ -3508,6 +3898,9 @@ function renderModal() {
   const sa = Number(deal.original_price) - Number(deal.sale_price);
   document.getElementById('modalSavings').textContent = 'You save $' + sa.toFixed(2);
 
+  // Load price history for this product
+  loadPriceHistory(deal.store_id, deal.id);
+
   const igEl = document.getElementById('modalInfoGrid');
   igEl.innerHTML = '';
   addInfoItem('Product ID', deal.product_id);
@@ -3605,7 +3998,7 @@ function addStoreItem(label, value, store) {
   it.className = 'modal-info-item';
   let cnt = '<div class="modal-info-label">' + escapeHtml(String(label)) + '</div><div class="modal-info-value" style="display:flex;align-items:center;gap:8px">' + escapeHtml(String(value));
   if (store) {
-    cnt += '<img src="' + storeLogoSrc(store) + '" alt="" style="width:16px;height:16px;border-radius:4px;background:var(--bg)" onerror="handleImageError(this)">';
+    cnt += '<img src="' + storeLogoSrc(store) + '" alt="" style="width:16px;height:16px;border-radius:4px;background:var(--bg)" loading="lazy" decoding="async" onerror="handleImageError(this)">';
   }
   cnt += '</div>';
   it.innerHTML = cnt;
@@ -3798,6 +4191,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyStoredPanelStates();
   loadData();
   initVirtualizedGrid();
+  initKeyboardShortcuts();
+  loadFavorites();
   document.getElementById('clearFiltersBtn')?.addEventListener('click', clearFilters);
   // The overview is the entry point, so the app opens on the portfolio view
   // rather than dropping straight into the product grid.
@@ -3897,8 +4292,8 @@ function renderComparePanel() {
   const products = allData.products.filter(p => compareSelection.has(p.hash));
   grid.innerHTML = products.map(p => {
     const store = allData.stores.find(s => s.id === p.store_id);
-    const imgHtml = p.image_url ? `<img class="compare-img" src="${productImageSrc(p)}" alt="" onerror="handleImageError(this)">` : '';
-    const storeHtml = store ? '<div class="compare-store"><img src="' + storeLogoSrc(store) + '" alt="" onerror="handleImageError(this)">' + escapeHtml(store.name) + '</div>' : '';
+const imgHtml = p.image_url ? `<img class="compare-img" src="${productImageSrc(p)}" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">` : '';
+const storeHtml = store ? '<div class="compare-store"><img src="' + storeLogoSrc(store) + '" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">' + escapeHtml(store.name) + '</div>' : '';
     return `
       <div class="compare-card">
         <div class="compare-card-header">
@@ -3921,6 +4316,439 @@ function renderComparePanel() {
     `;
   }).join('');
 }
+
+// ---- Export/Share Compare ----
+function exportCompare(format) {
+  const products = allData.products.filter(p => compareSelection.has(p.hash));
+  if (products.length === 0) return;
+
+  const data = products.map(p => {
+    const store = allData.stores.find(s => s.id === p.store_id);
+    return {
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      strain_type: p.strain_type,
+      weight: p.weight,
+      thc_pct: p.thc_pct,
+      cbd_pct: p.cbd_pct,
+      sale_price: p.sale_price,
+      original_price: p.original_price,
+      discount_pct: p.discount_pct,
+      in_stock: p.in_stock,
+      store: store?.name || p.store_id,
+      product_url: p.product_url,
+      image_url: p.image_url,
+      detected_at: p.detected_at
+    };
+  });
+
+  if (format === 'csv') {
+    const headers = ['Name', 'Brand', 'Category', 'Strain Type', 'Weight', 'THC %', 'CBD %', 'Sale Price', 'Original Price', 'Discount %', 'In Stock', 'Store', 'Product URL', 'Image URL', 'Detected At'];
+    const rows = data.map(d => [
+      d.name, d.brand || '', d.category, d.strain_type || '', d.weight || '',
+      d.thc_pct || '', d.cbd_pct || '', d.sale_price, d.original_price, d.discount_pct,
+      d.in_stock ? 'Yes' : 'No', d.store, d.product_url || '', d.image_url || '',
+      d.detected_at || ''
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','))].join('\n');
+    downloadFile(csv, 'compare-products.csv', 'text/csv');
+  } else if (format === 'json') {
+    const json = JSON.stringify(data, null, 2);
+    downloadFile(json, 'compare-products.json', 'application/json');
+  }
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function shareCompare() {
+  const products = allData.products.filter(p => compareSelection.has(p.hash));
+  if (products.length === 0) return;
+
+  // Create a shareable URL with the selected product hashes
+  const hashes = products.map(p => p.hash).join(',');
+  const shareUrl = `${window.location.origin}${window.location.pathname}?compare=${encodeURIComponent(hashes)}`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: 'Product Comparison',
+      text: `Comparing ${products.length} products`,
+      url: shareUrl
+    }).catch(err => {
+      if (err.name !== 'AbortError') copyToClipboard(shareUrl);
+    });
+  } else {
+    copyToClipboard(shareUrl);
+    alert('Compare link copied to clipboard!');
+  }
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text);
+  } else {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+}
+
+// ---- Favorites ----
+async function loadFavorites() {
+  try {
+    const response = await fetch('/api/favorites');
+    if (!response.ok) return;
+    const data = await response.json();
+    favorites = new Set((data.favorites || []).map(f => f.product_id));
+    updateFavoriteButtons();
+    // Update favorites filter button label
+    const label = document.getElementById('favoritesOnlyLabel');
+    if (label && !currentFilters.favoritesOnly) {
+      label.textContent = 'Favorites';
+    }
+  } catch (e) {
+    console.warn('Failed to load favorites:', e);
+  }
+}
+
+async function toggleFavorite(hash) {
+  const product = allData.products.find(p => p.hash === hash);
+  if (!product) return;
+  
+  const isFavorite = favorites.has(hash);
+  const store = allData.stores.find(s => s.id === product.store_id);
+  
+  try {
+    const url = `/api/favorites/${encodeURIComponent(product.store_id)}/${encodeURIComponent(product.id)}`;
+    const response = await fetch(url, {
+      method: isFavorite ? 'DELETE' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: isFavorite ? undefined : JSON.stringify({
+        name: product.name,
+        brand: product.brand,
+        category: product.category,
+        image_url: product.image_url,
+        sale_price: product.sale_price,
+        original_price: product.original_price,
+        thc_pct: product.thc_pct,
+        cbd_pct: product.cbd_pct,
+        strain_type: product.strain_type,
+        url: product.url
+      })
+    });
+    
+    if (response.ok) {
+      if (isFavorite) {
+        favorites.delete(hash);
+      } else {
+        favorites.add(hash);
+      }
+      updateFavoriteButtons();
+      // Update favorites filter button label
+      const label = document.getElementById('favoritesOnlyLabel');
+      if (label) {
+        if (currentFilters.favoritesOnly) {
+          label.textContent = 'Favorites (' + favorites.size + ')';
+        }
+      }
+    } else {
+      const err = await response.json().catch(() => ({ error: 'Request failed' }));
+      alert(err.error || 'Failed to update favorite');
+    }
+  } catch (e) {
+    console.error('Favorite toggle failed:', e);
+    alert('Failed to update favorite');
+  }
+}
+
+function updateFavoriteButtons() {
+  document.querySelectorAll('.favorite-btn').forEach(btn => {
+    const hash = btn.getAttribute('data-deal-hash');
+    const isFav = favorites.has(hash);
+    btn.classList.toggle('active', isFav);
+    btn.setAttribute('aria-label', isFav ? 'Remove from favorites' : 'Add to favorites');
+    btn.title = isFav ? 'Remove from favorites' : 'Add to favorites';
+    const svg = btn.querySelector('svg');
+    if (svg) {
+      svg.setAttribute('fill', isFav ? 'var(--danger)' : 'none');
+    }
+  });
+}
+
+// ---- Price History ----
+let priceHistoryChart = null;
+
+async function loadPriceHistory(storeId, productId) {
+  const section = document.getElementById('modalPriceHistorySection');
+  const canvas = document.getElementById('modalPriceChart');
+  const empty = document.getElementById('modalPriceChartEmpty');
+  if (!section || !canvas) return;
+
+  try {
+    const response = await fetch(`/api/price-history/${encodeURIComponent(storeId)}/${encodeURIComponent(productId)}`);
+    if (!response.ok) {
+      section.style.display = 'none';
+      return;
+    }
+    const data = await response.json();
+    const history = data.history || [];
+    
+    if (history.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = '';
+    empty.hidden = true;
+    canvas.hidden = false;
+
+    // Sort by date ascending
+    history.sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+
+    const labels = history.map(h => new Date(h.recorded_at).toLocaleDateString());
+    const prices = history.map(h => h.sale_price);
+    const originalPrices = history.map(h => h.original_price);
+
+    // Destroy existing chart
+    if (priceHistoryChart) {
+      priceHistoryChart.destroy();
+    }
+
+    // Create new chart
+    priceHistoryChart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Sale Price',
+            data: prices,
+            borderColor: 'var(--primary)',
+            backgroundColor: 'rgba(88, 166, 255, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+          },
+          {
+            label: 'Original Price',
+            data: originalPrices,
+            borderColor: 'var(--muted)',
+            backgroundColor: 'rgba(139, 148, 158, 0.1)',
+            borderWidth: 1,
+            borderDash: [5, 5],
+            fill: false,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, position: 'top', labels: { font: { size: 11 }, usePointStyle: true } },
+          tooltip: {
+            backgroundColor: 'var(--card)',
+            titleColor: 'var(--text)',
+            bodyColor: 'var(--text)',
+            borderColor: 'var(--border)',
+            borderWidth: 1,
+            padding: 10,
+            displayColors: true,
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': $' + context.raw.toFixed(2);
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(48, 54, 61, 0.3)' }, ticks: { color: 'var(--muted)', font: { size: 10 } } },
+          y: { 
+            grid: { color: 'rgba(48, 54, 61, 0.3)' }, 
+            ticks: { color: 'var(--muted)', font: { size: 10 }, callback: v => '$' + v.toFixed(2) },
+            beginAtZero: false 
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.warn('Failed to load price history:', e);
+    section.style.display = 'none';
+  }
+}
+
+// ---- Keyboard Shortcuts ----
+let focusedCardIndex = -1;
+let shortcutsModalOpen = false;
+
+function initKeyboardShortcuts() {
+  document.addEventListener('keydown', handleKeyboardShortcuts);
+}
+
+function handleKeyboardShortcuts(e) {
+  // Don't intercept shortcuts when typing in inputs
+  const active = document.activeElement;
+  const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+  if (isInput && e.key !== 'Escape' && e.key !== '?') return;
+
+  // Global shortcuts
+  if (e.key === '?') {
+    e.preventDefault();
+    toggleShortcutsModal();
+    return;
+  }
+
+  if (e.key === 'Escape') {
+    if (shortcutsModalOpen) {
+      closeShortcutsModal();
+      return;
+    }
+    if (modalOpen) {
+      closeQuickView();
+      return;
+    }
+    const comparePanel = document.getElementById('comparePanel');
+    if (comparePanel && comparePanel.style.display !== 'none') {
+      closeComparePanel();
+      return;
+    }
+    const addStoreModal = document.getElementById('addStoreModal');
+    if (addStoreModal && addStoreModal.classList.contains('open')) {
+      closeAddStoreModal();
+      return;
+    }
+  }
+
+  // Grid navigation (only when product browser is active)
+  if (currentView === 'browser') {
+    const cards = document.querySelectorAll('#productGrid .product-card');
+    if (cards.length === 0) return;
+
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      focusedCardIndex = Math.min(focusedCardIndex + 1, cards.length - 1);
+      focusCard(cards, focusedCardIndex);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      focusedCardIndex = Math.max(focusedCardIndex - 1, 0);
+      focusCard(cards, focusedCardIndex);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      // Calculate columns to move down a row
+      const container = document.getElementById('productGrid');
+      const cardWidth = cards[0].offsetWidth + 14; // card + gap
+      const cols = Math.max(1, Math.floor(container.offsetWidth / cardWidth));
+      focusedCardIndex = Math.min(focusedCardIndex + cols, cards.length - 1);
+      focusCard(cards, focusedCardIndex);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const container = document.getElementById('productGrid');
+      const cardWidth = cards[0].offsetWidth + 14;
+      const cols = Math.max(1, Math.floor(container.offsetWidth / cardWidth));
+      focusedCardIndex = Math.max(focusedCardIndex - cols, 0);
+      focusCard(cards, focusedCardIndex);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      if (focusedCardIndex >= 0 && focusedCardIndex < cards.length) {
+        e.preventDefault();
+        const card = cards[focusedCardIndex];
+        const hash = card.getAttribute('data-deal-hash');
+        const deal = allData.products.find(p => p.hash === hash);
+        if (deal) openQuickView(deal);
+      }
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      focusedCardIndex = 0;
+      focusCard(cards, 0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      focusedCardIndex = cards.length - 1;
+      focusCard(cards, focusedCardIndex);
+    } else if (e.key === 'c' || e.key === 'C') {
+      // Add to compare
+      if (focusedCardIndex >= 0 && focusedCardIndex < cards.length) {
+        e.preventDefault();
+        const card = cards[focusedCardIndex];
+        const hash = card.getAttribute('data-deal-hash');
+        toggleCompareSelection(hash);
+      }
+    } else if (e.key === 'f' || e.key === 'F') {
+      // Toggle favorite
+      if (focusedCardIndex >= 0 && focusedCardIndex < cards.length) {
+        e.preventDefault();
+        const card = cards[focusedCardIndex];
+        const hash = card.getAttribute('data-deal-hash');
+        const favBtn = card.querySelector('.favorite-btn');
+        if (favBtn) favBtn.click();
+      }
+    } else if (e.key === 'r' || e.key === 'R') {
+      // Refresh data
+      e.preventDefault();
+      loadData();
+    }
+  }
+
+  // View shortcuts (global)
+  if (e.key === '1') { e.preventDefault(); showView('landing'); }
+  else if (e.key === '2') { e.preventDefault(); showView('browser'); }
+  else if (e.key === '3') { e.preventDefault(); showView('weekly-menu'); }
+  else if (e.key === '4') { e.preventDefault(); showView('weekly-deals'); }
+
+  // Add store shortcut (global)
+  if (e.key === 'a' || e.key === 'A') {
+    e.preventDefault();
+    openAddStoreModal();
+  }
+}
+
+function focusCard(cards, index) {
+  // Remove previous focus
+  cards.forEach(c => c.classList.remove('keyboard-focused'));
+  if (index >= 0 && index < cards.length) {
+    const card = cards[index];
+    card.classList.add('keyboard-focused');
+    card.focus();
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }
+}
+
+function toggleShortcutsModal() {
+  const modal = document.getElementById('shortcutsModal');
+  if (!modal) return;
+  if (shortcutsModalOpen) {
+    closeShortcutsModal();
+  } else {
+    modal.classList.add('open');
+    shortcutsModalOpen = true;
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeShortcutsModal() {
+  const modal = document.getElementById('shortcutsModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  shortcutsModalOpen = false;
+  document.body.style.overflow = '';
+}
+
 </script>
 </body>
 </html>
