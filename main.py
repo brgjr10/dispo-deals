@@ -98,6 +98,8 @@ class DispoDeals:
         if all_new_deals:
             self._send_notifications(store_results)
 
+        self._maybe_send_weekly_summary(store_results)
+
         logger.info(f"Run complete. Found {len(all_new_deals)} new deals across {len(store_results)} stores")
         return True
 
@@ -247,6 +249,56 @@ class DispoDeals:
             return compute_weekly_diff(current_snapshot.items, [])
 
         return compute_weekly_diff(current_snapshot.items, prev_snapshot.items)
+
+    def _maybe_send_weekly_summary(self, store_results: dict):
+        """Send each store's weekly menu digest, once per week, on the send day.
+
+        This is a separate stream from the new-deal alerts: a digest goes out on
+        a fixed weekday with every item marked new or carried over from last
+        week, whereas a deal alert fires the moment a discount appears. The
+        week is claimed from storage *before* the message is sent, so a crash,
+        a retry, or another run later the same week cannot repeat it.
+        """
+        logger = logging.getLogger(__name__)
+        weekly = self.config.weekly_menu
+        if not weekly.enabled:
+            return
+
+        today = date.today()
+        if today.weekday() != weekly.send_day:
+            return
+
+        week_start = today - timedelta(days=today.weekday())
+        prev_week_start = week_start - timedelta(weeks=1)
+
+        for store in self.config.get_webhook_stores():
+            # A store whose scrape failed has no trustworthy snapshot this week.
+            if store_results.get(store.id, {}).get("error"):
+                continue
+
+            # On the very first week there is no previous menu, so every item
+            # would be marked new and the digest would carry no information.
+            if weekly.require_previous_week:
+                if not self.storage.get_weekly_snapshot(store.id, prev_week_start):
+                    continue
+
+            if not self.storage.claim_weekly_summary(store.id, week_start):
+                continue
+
+            diff = self._get_weekly_diff(store)
+            if diff is None:
+                continue
+
+            if diff.new_count == 0 and diff.carryover_count == 0:
+                continue
+
+            if self.notifier.send_weekly_summary(store, diff):
+                logger.info(
+                    "Sent weekly menu digest for %s (%s new, %s carryover)",
+                    store.name, diff.new_count, diff.carryover_count,
+                )
+            else:
+                logger.warning("Failed to send weekly menu digest for %s", store.name)
 
     def run_scheduler(self):
         import schedule

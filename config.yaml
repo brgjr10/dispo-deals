@@ -67,6 +67,9 @@ deduplication:
 weekly_menu:
   snapshot_day: 0
   min_items_for_snapshot: 10
+  enabled: true
+  send_day: 0
+  require_previous_week: true
 webhook:
   max_retries: 3
   backoff_base_seconds: 5

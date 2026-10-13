@@ -61,6 +61,32 @@ class SQLiteStorage:
                     UNIQUE(store_id, week_start)
                 );
 
+                -- One row per weekly menu digest actually sent. The unique
+                -- constraint is what makes "once per week" atomic: a claim
+                -- either inserts a new row or hits the constraint and reports
+                -- that the week is already taken.
+                CREATE TABLE IF NOT EXISTS weekly_summaries (
+                    store_id TEXT NOT NULL,
+                    week_start TEXT NOT NULL,
+                    sent_at TEXT NOT NULL,
+                    PRIMARY KEY (store_id, week_start)
+                );
+
+                -- Stores added at runtime rather than hard-coded in config.yaml.
+                -- Resolved from Dutchie, so the name and logo are the store's
+                -- own rather than a slug used as a display name.
+                CREATE TABLE IF NOT EXISTS known_stores (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    cname TEXT,
+                    url TEXT NOT NULL,
+                    logo_url TEXT,
+                    address TEXT,
+                    phone TEXT,
+                    source TEXT DEFAULT 'dutchie',
+                    added_at TEXT NOT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS store_logos (
                     store_id TEXT PRIMARY KEY,
                     image_data BLOB,
@@ -282,6 +308,74 @@ class SQLiteStorage:
                 data["items"] = json.loads(data["items"])
                 return WeeklySnapshot.from_dict(data)
         return None
+
+    def claim_weekly_summary(self, store_id: str, week_start: date) -> bool:
+        """Reserve the right to send this store's weekly menu for this week.
+
+        Returns True when this call is the one that reserved it. The row is
+        committed before the message goes out, so a crash, a retry or a second
+        run later the same week cannot repeat the digest: the insert either
+        succeeds once or hits the primary key and reports the week is taken.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO weekly_summaries (store_id, week_start, sent_at) VALUES (?, ?, ?)",
+                (
+                    store_id,
+                    week_start.isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
+                ),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def save_known_store(self, store: Dict[str, Any]) -> bool:
+        """Record a store added at runtime, keyed by its stable id.
+
+        The id is Dutchie's dispensary id rather than the cName slug, so a
+        re-add of the same store updates the row instead of duplicating it.
+        """
+        with self._get_connection() as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO known_stores
+                    (id, name, cname, url, logo_url, address, phone, source, added_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        store["id"],
+                        store["name"],
+                        store.get("cname", ""),
+                        store["url"],
+                        store.get("logo_url", ""),
+                        store.get("address", ""),
+                        store.get("phone", ""),
+                        store.get("source", "dutchie"),
+                        datetime.now(timezone.utc).isoformat(),
+                    ),
+                )
+                conn.commit()
+                return True
+            except Exception as e:
+                logger.error(f"Failed to save known store {store.get('id')!r}: {e}")
+                return False
+
+    def list_known_stores(self) -> List[Dict[str, Any]]:
+        """Return every store added at runtime, newest first."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM known_stores ORDER BY added_at DESC, name ASC"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def count_store_products(self, store_id: str) -> int:
+        """How many products this store currently has on the dashboard."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM seen_deals WHERE store_id = ?", (store_id,)
+            ).fetchone()
+        return row[0] if row else 0
 
     def save_store_logo(self, store_id: str, image_data: bytes, mime_type: str = "image/png"):
         with self._get_connection() as conn:

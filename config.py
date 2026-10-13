@@ -29,8 +29,25 @@ class DeduplicationConfig:
 
 @dataclass
 class WeeklyMenuConfig:
+    """Weekly menu digest settings.
+
+    `send_day` is a weekday index in Python's `date.weekday()` numbering
+    (0 = Monday, 6 = Sunday), and is also the day the snapshot is stamped for,
+    so a digest and the snapshot it describes always cover the same week.
+    `min_items_for_snapshot` guards against a half-scraped week overwriting a
+    complete one.
+    """
+
     snapshot_day: int = 0
     min_items_for_snapshot: int = 10
+    # Whether the weekly menu digest is sent at all. Disabled by default so
+    # upgrading does not start a new notification stream on its own.
+    enabled: bool = True
+    send_day: int = 0
+    # Only send when last week's menu is available to diff against. On the very
+    # first week every item is "new", so the new/carryover markers carry no
+    # information and the digest is skipped until a real comparison exists.
+    require_previous_week: bool = True
 
 
 @dataclass

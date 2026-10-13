@@ -6,6 +6,7 @@ Serves data from SQLite and the dashboard HTML.
 import json
 import sqlite3
 import os
+import re
 import sys
 import logging
 import signal
@@ -16,10 +17,14 @@ from datetime import date, datetime, timedelta
 from urllib.parse import urlparse, parse_qs, unquote
 from functools import lru_cache
 from collections import OrderedDict
+from typing import Any, Dict, List, Optional
+
+import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from storage.sqlite import SQLiteStorage
+from models import WeeklySnapshot
 from utils.diff import compute_weekly_diff
 from utils.images import (
     download_image,
@@ -38,6 +43,10 @@ PLACEHOLDER_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="80" height="
   <rect width="80" height="80" rx="8" fill="#161b22"/>
   <path d="M40 22c6 0 11 5 11 11 0 4-2 7-5 9 3 3 4 6 4 9v7H30v-7c0-3 1-6 4-9-3-2-5-5-5-9 0-6 5-11 11-11z" fill="#3fb950"/>
 </svg>"""
+
+# A Dutchie cName slug: lowercase words joined by hyphens. Used to reject a
+# stray path segment or an unrelated URL before it is treated as a store.
+CN_NAME_RE = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
 
 # Security headers to add to all responses
 SECURITY_HEADERS = {
@@ -102,9 +111,26 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         for header, value in SECURITY_HEADERS.items():
             self.send_header(header, value)
 
+    def _send_json_error(self, status: int, message: str):
+        """Return an API error as JSON rather than an HTML error page.
+
+        The dashboard reads `error` from the body to tell the user what went
+        wrong, and `send_error`'s HTML page cannot be parsed as JSON, so the
+        real reason would be lost behind a generic status message.
+        """
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self._send_security_headers()
+        self.end_headers()
+        self.wfile.write(
+            json.dumps({"error": message}, ensure_ascii=False).encode('utf-8')
+        )
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+        query = parse_qs(parsed.query)
 
         if path == '/api/data':
             self.send_api_data()
@@ -342,6 +368,241 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_error(500, str(e))
 
+    def resolve_dutchie_store(self, url: str) -> Optional[Dict[str, Any]]:
+        """Resolve a Dutchie store URL to its real name, id and address.
+
+        The cName slug is taken from the URL and looked up through the same
+        `filteredDispensaries` query the scraper uses, so a store only needs to
+        publish a link for it to be addable. Returns None when the store does
+        not exist or Dutchie cannot be reached.
+        """
+        slug = self._extract_dutchie_slug(url)
+        if not slug:
+            return None
+
+        query = """
+        query Dispensary($cNameOrID: String) {
+            filteredDispensaries(filter: {cNameOrID: $cNameOrID}) {
+                id
+                name
+                cName
+                address
+                phone
+                status
+                location { city state country }
+            }
+        }
+        """
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Origin': 'https://dutchie.com',
+            'Referer': 'https://dutchie.com/',
+        }
+        for endpoint in ('https://api.dutchie.com/graphql', 'https://dutchie.com/graphql'):
+            try:
+                response = requests.post(
+                    endpoint,
+                    json={'query': query, 'variables': {'cNameOrID': slug}},
+                    headers=headers,
+                    timeout=30,
+                )
+                if response.status_code != 200:
+                    continue
+                body = response.json()
+                matches = (body.get('data') or {}).get('filteredDispensaries') or []
+                # Prefer the exact slug so a partial match cannot add the
+                # wrong dispensary under the name the user pasted.
+                match = next(
+                    (m for m in matches if str(m.get('cName', '')).lower() == slug.lower()),
+                    matches[0] if matches else None,
+                )
+                if match and match.get('id'):
+                    location = match.get('location') or {}
+                    return {
+                        'id': str(match.get('id')),
+                        'name': match.get('name') or slug,
+                        'cname': match.get('cName') or slug,
+                        'url': f'https://dutchie.com/stores/{slug}',
+                        'address': match.get('address') or '',
+                        'phone': match.get('phone') or '',
+                        'city': location.get('city') or '',
+                        'state': location.get('state') or '',
+                        'source': 'dutchie',
+                    }
+            except Exception as e:
+                logger.warning(f"Dutchie store resolve failed on {endpoint}: {e}")
+                continue
+        return None
+
+    @staticmethod
+    def _extract_dutchie_slug(url: str) -> str:
+        """Pull the cName slug out of any Dutchie store link form.
+
+        Accepts a full URL, a bare host/path, or a bare slug. A candidate is
+        only returned when it looks like a cName (lowercase words joined by
+        hyphens), so a browse path such as ".../stores/" or an unrelated URL
+        yields nothing rather than a nonsense store.
+        """
+        cleaned = (url or '').strip().split('?')[0].split('#')[0].rstrip('/').strip()
+        if not cleaned:
+            return ''
+
+        # Normalise to something urlparse can read, then look for the
+        # "/stores/<slug>" segment Dutchie's links use.
+        for candidate in (cleaned, f'https://{cleaned}'):
+            parsed = urlparse(candidate)
+            parts = [p for p in parsed.path.split('/') if p]
+            if 'stores' in parts:
+                idx = parts.index('stores')
+                if idx + 1 < len(parts):
+                    slug = parts[idx + 1].lower()
+                    if CN_NAME_RE.match(slug):
+                        return slug
+                continue
+
+            # No "/stores/" segment: accept a bare slug only when the whole
+            # input is the slug itself and nothing else.
+            if not parsed.scheme and not parsed.netloc and len(parts) == 1:
+                slug = parts[0].lower()
+                if CN_NAME_RE.match(slug):
+                    return slug
+        return ''
+
+    def add_store(self, url: str) -> Dict[str, Any]:
+        """Resolve, scrape and persist a store added at runtime.
+
+        The store is recorded before its menu is fetched, so a refresh while a
+        long scrape is still running does not lose it.
+        """
+        store_info = self.resolve_dutchie_store(url)
+        if not store_info:
+            raise ValueError('No Dutchie dispensary found at that link')
+
+        # Already in the dashboard? Skip the scrape but still report it, so
+        # re-adding a store is cheap and idempotent.
+        existing_ids = {s['id'] for s in self.get_stores()}
+        if store_info['id'] in existing_ids:
+            return {
+                'store': store_info,
+                'product_count': self.storage.count_store_products(store_info['id']),
+                'already_added': True,
+            }
+
+        self.storage.save_known_store(store_info)
+
+        from models import StoreConfig, NotificationMode
+        from config import Config
+        from scrapers import create_scraper
+
+        store_config = StoreConfig(
+            id=store_info['id'],
+            name=store_info['name'],
+            url=store_info['url'],
+            scraper='dutchie',
+            logo_url=store_info.get('logo_url', ''),
+            notification_mode=NotificationMode.PER_STORE,
+            enabled=True,
+            webhook_enabled=False,
+        )
+
+        # A missing or unreadable config must not stop a store being added, so
+        # the defaults are used instead of aborting the request.
+        try:
+            config = Config.load(str(self.project_root / 'config.yaml'))
+        except Exception as e:
+            logger.warning(f"Could not load config.yaml for the new store: {e}")
+            config = Config()
+
+        scraper = create_scraper(store_config, config)
+        deals = scraper.fetch_menu() or []
+
+        saved = 0
+        for deal in deals:
+            if self.storage.is_new_deal(deal, False):
+                self.storage.save_seen_deal(deal)
+                saved += 1
+            else:
+                self.storage.update_seen_deal(deal, notify=False)
+
+        # Store the logo so the dashboard can show it next to the new store.
+        try:
+            logo = scraper.fetch_logo()
+            if logo:
+                self.storage.save_store_logo(store_config.id, logo, get_mime_type(logo))
+                store_info['logo_url'] = f'/api/logo/{store_config.id}'
+        except Exception as e:
+            logger.warning(f"Failed to fetch logo for {store_config.id}: {e}")
+
+        # A weekly snapshot keyed on today's week means the new store shows up
+        # in the menu view straight away.
+        try:
+            today = date.today()
+            week_start = today - timedelta(days=today.weekday())
+            self.storage.save_weekly_snapshot(
+                WeeklySnapshot(
+                    store_id=store_config.id,
+                    week_start=week_start,
+                    items=deals,
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Failed to snapshot {store_config.id}: {e}")
+
+        return {
+            'store': store_info,
+            'product_count': len(deals),
+            'new_products': saved,
+            'already_added': False,
+        }
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == '/api/stores/add':
+            self.receive_add_store()
+        else:
+            self._send_json_error(404, 'Not found')
+
+    def receive_add_store(self):
+        """Read the JSON body, add the store, and report the outcome."""
+        try:
+            length = int(self.headers.get('Content-Length') or 0)
+            raw = self.rfile.read(length) if length else b''
+            try:
+                payload = json.loads(raw.decode('utf-8') or '{}')
+            except (ValueError, UnicodeDecodeError):
+                self._send_json_error(400, 'Request body must be JSON')
+                return
+
+            if not isinstance(payload, dict):
+                self._send_json_error(400, 'Request body must be a JSON object')
+                return
+
+            url = (payload.get('url') or '').strip()
+            if not url:
+                self._send_json_error(400, 'A Dutchie store URL is required')
+                return
+
+            try:
+                result = self.add_store(url)
+            except ValueError as e:
+                self._send_json_error(400, str(e))
+                return
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(result, default=str, ensure_ascii=False).encode('utf-8'))
+        except Exception as e:
+            logger.error(f"add_store failed: {e}")
+            # The request is still open here, so the failure can be reported.
+            self._send_json_error(500, str(e))
+
     def get_dashboard_data(self):
         stores = self.get_stores()
         deals = self.get_all_deals()
@@ -397,15 +658,41 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         # Also include configured stores
         import yaml
-        with open(self.project_root / "config.yaml", encoding='utf-8') as f:
-            config = yaml.safe_load(f)
+        try:
+            with open(self.project_root / "config.yaml", encoding='utf-8') as f:
+                config = yaml.safe_load(f) or {}
+        except OSError:
+            # A missing config is not fatal: the dashboard still shows every
+            # store that already has products or was added at runtime.
+            config = {}
         for s in config.get("stores", []):
             if s.get("enabled") and s["id"] not in store_ids:
                 store_ids.append(s["id"])
 
+        # Stores added at runtime carry their real name and logo, so they must
+        # win over the slug that an unknown id would otherwise fall back to.
+        known = {k["id"]: k for k in self.storage.list_known_stores()}
+        for sid in known:
+            if sid not in store_ids:
+                store_ids.append(sid)
+
         stores = []
         for sid in store_ids:
             cfg = next((s for s in config.get("stores", []) if s["id"] == sid), {})
+            added = known.get(sid)
+            if added:
+                # The local /api/logo proxy is preferred so the logo is served
+                # from this server rather than hotlinked.
+                logo = cfg.get("logo_url") or f"/api/logo/{sid}"
+                stores.append({
+                    "id": sid,
+                    "name": added.get("name") or cfg.get("name", sid),
+                    "logo_url": logo,
+                    "enabled": cfg.get("enabled", True),
+                    "address": added.get("address") or "",
+                    "phone": added.get("phone") or "",
+                })
+                continue
             stores.append({
                 "id": sid,
                 "name": cfg.get("name", sid),

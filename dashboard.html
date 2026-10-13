@@ -199,6 +199,57 @@ body {
 .btn-toggle { display: inline-flex; align-items: center; gap: 6px; }
 .btn-toggle.active { background: var(--primary); color: var(--bg); }
 
+/* Location button — finds nearby dispensaries using browser geolocation */
+.location-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  min-width: 100px;
+}
+.location-btn .location-btn-text { display: inline; }
+.location-btn.loading { pointer-events: none; opacity: 0.7; }
+.location-btn.loading .location-btn-text { display: none; }
+.location-btn.loading::after {
+  content: "";
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: vg-spin 0.8s linear infinite;
+}
+
+/* Add Store modal — narrow, centred, single-field form */
+.add-store-modal { max-height: none; }
+.add-store-body {
+  padding: 4px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.add-store-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+.add-store-input { width: 100%; min-width: 0; }
+.add-store-status {
+  font-size: 12.5px;
+  min-height: 18px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.add-store-status.error { color: var(--danger); }
+.add-store-status.success { color: var(--success); }
+.add-store-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 /* Filter bar — the controls beneath the header search. The segmented All/Deals
    toggle, the stock select and the clear button live here; the store /
    category / brand / sort selects live in the header row above. */
@@ -643,12 +694,12 @@ body {
 
 /* Animations */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
 }
 @keyframes fadeOut {
     from { opacity: 1; transform: translateY(0); }
-    to { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 0; transform: translateY(-8px); }
 }
 @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -658,8 +709,143 @@ body {
     from { transform: scale(0.95); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
-.card-enter { animation: fadeIn 0.3s ease-out; }
-.card-enter-active { animation: fadeIn 0.3s ease-out; }
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(12px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideOutRight {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(12px); }
+}
+@keyframes countUp {
+    from { opacity: 0; transform: translateY(4px) scale(0.9); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.card-enter { animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+.card-enter-active { animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Staggered entrance for product grid cards */
+.product-card {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, box-shadow;
+}
+.product-card:nth-child(1) { animation-delay: 0ms; }
+.product-card:nth-child(2) { animation-delay: 20ms; }
+.product-card:nth-child(3) { animation-delay: 40ms; }
+.product-card:nth-child(4) { animation-delay: 60ms; }
+.product-card:nth-child(5) { animation-delay: 80ms; }
+.product-card:nth-child(6) { animation-delay: 100ms; }
+.product-card:nth-child(7) { animation-delay: 120ms; }
+.product-card:nth-child(8) { animation-delay: 140ms; }
+.product-card:nth-child(9) { animation-delay: 160ms; }
+.product-card:nth-child(10) { animation-delay: 180ms; }
+.product-card:nth-child(n+11) { animation-delay: 200ms; }
+
+/* Filter row and chips */
+.filter-row {
+    animation: fadeIn 0.3s ease-out both;
+}
+.filter-chips {
+    animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.filter-chip {
+    animation: slideInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stats bar items */
+.stat {
+    animation: countUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stat:nth-child(1) { animation-delay: 80ms; }
+.stat:nth-child(2) { animation-delay: 120ms; }
+.stat:nth-child(3) { animation-delay: 160ms; }
+
+/* Charts container */
+.charts-container {
+    animation: fadeIn 0.5s ease-out both;
+}
+
+/* Sidebar transitions */
+.sidebar {
+    transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s;
+}
+.nav-item {
+    transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
+}
+.nav-item:hover { transform: translateX(2px); }
+.nav-item.active { transform: translateX(2px); }
+.nav-group-header {
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-sub-item {
+    transition: color 0.12s ease, padding-left 0.12s ease;
+}
+.nav-sub-item:hover { padding-left: 14px; }
+
+/* Button and interactive element transitions */
+.btn {
+    transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.35);
+}
+.deal-segment .btn-toggle {
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.filter-select {
+    transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.filter-select:focus {
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.25);
+}
+.search-input {
+    transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.search-input:focus {
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.25);
+}
+
+/* Modal backdrop and panel */
+.modal-backdrop {
+    transition: opacity 0.2s ease, visibility 0.2s ease, backdrop-filter 0.2s ease;
+}
+.modal {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+.compare-panel {
+    animation: compareSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Insights cards */
+.insight-card {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Skeleton loading */
+.vg-skeleton {
+    animation: vg-pulse 1.5s ease-in-out infinite;
+}
+
+/* Smooth scroll */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
 
 /* Charts container */
 .charts-container {
@@ -824,8 +1010,12 @@ html {
           </button>
           <h1 id="pageTitle">All Products</h1>
         </div>
-        <div class="header-actions">
+<div class="header-actions">
           <input type="search" class="search-input" id="searchInput" placeholder="Search products, brands, categories...">
+          <button class="btn ghost location-btn" id="addStoreBtn" aria-label="Add a Dutchie dispensary by URL" title="Add a Dutchie dispensary by URL">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span class="location-btn-text">Add Store</span>
+          </button>
           <select class="filter-select" id="storeFilter">
             <option value="">All Stores</option>
           </select>
@@ -964,6 +1154,30 @@ html {
     </div>
   </div>
   <div class="compare-grid" id="compareGrid"></div>
+</div>
+
+<!-- Add Store Modal -->
+<div id="addStoreModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="addStoreTitle">
+  <div class="modal add-store-modal" role="document" tabindex="-1" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">
+        <div class="modal-name" id="addStoreTitle">Add a Dispensary</div>
+        <div class="modal-meta">Paste a Dutchie store link and its menu will be fetched and added to the dashboard.</div>
+      </div>
+      <button class="modal-close" id="addStoreClose" aria-label="Close add store">&times;</button>
+    </div>
+    <div class="add-store-body">
+      <label class="add-store-label" for="addStoreUrl">Dutchie store URL</label>
+      <input type="url" class="search-input add-store-input" id="addStoreUrl"
+             placeholder="https://dutchie.com/stores/your-dispensary"
+             autocomplete="off" spellcheck="false">
+      <div class="add-store-status" id="addStoreStatus" role="status" aria-live="polite"></div>
+      <div class="add-store-actions">
+        <button class="btn ghost" id="addStoreCancel" type="button">Cancel</button>
+        <button class="btn" id="addStoreConfirm" type="button">Add Store</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Quick View Modal -->
@@ -2415,6 +2629,81 @@ document.getElementById('categoryMetric')?.addEventListener('change', updateCate
 document.getElementById('brandMetric')?.addEventListener('change', updateBrandChart);
 document.getElementById('insightsToggle')?.addEventListener('click', toggleInsights);
 document.getElementById('sidebarToggle')?.addEventListener('click', toggleSidebar);
+document.getElementById('addStoreBtn')?.addEventListener('click', openAddStoreModal);
+document.getElementById('addStoreClose')?.addEventListener('click', closeAddStoreModal);
+document.getElementById('addStoreCancel')?.addEventListener('click', closeAddStoreModal);
+document.getElementById('addStoreConfirm')?.addEventListener('click', submitAddStore);
+document.getElementById('addStoreModal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeAddStoreModal();
+});
+document.getElementById('addStoreUrl')?.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); submitAddStore(); }
+});
+
+// ---- Add Store (by Dutchie URL) ----
+function openAddStoreModal() {
+  const backdrop = document.getElementById('addStoreModal');
+  if (!backdrop) return;
+  const status = document.getElementById('addStoreStatus');
+  const input = document.getElementById('addStoreUrl');
+  if (status) { status.textContent = ''; status.className = 'add-store-status'; }
+  if (input) input.value = '';
+  backdrop.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => input?.focus(), 50);
+}
+
+function closeAddStoreModal() {
+  const backdrop = document.getElementById('addStoreModal');
+  if (!backdrop) return;
+  backdrop.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function setAddStoreStatus(message, kind) {
+  const status = document.getElementById('addStoreStatus');
+  if (!status) return;
+  status.textContent = message;
+  status.className = 'add-store-status' + (kind ? ' ' + kind : '');
+}
+
+async function submitAddStore() {
+  const input = document.getElementById('addStoreUrl');
+  const confirmBtn = document.getElementById('addStoreConfirm');
+  const raw = (input?.value || '').trim();
+  if (!raw) {
+    setAddStoreStatus('Paste a Dutchie store link first.', 'error');
+    return;
+  }
+  if (!confirmBtn || confirmBtn.classList.contains('loading')) return;
+
+  confirmBtn.classList.add('loading');
+  setAddStoreStatus('Resolving and fetching the menu, this can take a moment...');
+
+  try {
+    const response = await fetch('/api/stores/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: raw })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || ('Request failed with status ' + response.status));
+    }
+
+    const name = data.store?.name || 'The store';
+    const products = data.product_count || 0;
+    setAddStoreStatus(`Added ${name} — ${products} products on its menu. Refreshing...`, 'success');
+    setTimeout(() => {
+      closeAddStoreModal();
+      loadData();
+    }, 900);
+  } catch (err) {
+    setAddStoreStatus(err.message || 'Could not add that store.', 'error');
+  } finally {
+    confirmBtn.classList.remove('loading');
+  }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Panels must be restored before the first render so the charts are not sized
