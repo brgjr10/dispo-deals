@@ -531,9 +531,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             logo = scraper.fetch_logo()
             if logo:
                 self.storage.save_store_logo(store_config.id, logo, get_mime_type(logo))
-                store_info['logo_url'] = f'/api/logo/{store_config.id}'
         except Exception as e:
             logger.warning(f"Failed to fetch logo for {store_config.id}: {e}")
+
+        # The logo is served through the local proxy whether or not the source
+        # had one, so record that path rather than the empty value resolved
+        # earlier. Re-saving keeps the stored row in step with what the
+        # dashboard will actually request.
+        store_info['logo_url'] = f'/api/logo/{store_config.id}'
+        self.storage.save_known_store(store_info)
 
         # A weekly snapshot keyed on today's week means the new store shows up
         # in the menu view straight away.
