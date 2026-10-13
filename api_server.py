@@ -8,11 +8,14 @@ import sqlite3
 import os
 import sys
 import logging
+import signal
 import threading
 from http.server import HTTPServer, SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from datetime import date, datetime, timedelta
 from urllib.parse import urlparse, parse_qs, unquote
+from functools import lru_cache
+from collections import OrderedDict
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -36,6 +39,46 @@ PLACEHOLDER_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="80" height="
   <path d="M40 22c6 0 11 5 11 11 0 4-2 7-5 9 3 3 4 6 4 9v7H30v-7c0-3 1-6 4-9-3-2-5-5-5-9 0-6 5-11 11-11z" fill="#3fb950"/>
 </svg>"""
 
+# Security headers to add to all responses
+SECURITY_HEADERS = {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'",
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+}
+
+class LRUCache:
+    """Simple LRU cache with max size."""
+    def __init__(self, maxsize=1000):
+        self.maxsize = maxsize
+        self.cache = OrderedDict()
+        self.lock = threading.Lock()
+
+    def get(self, key):
+        with self.lock:
+            if key in self.cache:
+                self.cache.move_to_end(key)
+                return self.cache[key]
+            return None
+
+    def set(self, key, value):
+        with self.lock:
+            if key in self.cache:
+                self.cache.move_to_end(key)
+            self.cache[key] = value
+            if len(self.cache) > self.maxsize:
+                self.cache.popitem(last=False)
+
+    def clear(self):
+        with self.lock:
+            self.cache.clear()
+
+    def __len__(self):
+        with self.lock:
+            return len(self.cache)
+
 
 class DashboardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -49,7 +92,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         # profiles are shared across every product carrying that strain.
         self._strain_index = None
         self._strain_index_lock = threading.Lock()
+        # LRU caches with size limits to prevent unbounded memory growth
+        self._image_cache = LRUCache(maxsize=500)
+        self._strain_cache = LRUCache(maxsize=1000)
         super().__init__(*args, directory=str(self.project_root), **kwargs)
+
+    def _send_security_headers(self):
+        """Add security headers to the response."""
+        for header, value in SECURITY_HEADERS.items():
+            self.send_header(header, value)
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -71,6 +122,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     content = f.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self._send_security_headers()
                 self.end_headers()
                 self.wfile.write(content.encode('utf-8'))
             except Exception as e:
@@ -91,12 +143,14 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-Type', get_mime_type(logo_data))
                 self.send_header('Cache-Control', 'public, max-age=604800')
+                self._send_security_headers()
                 self.end_headers()
                 self.wfile.write(logo_data)
             else:
                 self.send_response(200)
                 self.send_header('Content-Type', 'image/svg+xml')
                 self.send_header('Cache-Control', 'public, max-age=3600')
+                self._send_security_headers()
                 self.end_headers()
                 self.wfile.write(PLACEHOLDER_SVG.encode('utf-8'))
         except Exception as e:
@@ -147,12 +201,14 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-Type', get_mime_type(image_data))
                 self.send_header('Cache-Control', 'public, max-age=604800')
+                self._send_security_headers()
                 self.end_headers()
                 self.wfile.write(image_data)
             else:
-                self.send_response(200)
+                self.send_response(404)
                 self.send_header('Content-Type', 'image/svg+xml')
                 self.send_header('Cache-Control', 'public, max-age=3600')
+                self._send_security_headers()
                 self.end_headers()
                 self.wfile.write(PLACEHOLDER_SVG.encode('utf-8'))
         except Exception as e:
@@ -170,15 +226,22 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """
         cache_dir = str(self.project_root / 'cache' / 'images')
 
+        # Check LRU cache first
+        cached = self._image_cache.get(key)
+        if cached:
+            return cached
+
         cached = load_image_cache(cache_dir, key)
         if cached:
             # Backfill the DB copy so it is available if the file cache is lost.
             self.storage.save_product_image(key, cached, get_mime_type(cached))
+            self._image_cache.set(key, cached)
             return cached
 
         cached = self.storage.get_product_image(key)
         if cached:
             save_image_cache(cached, cache_dir, key)
+            self._image_cache.set(key, cached)
             return cached
 
         remote_url = self._get_image_url_for_hash(key)
@@ -191,6 +254,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             mime = get_mime_type(downloaded)
             save_image_cache(downloaded, cache_dir, key)
             self.storage.save_product_image(key, downloaded, mime)
+            self._image_cache.set(key, downloaded)
         return downloaded
 
     def _resize_for_cache(self, image_data):
@@ -249,6 +313,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
             self.end_headers()
             self.wfile.write(json.dumps(data, default=str, ensure_ascii=False).encode('utf-8'))
         except Exception as e:
@@ -266,6 +331,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')
+            self._send_security_headers()
             self.end_headers()
             self.wfile.write(json.dumps({
                 "products": products,
@@ -314,12 +380,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         for product in products:
             name = product.get("strain_name") or by_hash.get(product.get("hash"))
-            strain = index.get(normalize_name(name)) if name else None
-            product["strain"] = strain.to_dict() if strain else None
-        return products
-        index = self._strain_index_map()
-        for product in products:
-            name = product.get("strain_name")
             strain = index.get(normalize_name(name)) if name else None
             product["strain"] = strain.to_dict() if strain else None
         return products
@@ -494,6 +554,15 @@ def run_server(port=4040):
     server = ThreadingHTTPServer(('', port), DashboardHandler)
     print(f"Dashboard server running at http://localhost:{port}")
     print(f"Open http://localhost:{port}/dashboard.html in your browser")
+
+    def shutdown_handler(signum, frame):
+        print(f"\nReceived signal {signum}, shutting down gracefully...")
+        server.shutdown()
+
+    # Handle both SIGTERM (Docker) and SIGINT (Ctrl+C)
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:

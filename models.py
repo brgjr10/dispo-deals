@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Dict, Any
 from enum import Enum
 import hashlib
@@ -156,7 +156,7 @@ class Deal:
     discount_pct: float
     image_url: str
     product_url: str
-    detected_at: datetime = field(default_factory=datetime.utcnow)
+    detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     in_stock: bool = True
     thc_pct: Optional[float] = None
     cbd_pct: Optional[float] = None
@@ -257,7 +257,7 @@ class WeeklySnapshot:
     store_id: str
     week_start: date
     items: List[Deal]
-    captured_at: datetime = field(default_factory=datetime.utcnow)
+    captured_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         return {

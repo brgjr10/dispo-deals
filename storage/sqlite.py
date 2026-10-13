@@ -1,7 +1,7 @@
 import sqlite3
 import json
 import os
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 import logging
@@ -21,8 +21,10 @@ class SQLiteStorage:
     def _get_connection(self) -> sqlite3.Connection:
         # timeout guards against "database is locked" when the scraper and api
         # containers share the data volume.
+        # WAL mode enables better concurrency for read-heavy workloads.
         conn = sqlite3.connect(self.db_path, timeout=30)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
         return conn
 
     def _init_db(self):
@@ -144,7 +146,7 @@ class SQLiteStorage:
         return None
 
     def save_seen_deal(self, deal: Deal) -> SeenDeal:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         seen = SeenDeal(
             hash=deal.hash,
             store_id=deal.store_id,
@@ -187,7 +189,7 @@ class SQLiteStorage:
         if not existing:
             return self.save_seen_deal(deal)
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         max_discount = max(existing.max_discount_pct, deal.discount_pct)
         notify_count = existing.notify_count + (1 if notify else 0)
 
@@ -286,7 +288,7 @@ class SQLiteStorage:
             conn.execute("""
                 INSERT OR REPLACE INTO store_logos (store_id, image_data, mime_type, updated_at)
                 VALUES (?, ?, ?, ?)
-            """, (store_id, image_data, mime_type, datetime.utcnow().isoformat()))
+            """, (store_id, image_data, mime_type, datetime.now(timezone.utc).isoformat()))
             conn.commit()
 
     def get_store_logo(self, store_id: str) -> Optional[bytes]:
@@ -301,7 +303,7 @@ class SQLiteStorage:
             conn.execute("""
                 INSERT OR REPLACE INTO product_images (url_hash, image_data, mime_type, updated_at)
                 VALUES (?, ?, ?, ?)
-            """, (url_hash, image_data, mime_type, datetime.utcnow().isoformat()))
+            """, (url_hash, image_data, mime_type, datetime.now(timezone.utc).isoformat()))
             conn.commit()
 
     def get_product_image(self, url_hash: str) -> Optional[bytes]:
@@ -425,9 +427,9 @@ class SQLiteStorage:
 
     def save_strain(self, strain: Strain) -> bool:
         """Insert or refresh a strain profile, preserving lookup counts."""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         if strain.fetched_at is None:
-            strain.fetched_at = datetime.utcnow()
+            strain.fetched_at = datetime.now(timezone.utc)
         try:
             with self._get_connection() as conn:
                 existing = conn.execute(
@@ -460,7 +462,7 @@ class SQLiteStorage:
 
     def record_strain_miss(self, normalized_name: str) -> None:
         """Remember that a candidate produced no strain, to avoid re-querying."""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         try:
             with self._get_connection() as conn:
                 conn.execute("""
@@ -542,7 +544,7 @@ class SQLiteStorage:
 
     def count_fresh_strains(self, max_age_days: int = 30) -> int:
         """Number of cached strains younger than `max_age_days`."""
-        cutoff = (datetime.utcnow() - timedelta(days=max_age_days)).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat()
         with self._get_connection() as conn:
             row = conn.execute(
                 "SELECT COUNT(*) FROM strains WHERE fetched_at >= ?", (cutoff,)

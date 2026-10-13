@@ -1,3 +1,4 @@
 - [x] add graphs for deals to show best categories or brands
 - [ ] add clean annimations to all of the ui elements without impacting performance
 - [x] integrate leafly strain data importing per product strain
+- [ ] add location permission that will automatically show every dispensary's products based on a user set mile radius instead of hard coding stores - this should be fetched from dutchie somehow

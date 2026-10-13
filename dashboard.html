@@ -199,25 +199,117 @@ body {
 .btn-toggle { display: inline-flex; align-items: center; gap: 6px; }
 .btn-toggle.active { background: var(--primary); color: var(--bg); }
 
-/* Filter chips row */
+/* Filter bar — the controls beneath the header search. The segmented All/Deals
+   toggle, the stock select and the clear button live here; the store /
+   category / brand / sort selects live in the header row above. */
 .filter-row {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
   margin-top: 12px;
+  padding: 4px 0;
+  animation: fadeIn 0.3s ease-out both;
 }
+.filter-row .spacer { flex: 1 1 auto; }
+
+/* Segmented All / Deals control — a single pill with two joined buttons so it
+   reads as one toggle rather than two separate buttons that happen to sit next
+   to each other. */
+.deal-segment {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+.deal-segment .btn-toggle {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  margin: 0;
+  box-shadow: none;
+}
+.deal-segment .btn-toggle:hover { background: rgba(63, 185, 80, 0.14); color: var(--text); }
+.deal-segment .btn-toggle.active { background: var(--primary); color: var(--bg); }
+
+/* Selects — unified look with a custom caret so they read as one control family
+   regardless of where they sit (header row or filter row). */
 .filter-select {
   background: var(--card-bg);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 7px 12px;
+  padding: 7px 32px 7px 12px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 12.5px;
   backdrop-filter: blur(4px);
-  min-width: 140px;
+  min-width: 130px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238b949e' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
-.filter-select:focus { outline: none; border-color: var(--primary); }
+.filter-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.2); }
+
+/* Active filter chips — appear beneath the filter bar whenever one or more
+   filters are applied, so the current state is visible and each is removable
+   without hunting for the select that caused it. */
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  animation: fadeIn 0.25s ease;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 4px 3px 10px;
+  font-size: 12px;
+  color: var(--text);
+  backdrop-filter: blur(4px);
+}
+.filter-chip .chip-label {
+  color: var(--muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.filter-chip .chip-value { font-weight: 500; }
+.filter-chip button {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 6px;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.filter-chip button:hover { background: var(--hover); color: var(--text); }
 
 /* Stats bar */
 .stats-bar {
@@ -233,7 +325,11 @@ body {
   border-radius: 8px;
   min-width: 120px;
   flex: 1;
+  animation: fadeIn 0.5s ease-out both;
 }
+.stat:nth-child(1) { animation-delay: 0.1s; }
+.stat:nth-child(2) { animation-delay: 0.15s; }
+.stat:nth-child(3) { animation-delay: 0.2s; }
 .stat-value { font-size: 20px; font-weight: 700; color: var(--primary); }
 .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
 
@@ -266,7 +362,10 @@ body {
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  animation: fadeIn 0.4s ease-out both;
+  will-change: transform, box-shadow;
 }
+.product-card:nth-child(n+2) { animation-delay: calc((n-1) * 0.02s); }
 .product-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
 .product-card-header {
   position: relative;
@@ -519,7 +618,6 @@ body {
 }
 .compare-checkbox:checked { background: var(--primary); border-color: var(--primary); }
 .compare-checkbox:checked::after { content: ''; width: 6px; height: 10px; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-1px); }
-.product-card { position: relative; }
 .product-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(63,185,80,0.3); }
 #compareToggle[aria-pressed="true"] { background: var(--primary); color: var(--bg); }
 
@@ -562,14 +660,6 @@ body {
 }
 .card-enter { animation: fadeIn 0.3s ease-out; }
 .card-enter-active { animation: fadeIn 0.3s ease-out; }
-
-/* Stats bar items */
-.stat {
-    animation: fadeIn 0.5s ease-out both;
-}
-.stat:nth-child(1) { animation-delay: 0.1s; }
-.stat:nth-child(2) { animation-delay: 0.15s; }
-.stat:nth-child(3) { animation-delay: 0.2s; }
 
 /* Charts container */
 .charts-container {
@@ -673,18 +763,6 @@ body {
   color: var(--muted);
 }
 
-/* Product cards */
-.product-card {
-    animation: fadeIn 0.4s ease-out both;
-    will-change: transform, box-shadow;
-}
-.product-card:nth-child(n+2) { animation-delay: calc((n-1) * 0.02s); }
-
-/* Filter row */
-.filter-row {
-    animation: fadeIn 0.3s ease-out both;
-}
-
 /* Search input focus animation */
 .search-input:focus {
     outline: none;
@@ -748,35 +826,39 @@ html {
         </div>
         <div class="header-actions">
           <input type="search" class="search-input" id="searchInput" placeholder="Search products, brands, categories...">
-          <select class="filter-select" id="storeFilter" style="min-width: 150px;">
+          <select class="filter-select" id="storeFilter">
             <option value="">All Stores</option>
           </select>
-          <select class="filter-select" id="categoryFilter" style="min-width: 150px;">
+          <select class="filter-select" id="categoryFilter">
             <option value="">All Categories</option>
           </select>
-          <select class="filter-select" id="brandFilter" style="min-width: 140px;">
+          <select class="filter-select" id="brandFilter">
             <option value="">All Brands</option>
           </select>
-          <select class="filter-select" id="sortSelect" style="min-width: 160px;">
+          <select class="filter-select" id="sortSelect">
           </select>
         </div>
       </div>
       <div class="filter-row">
-        <button class="btn btn-toggle active" id="dealFilterBtn" onclick="toggleDealFilter(true)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-          All Products
-        </button>
-        <button class="btn btn-toggle" id="dealsOnlyBtn" onclick="toggleDealFilter(false)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-          Deals Only
-        </button>
-        <select class="filter-select" id="stockFilter" style="min-width: 130px;">
+        <div class="deal-segment">
+          <button class="btn btn-toggle active" id="dealFilterBtn" onclick="toggleDealFilter(true)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            All Products
+          </button>
+          <button class="btn btn-toggle" id="dealsOnlyBtn" onclick="toggleDealFilter(false)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            Deals Only
+          </button>
+        </div>
+        <select class="filter-select" id="stockFilter">
           <option value="all">All Stock</option>
           <option value="in-stock">In Stock</option>
           <option value="out-of-stock">Out of Stock</option>
         </select>
+        <span class="spacer"></span>
         <button class="btn ghost" id="clearFiltersBtn" onclick="clearFilters()">Clear Filters</button>
       </div>
+      <div class="filter-chips" id="filterChips" aria-live="polite"></div>
     </header>
 
     <div class="stats-bar" id="statsBar">
@@ -1054,12 +1136,15 @@ function populateSidebar() {
   allData.stores.forEach(store => {
     const item = document.createElement('div');
     item.className = 'nav-item';
+    item.dataset.storeId = store.id;
     item.onclick = () => {
       currentFilters.store = currentFilters.store === store.id ? '' : store.id;
       currentFilters.category = '';
       currentFilters.brand = '';
       currentFilters.dealOnly = false;
-      updateActiveStore(store.id);
+      updateActiveStore(currentFilters.store);
+      updateFilterSelects();
+      setUrlState(currentFilters);
       applyFilters();
     };
     item.innerHTML = `
@@ -1155,12 +1240,15 @@ function populateSidebar() {
   Object.keys(brandCounts).sort().forEach(brand => {
     const item = document.createElement('div');
     item.className = 'nav-item';
+    item.dataset.brand = brand;
     item.onclick = () => {
       currentFilters.brand = currentFilters.brand === brand ? '' : brand;
       currentFilters.store = '';
       currentFilters.category = '';
       currentFilters.dealOnly = false;
-      updateActiveBrand(brand);
+      updateActiveBrand(currentFilters.brand);
+      updateFilterSelects();
+      setUrlState(currentFilters);
       applyFilters();
     };
     item.innerHTML = `
@@ -1234,17 +1322,24 @@ function storeCount(storeId) {
 
 function updateActiveStore(storeId) {
   document.querySelectorAll('#storeNavList .nav-item').forEach(item => {
-    item.classList.toggle('active', item.querySelector('.nav-item-store span')?.textContent === storeName(storeId));
+    item.classList.toggle('active', item.dataset.storeId === storeId);
   });
 }
 
 function updateActiveCategory(cat) {
-  document.querySelectorAll('#categoryNavList .nav-item').forEach(item => {
-    const row = item.dataset.category;
+  // Group headers (e.g. "Flower") light up when the group itself is selected
+  // or when a subcategory beneath it is active, so the parent is always
+  // recognisable when its contents are selected.
+  document.querySelectorAll('#categoryNavList .nav-group-header').forEach(item => {
     const group = item.dataset.group;
-    // A subcategory row is active only for its own exact category, while the
-    // group row is active for the group selection.
-    item.classList.toggle('active', group ? cat === group : cat === row);
+    const main = cat ? categoryMain(cat) : '';
+    item.classList.toggle('active', cat && group === main);
+  });
+
+  // Sub items (e.g. "Flower · premium") are active only for their exact match.
+  document.querySelectorAll('#categoryNavList .nav-sub-item').forEach(item => {
+    const row = item.dataset.category;
+    item.classList.toggle('active', row === cat);
   });
 
   // Keep the group holding the active subcategory expanded so the selection is
@@ -1358,7 +1453,7 @@ function selectCategory(cat) {
 
 function updateActiveBrand(brand) {
   document.querySelectorAll('#brandNavList .nav-item').forEach(item => {
-    item.classList.toggle('active', item.textContent.trim().replace(/(\d+)/, '') === brand);
+    item.classList.toggle('active', item.dataset.brand === brand);
   });
 }
 
@@ -1432,6 +1527,7 @@ function clearFilters() {
   document.getElementById('pageTitle').textContent = 'All Products';
   setUrlState(currentFilters);
   applyFilters();
+  renderFilterChips();
 }
 
 function filterProducts(products) {
@@ -1621,6 +1717,7 @@ function renderVirtualizedGrid() {
   `;
   updateStats();
   updateProductsCount();
+  renderFilterChips();
 
   // Empty state
   if (displayedProducts.length === 0) {
@@ -1974,6 +2071,88 @@ function updateStats() {
 
 
 
+// ---- Active filter chips ----
+function renderFilterChips() {
+  const container = document.getElementById('filterChips');
+  if (!container) return;
+  const chips = [];
+
+  if (currentFilters.search) {
+    chips.push({ label: 'Search', value: currentFilters.search, key: 'search' });
+  }
+  if (currentFilters.store) {
+    chips.push({ label: 'Store', value: storeName(currentFilters.store), key: 'store' });
+  }
+  if (currentFilters.category) {
+    chips.push({ label: 'Category', value: currentFilters.category, key: 'category' });
+  }
+  if (currentFilters.brand) {
+    chips.push({ label: 'Brand', value: currentFilters.brand, key: 'brand' });
+  }
+  if (currentFilters.dealOnly) {
+    chips.push({ label: 'Filter', value: 'Deals only', key: 'dealOnly' });
+  }
+  if (currentFilters.stock && currentFilters.stock !== 'all') {
+    const stockLabels = { 'in-stock': 'In stock', 'out-of-stock': 'Out of stock' };
+    chips.push({ label: 'Stock', value: stockLabels[currentFilters.stock] || currentFilters.stock, key: 'stock' });
+  }
+  if (currentFilters.sort && currentFilters.sort !== 'discount-desc') {
+    const sortLabels = {
+      'price-asc': 'Price: low-high',
+      'price-desc': 'Price: high-low',
+      'name-asc': 'Name: A-Z',
+      'name-desc': 'Name: Z-A',
+      'discount-asc': 'Worst discount first'
+    };
+    chips.push({ label: 'Sort', value: sortLabels[currentFilters.sort] || currentFilters.sort, key: 'sort' });
+  }
+
+  if (chips.length === 0) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'flex';
+  container.innerHTML = chips.map(c => `
+    <span class="filter-chip">
+      <span class="chip-label">${escapeHtml(c.label)}:</span>
+      <span class="chip-value">${escapeHtml(c.value)}</span>
+      <button type="button" aria-label="Remove ${escapeHtml(c.label)} filter" onclick="removeFilter('${c.key}')">&times;</button>
+    </span>
+  `).join('');
+}
+
+function removeFilter(key) {
+  switch (key) {
+    case 'search': currentFilters.search = ''; document.getElementById('searchInput').value = ''; break;
+    case 'store': currentFilters.store = ''; document.getElementById('storeFilter').value = ''; break;
+    case 'category': currentFilters.category = ''; document.getElementById('categoryFilter').value = ''; break;
+    case 'brand': currentFilters.brand = ''; document.getElementById('brandFilter').value = ''; break;
+    case 'dealOnly': currentFilters.dealOnly = false; break;
+    case 'stock': currentFilters.stock = 'all'; document.getElementById('stockFilter').value = 'all'; break;
+    case 'sort': currentFilters.sort = 'discount-desc'; document.getElementById('sortSelect').value = 'discount-desc'; break;
+  }
+  // Update sidebar active states
+  updateActiveStore(currentFilters.store);
+  updateActiveCategory(currentFilters.category);
+  updateActiveBrand(currentFilters.brand);
+  // Update deal toggle buttons
+  const dealBtn = document.getElementById('dealFilterBtn');
+  const dealsOnlyBtn = document.getElementById('dealsOnlyBtn');
+  if (currentFilters.dealOnly) {
+    dealBtn.classList.remove('active');
+    dealsOnlyBtn.classList.add('active');
+    document.getElementById('pageTitle').textContent = 'Deals Only';
+  } else {
+    dealBtn.classList.add('active');
+    dealsOnlyBtn.classList.remove('active');
+    document.getElementById('pageTitle').textContent = 'All Products';
+  }
+  setUrlState(currentFilters);
+  applyFilters();
+}
+
 function updateProductsCount() {
   document.getElementById('productsCount').textContent = `Showing ${displayedProducts.length} of ${allData.products.length} products`;
 }
@@ -2207,6 +2386,12 @@ document.getElementById('modalNext')?.addEventListener('click', function(e) { e.
 document.getElementById('searchInput')?.addEventListener('input', updateSearch);
 document.getElementById('storeFilter')?.addEventListener('change', () => {
   currentFilters.store = document.getElementById('storeFilter').value;
+  currentFilters.category = '';
+  currentFilters.brand = '';
+  currentFilters.dealOnly = false;
+  updateActiveStore(currentFilters.store);
+  updateActiveCategory('');
+  updateActiveBrand('');
   setUrlState(currentFilters); applyFilters();
 });
 document.getElementById('categoryFilter')?.addEventListener('change', () => {
@@ -2216,6 +2401,12 @@ document.getElementById('categoryFilter')?.addEventListener('change', () => {
 });
 document.getElementById('brandFilter')?.addEventListener('change', () => {
   currentFilters.brand = document.getElementById('brandFilter').value;
+  currentFilters.store = '';
+  currentFilters.category = '';
+  currentFilters.dealOnly = false;
+  updateActiveBrand(currentFilters.brand);
+  updateActiveStore('');
+  updateActiveCategory('');
   setUrlState(currentFilters); applyFilters();
 });
 document.getElementById('stockFilter')?.addEventListener('change', updateStockFilter);

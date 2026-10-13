@@ -22,7 +22,7 @@ while a wrong one would show someone the wrong effects and potency.
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from models import Strain
@@ -427,41 +427,6 @@ class StrainResolver:
         self._memory_cache[key] = None
         return None
 
-    # ---- Leafly lookup ----
-        """Resolve one candidate name against the caches, then Leafly."""
-        if not self.enabled:
-            return None
-
-        key = normalize_name(candidate)
-        if not key:
-            return None
-
-        if key in self._memory_cache:
-            return self._memory_cache[key]
-
-        cached = self.storage.get_strain(key)
-        if cached is not None and not self._is_stale(cached):
-            self._memory_cache[key] = cached
-            if stats:
-                stats.from_cache += 1
-            return cached
-
-        missed = self.storage.is_strain_miss(key)
-        if missed and not self._is_miss_stale(missed):
-            self._memory_cache[key] = None
-            return None
-
-        strain = self._resolve_from_leafly(candidate, stats)
-        if strain:
-            self._memory_cache[key] = strain
-            return strain
-
-        self.storage.record_strain_miss(key)
-        self._memory_cache[key] = None
-        return None
-
-    # ---- Leafly lookup ----
-
     def _resolve_from_leafly(
         self, candidate: str, stats: Optional[ResolutionStats] = None
     ) -> Optional[Strain]:
@@ -498,7 +463,7 @@ class StrainResolver:
     def _is_stale(self, strain: Strain) -> bool:
         if not strain.fetched_at:
             return True
-        age = datetime.utcnow() - strain.fetched_at
+        age = datetime.now(timezone.utc) - strain.fetched_at
         return age > timedelta(days=self.cache_days)
 
     def _is_miss_stale(self, attempted_at: Optional[str]) -> bool:
@@ -508,7 +473,7 @@ class StrainResolver:
             attempted = datetime.fromisoformat(attempted_at)
         except ValueError:
             return True
-        return datetime.utcnow() - attempted > timedelta(days=self.cache_days)
+        return datetime.now(timezone.utc) - attempted > timedelta(days=self.cache_days)
 
 
 def enrich_deals(
