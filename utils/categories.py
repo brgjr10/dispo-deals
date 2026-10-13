@@ -70,11 +70,39 @@ def sub_category(category: str) -> str:
     return parts[1].strip() if len(parts) > 1 else ""
 
 
+# Subcategory names that mean the same shelf but are written differently by
+# different stores. Keyed by (main category key, subcategory key) so a rename
+# can never leak across shelves - "infused" under Pre-Rolls has nothing to do
+# with "infused-flower" under Concentrate.
+#
+# Within Pre-Rolls, every way of saying an infused pack collapses to "infused".
+# One store calls the shelf "infused", another "infused-pre-roll-pack", and a
+# third writes "Infused Pre Roll 5-Pack", all for the same thing. Left alone
+# they appear as three separate rows in the sidebar and split the counts.
+SUBCATEGORY_ALIASES = {
+    ("prerolls", "infused"): "infused",
+    ("prerolls", "infusedprerollpack"): "infused",
+    ("prerolls", "infusedprerollpacks"): "infused",
+    ("prerolls", "infusedpack"): "infused",
+    ("prerolls", "infusedpacks"): "infused",
+    ("prerolls", "infusedpreroll"): "infused",
+    ("prerolls", "infusedprerolls"): "infused",
+}
+
+
+def canonical_subcategory(main: str, sub: str) -> str:
+    """Rename a subcategory to its canonical form within its main category."""
+    if not sub or not sub.strip():
+        return ""
+    alias = SUBCATEGORY_ALIASES.get((category_key(main), category_key(sub)))
+    return alias or sub.strip()
+
+
 def canonical_category(category: str) -> str:
     """Return the category renamed to its canonical main category.
 
-    The subcategory is preserved verbatim, because that is the store's own
-    break-down of a shelf and is not what differs between stores.
+    The subcategory is canonicalised too, because that is where stores disagree
+    most: an infused pre-roll pack is the same shelf however it is spelled.
     """
     if not category or not category.strip():
         return category
@@ -83,7 +111,7 @@ def canonical_category(category: str) -> str:
     key = category_key(main)
     canonical = CATEGORY_ALIASES.get(key, main)
 
-    sub = sub_category(category)
+    sub = canonical_subcategory(canonical, sub_category(category))
     return f"{canonical}{SUB_SEPARATOR}{sub}" if sub else canonical
 
 

@@ -261,9 +261,8 @@ class TestBadgeDoesNotOverlapTheCheckbox:
     that reserves the checkbox's width instead.
     """
 
-    @classmethod
     @pytest.fixture(scope="class")
-    def css(cls):
+    def css(self):
         return DASHBOARD.read_text(encoding="utf-8")
 
     def test_checkbox_is_absolutely_positioned_top_right(self, css):

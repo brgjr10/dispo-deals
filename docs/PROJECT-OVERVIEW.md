@@ -367,8 +367,13 @@ strains); 651 of 2980 deals carry a `strain_name`.
 
 ### 8.3 Pre-roll categories
 
-- [ ] Within **Pre-Rolls**, combine the **Infused** and **Infused Pre-Roll Pack**
-      subcategories into a single **Infused** shelf.
+- [x] Within **Pre-Rolls**, every way of naming an infused pack folds into a
+      single **Infused** shelf. `infused`, `Infused Pre-Roll Pack`,
+      `infused-pre-roll-pack`, `infused pack`, `infused-preroll` and the rest all
+      resolve to `Pre-Rolls · infused`, so they share one sidebar row and one
+      count. `singles` and `packs` are left alone — a pack of non-infused
+      pre-rolls is a different shelf, and `Concentrate · infused-flower` is
+      untouched because the alias is keyed to its main category.
 
 ### 8.4 New pages
 
