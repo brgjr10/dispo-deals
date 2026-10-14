@@ -3930,7 +3930,23 @@ function extractWeight(name) {
 
 function extractSubcategory(name) {
   // Extract subcategory like "premium", "whole flower", "small buds", "small bud", "budlet", "budlets"
-  const subcats = ['premium', 'whole flower', 'small buds', 'small bud', 'budlet', 'budlets', 'shake', 'trim', 'popcorn', 'mini', 'ground', 'shake/trim'];
+  const subcats = [
+    'premium', 'whole flower', 'small buds', 'small bud', 'budlet', 'budlets', 
+    'shake', 'trim', 'popcorn', 'mini', 'ground', 'shake/trim',
+    'cartridges', 'cartridge', 'carts', 'cart',
+    'gummies', 'gummy', 'live rosin gummies', 'live resin gummies',
+    'pre-rolls', 'pre-roll', 'prerolls', 'preroll',
+    'infused pre-roll', 'infused pre-rolls', 'infused preroll', 'infused prerolls',
+    'smalls', 'small', 'budlets',
+    'tincture', 'tinctures',
+    'topical', 'topicals',
+    'capsule', 'capsules',
+    'drink', 'drinks', 'beverage', 'beverages',
+    'concentrate', 'concentrates', 'live rosin', 'live resin', 'rosin', 'resin',
+    'vape', 'vapes', 'pen', 'pens', 'cartridge', 'cartridges',
+    'edible', 'edibles',
+    'flower', 'buds', 'bud'
+  ];
   for (const sub of subcats) {
     const pattern = new RegExp(`[-–—·•|]\\s*${escapeRegExp(sub)}\\s*$`, 'i');
     const match = name.match(pattern);
@@ -3999,7 +4015,20 @@ function cleanProductName(product) {
   }
   
   // 4. Remove category from title
-  const categories = ['flower', 'pre-roll', 'pre roll', 'preroll', 'edible', 'concentrate', 'vape', 'vaporizer', 'tincture', 'topical', 'capsule', 'drink', 'beverage'];
+  const categories = [
+    'flower', 'pre-roll', 'pre roll', 'preroll', 'edible', 'concentrate', 'vape', 'vaporizer', 'tincture', 'topical', 'capsule', 'drink', 'beverage',
+    'cartridges', 'cartridge', 'carts', 'cart',
+    'gummies', 'gummy', 'live rosin gummies', 'live resin gummies',
+    'pre-rolls', 'pre-roll', 'prerolls', 'preroll',
+    'infused pre-roll', 'infused pre-rolls', 'infused preroll', 'infused prerolls',
+    'smalls', 'small', 'budlets',
+    'tincture', 'tinctures',
+    'topical', 'topicals',
+    'capsule', 'capsules',
+    'drink', 'drinks', 'beverage', 'beverages',
+    'concentrate', 'concentrates', 'live rosin', 'live resin', 'rosin', 'resin',
+    'vape', 'vapes', 'pen', 'pens'
+  ];
   for (const cat of categories) {
     // "Category - Name" or "Category — Name"
     name = name.replace(new RegExp(`^${escapeRegExp(cat)}\\s*[-–—]\\s*`, 'i'), '');
