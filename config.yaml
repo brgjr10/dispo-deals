@@ -32,7 +32,7 @@ stores:
   name: Klutch Cannabis — Canton
   url: https://dutchie.com/stores/klutch-canton-oh
   scraper: dutchie
-  logo_url: ''
+  logo_url: 'https://images.dutchie.com/9030e9fa4a0dd3ffd85c1f452e5e86e7'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -40,23 +40,7 @@ stores:
   name: Klutch Cannabis — Akron
   url: https://dutchie.com/stores/klutch-akron-oh
   scraper: dutchie
-  logo_url: ''
-  notification_mode: per-store
-  enabled: true
-  webhook_enabled: false
-- id: klutch-columbus-oh
-  name: Klutch Cannabis — Columbus
-  url: https://dutchie.com/stores/klutch-columbus-oh
-  scraper: dutchie
-  logo_url: ''
-  notification_mode: per-store
-  enabled: true
-  webhook_enabled: false
-- id: klutch-grandview-oh
-  name: Klutch Cannabis — Grandview
-  url: https://dutchie.com/stores/klutch-grandview-oh
-  scraper: dutchie
-  logo_url: ''
+  logo_url: 'https://images.dutchie.com/9030e9fa4a0dd3ffd85c1f452e5e86e7'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -64,7 +48,7 @@ stores:
   name: Klutch Cannabis — Cleveland
   url: https://dutchie.com/stores/klutch-cleveland-oh
   scraper: dutchie
-  logo_url: ''
+  logo_url: 'https://images.dutchie.com/9030e9fa4a0dd3ffd85c1f452e5e86e7'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -72,7 +56,7 @@ stores:
   name: High Intentions
   url: https://www.highintentions.life/collection/?sort=popular
   scraper: shoplightspeed
-  logo_url: ''
+  logo_url: 'https://res.cloudinary.com/dkw7lyjys/image/upload/h_150/v1761322521/high_intentions-01_1_1_1_1_1_fyiy0z.png'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -80,7 +64,7 @@ stores:
   name: Puffco
   url: https://www.puffco.com/products/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://www.puffco.com/cdn/shop/collections/puffco_logo_772dd7f9-1bd1-47dd-8006-a69feed462f1.webp?v=1728430232'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -88,7 +72,7 @@ stores:
   name: CannaStyle
   url: https://shopcannastyle.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQiMx1-dUD0W1gUMwXjX2ivXUxTvwKlW8QE78yYdVYtjk6NLTYIaXWVhfzG&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -96,7 +80,7 @@ stores:
   name: MJ Arsenal
   url: https://mjarsenal.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://mjarsenal.com/cdn/shop/files/MJA_W_on_B_Logo.png?v=1655486269'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -104,7 +88,7 @@ stores:
   name: DeMatteo Art
   url: https://dematteoart.com/collections/all
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://media.istockphoto.com/id/2176546831/vector/painting-logo-design-template-vector-illustration.jpg?s=612x612&w=0&k=20&c=NhadL4B9kOAFWKSbdFWgvgeVSrzbGlNESWyOXwhHmVI='
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -112,7 +96,7 @@ stores:
   name: Push Trees
   url: https://pushtrees.com/collections/all-items
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfULDhZ5P2SBSG4viZp9aoMp3T4qwRACyPAZL-OKbo-JmkHt2o-yBZIKg&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -120,7 +104,7 @@ stores:
   name: Cookies SF
   url: https://cookiessf.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvf6NlBhM03bwTnwqV5I6T6hhVHimIiO8R_xPJ5MPspABJ4XsafDLoFk4&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -128,7 +112,7 @@ stores:
   name: RIPNDIP
   url: https://ripndip.com/collections/420-collection
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://ripndip.com/cdn/shop/files/AR_00397.png?v=1787092313'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -136,7 +120,7 @@ stores:
   name: Zumiez 420
   url: https://www.zumiez.com/collections/weed.html
   scraper: magento
-  logo_url: ''
+  logo_url: 'https://play-lh.googleusercontent.com/zvyIz95f6pxhRS3TqLed1xhU6duUVSKsSFc0zzZfSAhiOpXbwktlnaI7wftXAeHarnFbEe1SG4hIhoTPAyV4'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -156,7 +140,7 @@ stores:
   name: The Botanist - Akron
   url: https://dutchie.com/dispensary/akron-menu
   scraper: dutchie
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQMjB9EP1tdE-XRapYLPVe4Suajht9_AQ4SUw45vhU9ttsqkA_pkGrE2I&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -164,7 +148,7 @@ stores:
   name: The Mothership Cannabis
   url: https://dutchie.com/dispensary/the-mothership-cannabis-dispensary
   scraper: dutchie
-  logo_url: ''
+  logo_url: 'https://mothershipdispensary.com/wp-content/uploads/sites/41/2026/05/mothership-about-full-logo-560w.webp'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -172,7 +156,7 @@ stores:
   name: The Botanist - Canton
   url: https://dutchie.com/dispensary/canton-menu
   scraper: dutchie
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQMjB9EP1tdE-XRapYLPVe4Suajht9_AQ4SUw45vhU9ttsqkA_pkGrE2I&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -180,7 +164,7 @@ stores:
   name: AYR Ohio — Parma Heights
   url: https://dutchie.com/dispensary/ayr-oh-parma-heights
   scraper: dutchie
-  logo_url: ''
+  logo_url: 'https://play-lh.googleusercontent.com/DdcwVCi6TJSf6vlqXrlY4WiXjj8nQ2wagUD3jQ9084CzslKOgmnvGt-l_sN2FTcv53Dz6A83Yk82JVg16Ibe8w'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -188,7 +172,7 @@ stores:
   name: Daily High Club
   url: https://dailyhighclub.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSmUdXRpyA7rUaOlItf-hj6JxJ7rbj64Nq8BYOeEL7nt8a9eF6O4MIqkYF&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -196,7 +180,7 @@ stores:
   name: Focus V
   url: https://focusv.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://focusv.com/cdn/shop/files/Focus_V_Logo_2023_1a173ce8-02f3-4e33-b3d3-f2a5f404cffe.png?v=1684370550&width=2048'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -204,7 +188,7 @@ stores:
   name: Calibear Glass
   url: https://calibearglass.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://pbs.twimg.com/profile_images/1798195804580249600/8IvQXNB__400x400.jpg'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -212,7 +196,7 @@ stores:
   name: Empire Smokes
   url: https://empiresmokes.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://media.licdn.com/dms/image/v2/C560BAQFRRUwd5ekVRg/company-logo_200_200/company-logo_200_200/0/1630565887459/cloud_culture_store_logo?e=2147483647&v=beta&t=EML_mUj1aXT0XK-0ac_RRwDYA_DyyDrTiRkhnwYcn3U'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -220,7 +204,7 @@ stores:
   name: Tuff Tethers
   url: https://tufftethers.com/collections/all
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://a7d1254a.delivery.rocketcdn.me/wp-content/uploads/2025/07/tt-logo-color-300x300.png'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -228,7 +212,7 @@ stores:
   name: The Dopest Shop
   url: https://thedopestshop.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://media.zenfs.com/en/accesswire.ca/8a9e277cfab8e73057c1624b764c17c8'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -236,7 +220,7 @@ stores:
   name: ROVE
   url: https://rovebrand.com/collections/apparel
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://uploads-ssl.webflow.com/6171c8b362b2a448d7c8909d/63c5d21a3f09c306ee784ca2_rove_Logo.png'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -244,7 +228,7 @@ stores:
   name: Mothership Glass
   url: https://mothershipglass.com/shop/
   scraper: woocommerce
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDLdKwaMxdT1o9edMZFy30ytkd6hl3MSbgNchr3g1Fnj8kL9o8vTVoOA9t&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -252,7 +236,7 @@ stores:
   name: Illadelph
   url: https://illadelphclothing.com/shop/
   scraper: woocommerce
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtnHxJkgkN0NHugAKDUqMRm9P_Et4RXvnEjFCwEFvC3zqFyprhStmLo7T0&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -260,7 +244,7 @@ stores:
   name: Curaleaf — Cuyahoga Falls
   url: https://oh.curaleaf.com/shop/ohio/curaleaf-cuyahoga-falls/recreational
   scraper: sweed
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSAyffT7HOjoDOiwJqggUVE8Br36hFrCXP1ScHdR5cbCWZx_0xLP8xC3Qzy&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -272,7 +256,7 @@ stores:
   name: AYR Ohio — Akron
   url: https://dutchie.com/embedded-menu/ayr-akron
   scraper: dutchie
-  logo_url: ''
+  logo_url: 'https://play-lh.googleusercontent.com/DdcwVCi6TJSf6vlqXrlY4WiXjj8nQ2wagUD3jQ9084CzslKOgmnvGt-l_sN2FTcv53Dz6A83Yk82JVg16Ibe8w'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -280,7 +264,7 @@ stores:
   name: KK Apparel
   url: https://shopkkapparel.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://khalifakush.com/cdn/shop/files/KhalifaKush_favico_256x256_crop_center_33bfcbb6-455e-43ad-88c3-b0fbec5297ca.png?v=1660280161'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -288,7 +272,7 @@ stores:
   name: 710 Labs
   url: https://shop.710labs.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://media.licdn.com/dms/image/v2/C4E0BAQEhWOx21nXiWw/company-logo_200_200/company-logo_200_200/0/1630575094890?e=2147483647&v=beta&t=qIcAicppj2wkpdoZBhJhWy4fvCHBGkgU-rwRXgl1s6c'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -296,7 +280,7 @@ stores:
   name: Alien Labs Apparel
   url: https://alienlabsapparel.com/
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdfU8bEy1UlGsH5-y0GkLp5dPK3oeIJ7GsWdP2Tg5oXEtM5IVgOsLQoasm&s=10'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
@@ -304,7 +288,23 @@ stores:
   name: STIIIZY
   url: https://www.stiiizy.com/pages/shop
   scraper: shopify
-  logo_url: ''
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8KIU_769zYt9eugmln7sGnbKop89RW4cPgnKqVR4KrFCP_lJGD8Fpv_gE&s=10'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: prism-water-pipes
+  name: Prism Water Pipes
+  url: https://prismwaterpipes.com/
+  scraper: shopify
+  logo_url: 'https://media.licdn.com/dms/image/v2/D4E0BAQFS5pCLvZgr4A/company-logo_200_200/company-logo_200_200/0/1712867617415/prism_water_pipes_logo?e=2147483647&v=beta&t=X4n_uuvOHPpcB-fIchnaIxGdXd99y7tFJQ1Okg74M_A'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: the-dart-co
+  name: The Dart Co
+  url: https://thedartco.com/products
+  scraper: shopify
+  logo_url: 'https://thedartco.com/cdn/shop/files/Splash-1_1200x1200.jpg?v=1646805030'
   notification_mode: per-store
   enabled: true
   webhook_enabled: false

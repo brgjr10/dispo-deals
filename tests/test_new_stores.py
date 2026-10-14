@@ -113,6 +113,8 @@ class TestConfiguredStores:
         "710-labs": "shopify",
         "alien-labs-apparel": "shopify",
         "stiiizy": "shopify",
+        "prism-water-pipes": "shopify",
+        "the-dart-co": "shopify",
     }
 
     def _stores(self):
