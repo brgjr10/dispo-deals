@@ -131,12 +131,21 @@ body {
 }
 .nav-chevron {
   flex: none;
+  position: relative;
   width: 0;
   height: 0;
   border-left: 5px solid currentColor;
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
   transition: transform 0.15s ease;
+}
+/* The triangle is a zero-size box, so its real hit area is a few pixels. An
+   invisible pseudo-element around it widens the collapse/expand target without
+   changing how the chevron looks, and clicks on it still target the chevron. */
+.nav-chevron::after {
+  content: "";
+  position: absolute;
+  inset: -8px -10px;
 }
 .nav-group.open > .nav-group-header .nav-chevron { transform: rotate(90deg); }
 .nav-group-items {
@@ -3157,6 +3166,9 @@ function updateFilterControls() {
     dealsOnlyBtn.classList.remove('active');
     document.getElementById('pageTitle').textContent = 'All Products';
   }
+  // Keep the sidebar accordion in step with the restored filter, so a reload or
+  // a shared link opens the category that is actually being shown.
+  updateActiveCategory(currentFilters.category);
 }
 
 // ---- Populate sidebar & filters ----
@@ -3234,10 +3246,13 @@ function populateSidebar() {
   const groups = new Map();
   Object.keys(catCounts).forEach(cat => {
     const main = categoryMain(cat);
-    if (!groups.has(main)) groups.set(main, { count: 0, subs: [] });
+    const sub = cat !== main ? normalizeCategorySub(cat) : '';
+    if (!groups.has(main)) groups.set(main, { count: 0, subs: new Map() });
     const group = groups.get(main);
     group.count += catCounts[cat];
-    if (cat !== main) group.subs.push({ cat, count: catCounts[cat] });
+    if (sub) {
+      group.subs.set(sub, (group.subs.get(sub) || 0) + catCounts[cat]);
+    }
   });
 
   const expanded = getExpandedGroups();
@@ -3253,11 +3268,10 @@ function populateSidebar() {
     const header = document.createElement('div');
     header.className = 'nav-item nav-group-header';
     header.dataset.group = main;
-    // The row itself is the toggle, and the chevron is only its indicator. A
-    // small chevron target made collapsing a matter of hitting a few pixels;
-    // clicking anywhere on the row is the forgiving target.
-    const hasSubs = group.subs.length > 0;
-    const isActive = currentFilters.category === main;
+    // The chevron is only the open/closed indicator; the whole row is the click
+    // target that browses the category (and toggles it open or closed).
+    const hasSubs = group.subs.size > 0;
+    const isActive = currentFilters.category === main || (currentFilters.category && categoryMain(currentFilters.category) === main);
     header.innerHTML = `
       <span class="nav-group-label">
         ${hasSubs ? '<span class="nav-chevron" aria-hidden="true"></span>' : ''}
@@ -3269,48 +3283,42 @@ function populateSidebar() {
     header.setAttribute('role', 'button');
     header.setAttribute('tabindex', '0');
     header.setAttribute('aria-expanded', hasSubs && expanded.has(main) ? 'true' : 'false');
-    header.setAttribute('aria-label', `${escapeHtml(main)}, ${group.count} products${hasSubs ? ' (click to expand)' : ', click to filter'}`);
+    header.setAttribute('aria-label', `${escapeHtml(main)}, ${group.count} products${hasSubs ? ' (click to browse all, click again to close)' : ', click to filter'}`);
     wrap.appendChild(header);
 
-    if (hasSubs) {
-      // Clicking the row opens or closes the group without changing the filter,
-      // so expanding a group never disturbs what is being shown.
-      header.addEventListener('click', () => toggleCategoryGroup(main));
-      header.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          toggleCategoryGroup(main);
-        }
-      });
-    } else {
-      // No subcategories: clicking the header filters by this category directly
-      header.addEventListener('click', () => selectCategory(main));
-      header.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          selectCategory(main);
-        }
-      });
-    }
+    // A header click selects the whole category. Accordion behaviour lives in
+    // selectCategory: it opens this group (and closes any other), and clicking
+    // the same category a second time clears the filter and collapses it.
+    header.addEventListener('click', () => selectCategory(main));
+    header.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectCategory(main);
+      }
+    });
 
-    if (group.subs.length) {
+    if (group.subs.size) {
       const subs = document.createElement('div');
       subs.className = 'nav-group-items';
-      [...group.subs]
-        .sort((a, b) => b.count - a.count || a.cat.localeCompare(b.cat))
-        .forEach(({ cat, count }) => {
-          const sub = document.createElement('div');
-          sub.className = 'nav-item nav-sub-item';
-          sub.dataset.category = cat;
-          sub.innerHTML = `
-            <span>${escapeHtml(categorySub(cat))}</span>
+      [...group.subs.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .forEach(([sub, count]) => {
+          // Find the original raw category for this normalized sub to use in filtering
+          const rawCat = Object.keys(catCounts).find(c => 
+            categoryMain(c) === main && normalizeCategorySub(c) === sub
+          ) || main;
+          const subEl = document.createElement('div');
+          subEl.className = 'nav-item nav-sub-item';
+          subEl.dataset.category = rawCat;
+          subEl.innerHTML = `
+            <span>${escapeHtml(sub)}</span>
             <span class="nav-item-count">${count}</span>
           `;
-          sub.addEventListener('click', (e) => {
+          subEl.addEventListener('click', (e) => {
             e.stopPropagation();
-            selectCategory(cat);
+            selectCategory(rawCat);
           });
-          subs.appendChild(sub);
+          subs.appendChild(subEl);
         });
       wrap.appendChild(subs);
     }
@@ -3342,6 +3350,11 @@ function populateSidebar() {
     `;
     brandNav.appendChild(item);
   });
+
+  // The accordion is driven by the active category, so reapply it after the DOM
+  // is rebuilt (store hide/show, name changes) instead of trusting the stored
+  // expansion, which may be stale relative to the current filter.
+  updateActiveCategory(currentFilters.category);
 }
 
 function populateFilters() {
@@ -3471,13 +3484,12 @@ function updateActiveStore(storeId) {
 }
 
 function updateActiveCategory(cat) {
+  const main = cat ? categoryMain(cat) : '';
   // Group headers (e.g. "Flower") light up when the group itself is selected
   // or when a subcategory beneath it is active, so the parent is always
   // recognisable when its contents are selected.
   document.querySelectorAll('#categoryNavList .nav-group-header').forEach(item => {
-    const group = item.dataset.group;
-    const main = cat ? categoryMain(cat) : '';
-    item.classList.toggle('active', cat && group === main);
+    item.classList.toggle('active', !!cat && item.dataset.group === main);
   });
 
   // Sub items (e.g. "Flower · premium") are active only for their exact match.
@@ -3486,27 +3498,124 @@ function updateActiveCategory(cat) {
     item.classList.toggle('active', row === cat);
   });
 
-  // Keep the group holding the active subcategory expanded so the selection is
-  // visible rather than hidden inside a collapsed section.
-  if (cat) {
-    const main = categoryMain(cat);
-    const wrap = document.querySelector(`#categoryNavList .nav-group[data-group="${CSS.escape(main)}"]`);
-    if (wrap && !wrap.classList.contains('open')) {
-      wrap.classList.add('open');
-      rememberExpandedGroup(main);
-    }
-  }
+  // Accordion: only the group owning the active selection stays open; every
+  // other group collapses. A whole-group filter opens it (it can still be
+  // toggled closed from its header), an active subcategory reveals its parent,
+  // and clearing the filter closes everything.
+  applyCategoryAccordion(main);
 }
 
 // ---- Category groups ----
 
+// Normalize raw category names to clean, consolidated groups.
+// Handles spacing inconsistencies, duplicate groups, and merges similar categories.
+function normalizeCategoryMain(cat) {
+  const raw = String(cat || '').split(' · ')[0].trim();
+
+  const map = {
+    // Apparel — all map to "Apparel" as main category, subcategory preserved
+    'TEE SS PRINTED': 'Apparel',
+    'TEE LS PRINTED': 'Apparel',
+    'Tee': 'Apparel',
+    'KNIT SS TOP': 'Apparel',
+    'KNIT LS TOP': 'Apparel',
+    'KNIT TANK CUT/ SEW': 'Apparel',
+    'WOVEN SS TOP': 'Apparel',
+    'WOVEN LS TOP': 'Apparel',
+    'Crewneck Fleece Printed': 'Apparel',
+    'Crewneck Printed Fleece': 'Apparel',
+    'Hoody Fleece Printed': 'Apparel',
+    'Hoodie': 'Apparel',
+    'Hoodies': 'Apparel',
+    'HOODED FLEECE CUT/ SEW': 'Apparel',
+    'HOODED FLEECE CUT/SEW': 'Apparel',
+    'OUTERWEAR JACKET CUT/SEW': 'Apparel',
+    'OUTERWEAR WINDBREAKER CUT/ SEW': 'Apparel',
+    'OUTERWEAR WINDBREAKER CUT/SEW': 'Apparel',
+    'Jackets': 'Apparel',
+    'Pants': 'Apparel',
+    'Shorts': 'Apparel',
+    'BOTTOM KNIT PANT': 'Apparel',
+    'BOTTOM KNIT SHORT': 'Apparel',
+    'BOTTOM PRINTED PANT': 'Apparel',
+    'BOTTOM PRINTED SHORT': 'Apparel',
+    'BOTTOM SWIM TRUNK': 'Apparel',
+    'BOTTOM WINDBREAKER PANT': 'Apparel',
+    'BOTTOM WOVEN PANT': 'Apparel',
+    'Shirts': 'Apparel',
+    'Jersey': 'Apparel',
+    'Apparel': 'Apparel',
+    'Boxers': 'Apparel',
+    'Socks': 'Apparel',
+
+    // Headwear — consolidate hat/beanie variants
+    'ACC DAD HAT': 'Hats',
+    'ACC SNAPBACK': 'Hats',
+    'ACC SNAPBACK HAT': 'Hats',
+    'ACC TRUCKER HAT': 'Hats',
+    'Headwear': 'Hats',
+    'Beanies': 'Beanies',
+    'Acc Knit Beanie': 'Beanies',
+
+    // Bags & Footwear
+    'Bags': 'Bags',
+    'Acc Shoulder Bag': 'Bags',
+    'Acc Woven Backpack': 'Bags',
+    'Acc Footwear': 'Footwear',
+    'Footwear': 'Footwear',
+    'Acc Miscellaneous': 'Accessories',
+
+    // Cannabis — already well structured with " · " subcategories
+    'Accessories': 'Accessories',
+    'Concentrate': 'Concentrates',
+    'Edible': 'Edibles',
+    'Flower': 'Flower',
+    'Pre-Rolls': 'Pre-Rolls',
+    'Tincture': 'Tinctures',
+    'Topicals': 'Topicals',
+    'Vaporizers': 'Vaporizers',
+
+    // Other
+    'Glass': 'Glass',
+    'Puffco': 'Puffco',
+    'Kits': 'Kits',
+    'Merch': 'Merch',
+    'Misc': 'Misc',
+    'Gift Cards': 'Gift Cards',
+    'Deck': 'Skate',
+    'Dab Mats': 'Dab Mats',
+    'Skate': 'Skate',
+    'Smoke Miscellaneous': 'Accessories',
+    'Zippo': 'Accessories',
+    'Knits': 'Knitwear',
+    'Acc Miscellaneous': 'Accessories',
+  };
+
+  return map[raw] || raw;
+}
+
 function categoryMain(cat) {
-  return String(cat || '').split(' · ')[0].trim();
+  return normalizeCategoryMain(cat);
 }
 
 function categorySub(cat) {
   const parts = String(cat || '').split(' · ');
   return parts.length > 1 ? parts.slice(1).join(' · ').trim() : cat;
+}
+
+// Normalize subcategory names to merge spacing/case variants
+function normalizeCategorySub(cat) {
+  const raw = categorySub(cat);
+
+  const map = {
+    // Fix spacing variants
+    'OUTERWEAR WINDBREAKER CUT/SEW': 'Windbreaker',
+    'OUTERWEAR WINDBREAKER CUT/ SEW': 'Windbreaker',
+    'HOODED FLEECE CUT/SEW': 'Hooded Fleece',
+    'HOODED FLEECE CUT/ SEW': 'Hooded Fleece',
+  };
+
+  return map[raw] || raw;
 }
 
 const EXPANDED_GROUPS_KEY = 'dispo-category-groups';
@@ -3550,6 +3659,8 @@ function showHiddenStores() {
   }
 }
 
+// The category sidebar is an accordion: at most one group is open at a time.
+// A single group name is persisted so a reload reopens whatever was last open.
 function getExpandedGroups() {
   try {
     const stored = JSON.parse(localStorage.getItem(EXPANDED_GROUPS_KEY) || '[]');
@@ -3559,28 +3670,27 @@ function getExpandedGroups() {
   }
 }
 
-function rememberExpandedGroup(main) {
-  const expanded = getExpandedGroups();
-  expanded.add(main);
+function setExpandedGroup(main) {
+  // Always store a single element (or none): opening one group is what closes
+  // the previous one, so there is never a set to accumulate.
   try {
-    localStorage.setItem(EXPANDED_GROUPS_KEY, JSON.stringify([...expanded]));
+    localStorage.setItem(EXPANDED_GROUPS_KEY, JSON.stringify(main ? [main] : []));
   } catch (e) { /* private mode: expansion simply is not remembered */ }
 }
 
-function forgetExpandedGroup(main) {
-  const expanded = getExpandedGroups();
-  expanded.delete(main);
-  try {
-    localStorage.setItem(EXPANDED_GROUPS_KEY, JSON.stringify([...expanded]));
-  } catch (e) { /* ignore */ }
-}
-
-function toggleCategoryGroup(main) {
-  const wrap = document.querySelector(`#categoryNavList .nav-group[data-group="${CSS.escape(main)}"]`);
-  if (!wrap) return;
-  const isOpen = wrap.classList.toggle('open');
-  if (isOpen) rememberExpandedGroup(main);
-  else forgetExpandedGroup(main);
+// Open only `openMain` and collapse every other group. Called from every place
+// the active category changes so the open group always follows the selection.
+// The group name is stored raw, matching the DOM data-group attribute and the
+// getExpandedGroups() set used when the sidebar is built.
+function applyCategoryAccordion(openMain) {
+  document.querySelectorAll('#categoryNavList .nav-group').forEach(wrap => {
+    const isOpen = wrap.dataset.group === openMain;
+    wrap.classList.toggle('open', isOpen);
+    // Keep the collapsed/expanded state announced correctly after each toggle.
+    const header = wrap.querySelector('.nav-group-header');
+    if (header) header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  setExpandedGroup(openMain || '');
 }
 
 function updateFilterSelects() {
@@ -3606,24 +3716,10 @@ function updateFilterSelects() {
   sync('sortSelect', currentFilters.sort);
 }
 
-function selectCategoryGroup(main) {
-  // Selecting a group filters to every subcategory under it, matching the
-  // toggle behaviour the store and category rows already use.
-  currentFilters.category = currentFilters.category === main ? '' : main;
-  if (currentFilters.category) {
-    rememberExpandedGroup(main);
-    const wrap = document.querySelector(`#categoryNavList .nav-group[data-group="${CSS.escape(main)}"]`);
-    if (wrap) wrap.classList.add('open');
-  }
-  updateActiveCategory(currentFilters.category);
-  updateFilterSelects();
-  setUrlState(currentFilters);
-  applyFilters();
-}
-
 function selectCategory(cat) {
   // Filters stack, so a category selection keeps any store, brand, type and
-  // deal filters the user already set.
+  // deal filters the user already set. A second click on the same category
+  // clears it (which also collapses the group, see updateActiveCategory).
   currentFilters.category = currentFilters.category === cat ? '' : cat;
   updateActiveCategory(currentFilters.category);
   updateFilterSelects();
@@ -4850,7 +4946,7 @@ function renderModal() {
   const deal = visibleDeals[currentDealIndex];
   const store = allData.stores.find(s => s.id === deal.store_id);
 
-  document.getElementById('modalName').textContent = cleanProductName(deal);
+  document.getElementById('modalName').textContent = cleanProductName(deal).name;
   const meta = [];
   if (deal.brand) meta.push(deal.brand);
   if (deal.category) meta.push(deal.category);
