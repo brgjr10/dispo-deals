@@ -118,6 +118,10 @@ class DispoDeals:
 
         self._maybe_send_weekly_summary(store_results)
 
+        # Sync cross-store favorites: when a store starts carrying a favorited product,
+        # auto-add the favorite at the new store
+        self._sync_cross_store_favorites()
+
         logger.info(f"Run complete. Found {len(all_new_deals)} new deals across {len(store_results)} stores")
         return True
 
@@ -319,6 +323,73 @@ class DispoDeals:
                 )
             else:
                 logger.warning("Failed to send weekly menu digest for %s", store.name)
+
+    def _sync_cross_store_favorites(self):
+        """Sync cross-store favorites after scrape.
+        
+        When a store starts carrying a product that's favorited at another store,
+        auto-add the favorite at the new store. Uses the same cross_store_key
+        logic as the dashboard/API.
+        """
+        logger = logging.getLogger(__name__)
+        try:
+            # Get all unique cross_store_keys from existing favorites
+            fav_keys = set()
+            with self.storage._get_connection() as conn:
+                rows = conn.execute(
+                    "SELECT DISTINCT cross_store_key FROM favorites WHERE cross_store_key IS NOT NULL"
+                ).fetchall()
+                fav_keys = {row[0] for row in rows}
+            
+            if not fav_keys:
+                return
+            
+            # Get all current products grouped by cross_store_key
+            product_keys = {}
+            with self.storage._get_connection() as conn:
+                rows = conn.execute("""
+                    SELECT store_id, product_id, name, brand, category, weight
+                    FROM seen_deals
+                    WHERE in_stock = 1
+                """).fetchall()
+                
+                for row in rows:
+                    store_id, product_id, name, brand, category, weight = row
+                    key = f"{(name or '').strip().lower()}|{(brand or '').strip().lower()}|{(category or '').strip().lower()}|{(weight or '').strip().lower().replace(' ', '')}"
+                    if key in fav_keys:
+                        product_keys.setdefault(key, []).append((store_id, product_id))
+            
+            # For each favorited key, add favorites at stores that don't have it yet
+            added_count = 0
+            now = datetime.now(timezone.utc).isoformat()
+            with self.storage._get_connection() as conn:
+                for key, stores in product_keys.items():
+                    existing_favs = set()
+                    for store_id, product_id in stores:
+                        # Check if already favorited at this store
+                        row = conn.execute(
+                            "SELECT 1 FROM favorites WHERE store_id = ? AND product_id = ?",
+                            (store_id, product_id)
+                        ).fetchone()
+                        if row:
+                            existing_favs.add((store_id, product_id))
+                    
+                    # Add missing favorites
+                    for store_id, product_id in stores:
+                        if (store_id, product_id) not in existing_favs:
+                            conn.execute(
+                                "INSERT OR REPLACE INTO favorites (store_id, product_id, cross_store_key, created_at) VALUES (?, ?, ?, ?)",
+                                (store_id, product_id, key, now),
+                            )
+                            added_count += 1
+                            logger.info(f"Auto-favorited {product_id} at {store_id} (cross-store sync)")
+                
+                if added_count:
+                    conn.commit()
+                    logger.info(f"Cross-store favorite sync: added {added_count} favorites")
+                    
+        except Exception as e:
+            logger.warning(f"Cross-store favorite sync failed: {e}")
 
     def run_scheduler(self):
         import schedule
