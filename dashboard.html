@@ -2734,6 +2734,56 @@ function renderStoreRankings() {
   }
 }
 
+function renderStoreComparison() {
+  const products = allData.products || [];
+  const stores = allData.stores || [];
+  const deals = products.filter(p => p.is_deal);
+  
+  const byStore = new Map();
+  deals.forEach(p => {
+    if (!byStore.has(p.store_id)) byStore.set(p.store_id, []);
+    byStore.get(p.store_id).push(p);
+  });
+
+  const grid = document.getElementById('storeCompareGrid');
+  if (!grid) return;
+
+  const blocks = stores
+    .filter(s => byStore.has(s.id))
+    .map(store => {
+      const items = byStore.get(store.id)
+        .slice()
+        .sort((a, b) => (b.discount_pct || 0) - (a.discount_pct || 0))
+        .slice(0, 5); // Top 5 deals per store
+
+      const rows = items.map(item => {
+        const cleaned = cleanProductName(item);
+        return `
+          <div class="compare-row" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
+            <span class="compare-name">${escapeHtml(cleaned.name)}</span>
+            <span class="compare-price">$${item.sale_price.toFixed(2)}</span>
+            <span class="compare-discount">-${(item.discount_pct || 0).toFixed(0)}%</span>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="compare-store-card">
+          <header class="compare-store-head">
+            ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" onerror="this.style.display='none'">` : ''}
+            <span>
+              <span class="compare-store-name">${escapeHtml(store.name)}</span>
+              <span class="compare-store-count">${items.length} top deals</span>
+            </span>
+          </header>
+          <div class="compare-list">${rows}</div>
+        </div>
+      `;
+    }).join('');
+
+  grid.innerHTML = blocks || '<div class="menu-empty">No deals to compare</div>';
+}
+
 function renderLanding() {
   renderLandingStats();
   const host = document.getElementById('landingStores');
