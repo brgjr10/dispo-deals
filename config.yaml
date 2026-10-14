@@ -55,6 +55,7 @@ stores:
 - id: high-intentions
   name: High Intentions
   url: https://www.highintentions.life/collection/?sort=popular
+  scrape_interval_hours: 24
   scraper: shoplightspeed
   logo_url: 'https://res.cloudinary.com/dkw7lyjys/image/upload/h_150/v1761322521/high_intentions-01_1_1_1_1_1_fyiy0z.png'
   notification_mode: per-store
@@ -63,6 +64,7 @@ stores:
 - id: puffco
   name: Puffco
   url: https://www.puffco.com/products/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://www.puffco.com/cdn/shop/collections/puffco_logo_772dd7f9-1bd1-47dd-8006-a69feed462f1.webp?v=1728430232'
   notification_mode: per-store
@@ -71,6 +73,7 @@ stores:
 - id: cannastyle
   name: CannaStyle
   url: https://shopcannastyle.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQiMx1-dUD0W1gUMwXjX2ivXUxTvwKlW8QE78yYdVYtjk6NLTYIaXWVhfzG&s=10'
   notification_mode: per-store
@@ -79,6 +82,7 @@ stores:
 - id: mj-arsenal
   name: MJ Arsenal
   url: https://mjarsenal.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://mjarsenal.com/cdn/shop/files/MJA_W_on_B_Logo.png?v=1655486269'
   notification_mode: per-store
@@ -87,6 +91,7 @@ stores:
 - id: dematteo-art
   name: DeMatteo Art
   url: https://dematteoart.com/collections/all
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://media.istockphoto.com/id/2176546831/vector/painting-logo-design-template-vector-illustration.jpg?s=612x612&w=0&k=20&c=NhadL4B9kOAFWKSbdFWgvgeVSrzbGlNESWyOXwhHmVI='
   notification_mode: per-store
@@ -95,6 +100,7 @@ stores:
 - id: push-trees
   name: Push Trees
   url: https://pushtrees.com/collections/all-items
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfULDhZ5P2SBSG4viZp9aoMp3T4qwRACyPAZL-OKbo-JmkHt2o-yBZIKg&s=10'
   notification_mode: per-store
@@ -103,6 +109,7 @@ stores:
 - id: cookies-sf
   name: Cookies SF
   url: https://cookiessf.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTvf6NlBhM03bwTnwqV5I6T6hhVHimIiO8R_xPJ5MPspABJ4XsafDLoFk4&s=10'
   notification_mode: per-store
@@ -111,6 +118,7 @@ stores:
 - id: ripndip
   name: RIPNDIP
   url: https://ripndip.com/collections/420-collection
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://ripndip.com/cdn/shop/files/AR_00397.png?v=1787092313'
   notification_mode: per-store
@@ -171,6 +179,7 @@ stores:
 - id: daily-high-club
   name: Daily High Club
   url: https://dailyhighclub.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSmUdXRpyA7rUaOlItf-hj6JxJ7rbj64Nq8BYOeEL7nt8a9eF6O4MIqkYF&s=10'
   notification_mode: per-store
@@ -179,6 +188,7 @@ stores:
 - id: focus-v
   name: Focus V
   url: https://focusv.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://focusv.com/cdn/shop/files/Focus_V_Logo_2023_1a173ce8-02f3-4e33-b3d3-f2a5f404cffe.png?v=1684370550&width=2048'
   notification_mode: per-store
@@ -187,6 +197,7 @@ stores:
 - id: calibear-glass
   name: Calibear Glass
   url: https://calibearglass.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://pbs.twimg.com/profile_images/1798195804580249600/8IvQXNB__400x400.jpg'
   notification_mode: per-store
@@ -195,6 +206,7 @@ stores:
 - id: empire-smokes
   name: Empire Smokes
   url: https://empiresmokes.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://media.licdn.com/dms/image/v2/C560BAQFRRUwd5ekVRg/company-logo_200_200/company-logo_200_200/0/1630565887459/cloud_culture_store_logo?e=2147483647&v=beta&t=EML_mUj1aXT0XK-0ac_RRwDYA_DyyDrTiRkhnwYcn3U'
   notification_mode: per-store
@@ -203,6 +215,7 @@ stores:
 - id: tuff-tethers
   name: Tuff Tethers
   url: https://tufftethers.com/collections/all
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://a7d1254a.delivery.rocketcdn.me/wp-content/uploads/2025/07/tt-logo-color-300x300.png'
   notification_mode: per-store
@@ -211,6 +224,7 @@ stores:
 - id: the-dopest-shop
   name: The Dopest Shop
   url: https://thedopestshop.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://media.zenfs.com/en/accesswire.ca/8a9e277cfab8e73057c1624b764c17c8'
   notification_mode: per-store
@@ -219,6 +233,7 @@ stores:
 - id: rove-brand
   name: ROVE
   url: https://rovebrand.com/collections/apparel
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://uploads-ssl.webflow.com/6171c8b362b2a448d7c8909d/63c5d21a3f09c306ee784ca2_rove_Logo.png'
   notification_mode: per-store
@@ -227,6 +242,7 @@ stores:
 - id: mothership-glass
   name: Mothership Glass
   url: https://mothershipglass.com/shop/
+  scrape_interval_hours: 24
   scraper: woocommerce
   logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDLdKwaMxdT1o9edMZFy30ytkd6hl3MSbgNchr3g1Fnj8kL9o8vTVoOA9t&s=10'
   notification_mode: per-store
@@ -235,6 +251,7 @@ stores:
 - id: illadelph-clothing
   name: Illadelph
   url: https://illadelphclothing.com/shop/
+  scrape_interval_hours: 24
   scraper: woocommerce
   logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtnHxJkgkN0NHugAKDUqMRm9P_Et4RXvnEjFCwEFvC3zqFyprhStmLo7T0&s=10'
   notification_mode: per-store
@@ -263,6 +280,7 @@ stores:
 - id: kk-apparel
   name: KK Apparel
   url: https://shopkkapparel.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://khalifakush.com/cdn/shop/files/KhalifaKush_favico_256x256_crop_center_33bfcbb6-455e-43ad-88c3-b0fbec5297ca.png?v=1660280161'
   notification_mode: per-store
@@ -271,6 +289,7 @@ stores:
 - id: 710-labs
   name: 710 Labs
   url: https://shop.710labs.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://media.licdn.com/dms/image/v2/C4E0BAQEhWOx21nXiWw/company-logo_200_200/company-logo_200_200/0/1630575094890?e=2147483647&v=beta&t=qIcAicppj2wkpdoZBhJhWy4fvCHBGkgU-rwRXgl1s6c'
   notification_mode: per-store
@@ -279,6 +298,7 @@ stores:
 - id: alien-labs-apparel
   name: Alien Labs Apparel
   url: https://alienlabsapparel.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdfU8bEy1UlGsH5-y0GkLp5dPK3oeIJ7GsWdP2Tg5oXEtM5IVgOsLQoasm&s=10'
   notification_mode: per-store
@@ -287,6 +307,7 @@ stores:
 - id: stiiizy
   name: STIIIZY
   url: https://www.stiiizy.com/pages/shop
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8KIU_769zYt9eugmln7sGnbKop89RW4cPgnKqVR4KrFCP_lJGD8Fpv_gE&s=10'
   notification_mode: per-store
@@ -295,6 +316,7 @@ stores:
 - id: prism-water-pipes
   name: Prism Water Pipes
   url: https://prismwaterpipes.com/
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://media.licdn.com/dms/image/v2/D4E0BAQFS5pCLvZgr4A/company-logo_200_200/company-logo_200_200/0/1712867617415/prism_water_pipes_logo?e=2147483647&v=beta&t=X4n_uuvOHPpcB-fIchnaIxGdXd99y7tFJQ1Okg74M_A'
   notification_mode: per-store
@@ -303,6 +325,7 @@ stores:
 - id: the-dart-co
   name: The Dart Co
   url: https://thedartco.com/products
+  scrape_interval_hours: 24
   scraper: shopify
   logo_url: 'https://thedartco.com/cdn/shop/files/Splash-1_1200x1200.jpg?v=1646805030'
   notification_mode: per-store

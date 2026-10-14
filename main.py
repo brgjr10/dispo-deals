@@ -24,6 +24,25 @@ def setup_logging(level: str):
     )
 
 
+def store_is_due(store: StoreConfig, last_scrape_at: Optional[datetime], now: datetime) -> bool:
+    """Whether a store is due for scraping under its per-store interval.
+
+    A store with no ``scrape_interval_hours`` is always due (scraped every run).
+    Otherwise it is due only when it has never been scraped or the interval has
+    elapsed. This is a throttle, not change detection: it avoids re-fetching a
+    slow-moving store more often than configured, trading a little freshness for
+    speed. Dispensaries and deal-heavy stores leave the interval unset.
+    """
+    interval = getattr(store, "scrape_interval_hours", None)
+    if not interval:
+        return True
+    if last_scrape_at is None:
+        return True
+    if last_scrape_at.tzinfo is None:
+        last_scrape_at = last_scrape_at.replace(tzinfo=timezone.utc)
+    return now - last_scrape_at >= timedelta(hours=float(interval))
+
+
 class DispoDeals:
     def __init__(self, config: Config):
         self.config = config
@@ -92,6 +111,22 @@ class DispoDeals:
 
         for store in self.config.get_enabled_stores():
             try:
+                now = datetime.now(timezone.utc)
+                last_scrape = self.storage.get_store_last_scrape(store.id)
+                if not store_is_due(store, last_scrape, now):
+                    if last_scrape is not None:
+                        if last_scrape.tzinfo is None:
+                            last_scrape = last_scrape.replace(tzinfo=timezone.utc)
+                        ago = (now - last_scrape).total_seconds() / 3600
+                    else:
+                        ago = 0.0
+                    logger.info(
+                        f"Skipping {store.name}: scraped {ago:.1f}h ago "
+                        f"(interval {store.scrape_interval_hours}h not elapsed)"
+                    )
+                    store_results[store.id] = {"deals": [], "error": None, "skipped": True}
+                    continue
+
                 logger.info(f"Scraping {store.name}...")
                 scraper = create_scraper(store, self.config)
                 deals = scraper.fetch_menu()
@@ -108,6 +143,9 @@ class DispoDeals:
                 store_results[store.id] = {"deals": new_deals, "error": None}
 
                 self._save_weekly_snapshot(store, deals)
+
+                # Stamp a successful scrape so the throttle can skip it next run.
+                self.storage.set_store_last_scrape(store.id, now)
 
             except Exception as e:
                 logger.error(f"Error processing {store.name}: {e}")

@@ -358,6 +358,41 @@ class SQLiteStorage:
                     pass
         return None
 
+    def get_store_last_scrape(self, store_id: str) -> Optional[datetime]:
+        """When this store was last successfully scraped.
+
+        Powers the per-store scrape-interval throttle; None means it has never
+        been scraped, so the throttle lets it run.
+        """
+        with self._get_connection() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS store_scrape_state "
+                "(store_id TEXT PRIMARY KEY, last_scraped_at TEXT)"
+            )
+            row = conn.execute(
+                "SELECT last_scraped_at FROM store_scrape_state WHERE store_id = ?",
+                (store_id,),
+            ).fetchone()
+            if row and row[0]:
+                try:
+                    return datetime.fromisoformat(row[0].replace('Z', '+00:00'))
+                except Exception:
+                    return None
+        return None
+
+    def set_store_last_scrape(self, store_id: str, when: datetime) -> None:
+        """Record a successful scrape time for the throttle."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS store_scrape_state "
+                "(store_id TEXT PRIMARY KEY, last_scraped_at TEXT)"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO store_scrape_state (store_id, last_scraped_at) VALUES (?, ?)",
+                (store_id, when.isoformat()),
+            )
+            conn.commit()
+
     def claim_weekly_summary(self, store_id: str, week_start: date) -> bool:
         """Reserve the right to send this store's weekly menu for this week.
 

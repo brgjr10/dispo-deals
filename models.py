@@ -368,6 +368,11 @@ class StoreConfig:
     # to locate their data. For Sweed, for example, this carries the API host,
     # the numeric store id and the sale type ("Recreational").
     scraper_options: Optional[Dict[str, str]] = None
+    # Minimum hours between scrapes of this store. Slow-moving stores (static
+    # merch, glass, apparel) can be set to 24 so they are re-fetched once a day
+    # instead of on every 6-hour run; leave it unset for dispensaries and
+    # deal-heavy stores that should be checked as often as the schedule runs.
+    scrape_interval_hours: Optional[float] = None
     # Product-title terms a store should never contribute. Zumiez's 420
     # collection mixes in candy-branded merch that is not cannabis, and a skate
     # shop has no other place to file it.
@@ -387,4 +392,5 @@ class StoreConfig:
             dispensary_id=data.get("dispensary_id"),
             exclude_terms=data.get("exclude_terms"),
             scraper_options=data.get("scraper_options"),
+            scrape_interval_hours=data.get("scrape_interval_hours"),
         )
