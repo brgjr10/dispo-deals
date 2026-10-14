@@ -108,6 +108,79 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+- id: push-trees
+  name: Push Trees
+  url: https://pushtrees.com/collections/all-items
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: cookies-sf
+  name: Cookies SF
+  url: https://cookiessf.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: ripndip
+  name: RIPNDIP
+  url: https://ripndip.com/collections/420-collection
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: zumiez-420
+  name: Zumiez 420
+  url: https://www.zumiez.com/collections/weed.html
+  scraper: magento
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: pure-ohio-tallmadge
+  name: Pure Ohio Wellness — Tallmadge
+  url: https://pureohiowellness.com/stores/tallmadge
+  scraper: dutchie
+  logo_url: https://images.dutchie.com/326cbdb02c774d8dc634e54c3ac9e905
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+  dispensary_id: 685b09c970977ec2ed6c2f92
+- id: dutchie-akron-menu
+  name: Dutchie — Akron Menu
+  url: https://dutchie.com/dispensary/akron-menu
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: mothership-cannabis
+  name: The Mothership Cannabis
+  url: https://dutchie.com/dispensary/the-mothership-cannabis-dispensary
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: dutchie-canton-menu
+  name: Dutchie — Canton Menu
+  url: https://dutchie.com/dispensary/canton-menu
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: ayr-parma-heights
+  name: AYR Ohio — Parma Heights
+  url: https://dutchie.com/dispensary/ayr-oh-parma-heights
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
 scrapers:
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql
@@ -120,6 +193,12 @@ scrapers:
     timeout: 30
     headers:
       User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+  magento:
+    timeout: 30
+    headers:
+      User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+      Accept: application/json
+      Content-Type: application/json
 images:
   cache_dir: ./cache/images
   max_width: 800

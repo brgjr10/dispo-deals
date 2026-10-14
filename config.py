@@ -11,6 +11,7 @@ from models import StoreConfig, NotificationMode
 class ScraperConfig:
     dutchie: Dict[str, Any] = field(default_factory=dict)
     klutch: Dict[str, Any] = field(default_factory=dict)
+    magento: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

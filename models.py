@@ -360,6 +360,10 @@ class StoreConfig:
     notification_mode: NotificationMode = NotificationMode.PER_STORE
     enabled: bool = True
     webhook_enabled: bool = False
+    # Optional Dutchie dispensary id. When set, the scraper uses it directly
+    # instead of resolving a cName slug, which removes any chance of matching
+    # a different dispensary that happens to share the slug.
+    dispensary_id: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: dict) -> "StoreConfig":
@@ -372,4 +376,5 @@ class StoreConfig:
             notification_mode=NotificationMode(data.get("notification_mode", "per-store")),
             enabled=data.get("enabled", True),
             webhook_enabled=data.get("webhook_enabled", False),
+            dispensary_id=data.get("dispensary_id"),
         )

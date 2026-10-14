@@ -312,6 +312,14 @@ class DutchieScraper(BaseScraper):
         if self._dispensary_id:
             return self._dispensary_id
 
+        # A configured id is authoritative: some storefronts (a custom domain
+        # like pureohiowellness.com/stores/tallmadge) expose their dispensary id
+        # directly, and a cName like "tallmadge" is ambiguous across chains.
+        configured_id = getattr(self.store_config, "dispensary_id", None)
+        if configured_id:
+            self._dispensary_id = configured_id
+            return self._dispensary_id
+
         response = self._graphql_request(
             self.DISPENSARY_QUERY,
             {"cNameOrID": self.dispensary_slug},
