@@ -1110,6 +1110,15 @@ body {
 .product-original { font-size: 12px; color: var(--muted); text-decoration: line-through; }
 .product-store { font-size: 11px; color: var(--muted); }
 
+/* Multi-store price range */
+.product-price-range { display: flex; flex-direction: column; gap: 2px; }
+.product-sale-range { font-size: 16px; font-weight: 700; color: var(--success); }
+.product-original-range { font-size: 12px; color: var(--muted); text-decoration: line-through; }
+.product-store-count { font-size: 11px; font-weight: 600; color: var(--primary); background: rgba(63,185,80,0.1); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+
+/* Multi-store badge in tags row */
+.product-tag.multi-store { background: var(--primary); color: var(--bg); }
+
 /* Strain display */
 .product-strain {
   font-size: 9.5px;
@@ -3785,6 +3794,33 @@ function renderProductCard(product) {
   const isFavorite = favorites.has(product.hash);
   const favoriteBtn = `<button class="favorite-btn ${isFavorite ? 'active' : ''}" data-deal-hash="${escapeHtml(product.hash)}" onclick="event.stopPropagation(); toggleFavorite('${escapeHtml(product.hash)}')" aria-label="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="${isFavorite ? 'var(--danger)' : 'none'}" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>`;
 
+  // Multi-store handling: if product has stores array, show price range and store count
+  const isMultiStore = product.stores && product.stores.length > 1;
+  const priceMin = product.price_min ?? product.sale_price;
+  const priceMax = product.price_max ?? product.sale_price;
+  const origMin = product.original_price_min ?? product.original_price;
+  const origMax = product.original_price_max ?? product.original_price;
+  const showPriceRange = isMultiStore && (priceMin !== priceMax || origMin !== origMax);
+  
+  let priceDisplay = '';
+  if (showPriceRange) {
+    priceDisplay = `
+      <div class="product-price-range">
+        <span class="product-sale-range">$${priceMin.toFixed(2)} – $${priceMax.toFixed(2)}</span>
+        ${origMin > priceMin || origMax > priceMax ? `<span class="product-original-range">$${origMin.toFixed(2)} – $${origMax.toFixed(2)}</span>` : ''}
+      </div>
+      <div class="product-store-count">${product.store_count} stores</div>
+    `;
+  } else {
+    priceDisplay = `
+      <div class="product-price">
+        <span class="product-sale">$${product.sale_price.toFixed(2)}</span>
+        ${product.original_price > product.sale_price ? `<span class="product-original">$${product.original_price.toFixed(2)}</span>` : ''}
+      </div>
+      <div class="product-store">${escapeHtml(store?.name || product.store_id)}</div>
+    `;
+  }
+
   return `
     <div class="product-card deal-row-clickable" data-deal-hash="${escapeHtml(product.hash)}" tabindex="0" role="button" aria-label="${escapeHtml(product.name)}">
       ${compareCheckbox(product.hash)}
@@ -3794,6 +3830,7 @@ function renderProductCard(product) {
           ${dealBadge}
           ${stockBadge}
           ${strain ? renderStrainBadge(strain) : ''}
+          ${isMultiStore ? `<span class="product-tag multi-store">${product.store_count} stores</span>` : ''}
         </div>
         <img class="product-img" src="${imgSrc}" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">
       </div>
@@ -3809,12 +3846,8 @@ function renderProductCard(product) {
           ${strain ? `<span class="product-strain">🌿 ${escapeHtml(strain.name)}</span>` : ''}
         </div>
         <div class="product-price-row">
-          <div class="product-price">
-            <span class="product-sale">$${product.sale_price.toFixed(2)}</span>
-            ${product.original_price > product.sale_price ? `<span class="product-original">$${product.original_price.toFixed(2)}</span>` : ''}
-          </div>
+          ${priceDisplay}
         </div>
-        <div class="product-store">${escapeHtml(store?.name || product.store_id)}</div>
       </div>
     </div>
   `;
@@ -4210,19 +4243,36 @@ function renderModal() {
   if (deal.weight) meta.push(deal.weight);
   if (deal.thc_pct !== null && deal.thc_pct !== undefined) meta.push('THC: ' + deal.thc_pct + '%');
   if (deal.cbd_pct !== null && deal.cbd_pct !== undefined) meta.push('CBD: ' + deal.cbd_pct + '%');
+  // Show store count if multi-store
+  if (deal.stores && deal.stores.length > 1) {
+    meta.push(`${deal.store_count} stores`);
+  }
   document.getElementById('modalMeta').innerHTML = meta.map(m => '<span>' + escapeHtml(m) + '</span>').join(' · ');
 
   const imgEl = document.getElementById('modalImage');
   imgEl.src = productImageSrc(deal);
   imgEl.alt = deal.name;
 
-  document.getElementById('modalSalePrice').textContent = '$' + Number(deal.sale_price).toFixed(2);
-  document.getElementById('modalOriginalPrice').textContent = '$' + Number(deal.original_price).toFixed(2);
+  // Multi-store price display
+  const isMultiStore = deal.stores && deal.stores.length > 1;
+  const priceMin = deal.price_min ?? deal.sale_price;
+  const priceMax = deal.price_max ?? deal.sale_price;
+  const origMin = deal.original_price_min ?? deal.original_price;
+  const origMax = deal.original_price_max ?? deal.original_price;
+  const showPriceRange = isMultiStore && (priceMin !== priceMax || origMin !== origMax);
+
+  if (showPriceRange) {
+    document.getElementById('modalSalePrice').textContent = '$' + priceMin.toFixed(2) + ' – $' + priceMax.toFixed(2);
+    document.getElementById('modalOriginalPrice').textContent = '$' + origMin.toFixed(2) + ' – $' + origMax.toFixed(2);
+  } else {
+    document.getElementById('modalSalePrice').textContent = '$' + Number(deal.sale_price).toFixed(2);
+    document.getElementById('modalOriginalPrice').textContent = '$' + Number(deal.original_price).toFixed(2);
+  }
   document.getElementById('modalDiscount').textContent = 'Save ' + Number(deal.discount_pct).toFixed(1) + '%';
   const sa = Number(deal.original_price) - Number(deal.sale_price);
   document.getElementById('modalSavings').textContent = 'You save $' + sa.toFixed(2);
 
-  // Load price history for this product
+  // Load price history for this product (use primary store)
   loadPriceHistory(deal.store_id, deal.id);
 
   const igEl = document.getElementById('modalInfoGrid');
@@ -4249,10 +4299,19 @@ function renderModal() {
   if (deal.detected_at) addInfoItem('Detected', new Date(deal.detected_at).toLocaleDateString());
   if (deal.hash) addInfoItem('Hash', deal.hash);
 
+  // Multi-store: show all stores carrying this product
   const sgEl = document.getElementById('modalStoreGrid');
   sgEl.innerHTML = '';
-  if (store) addStoreItem('Store', store.name, store);
-  else addStoreItem('Store ID', deal.store_id, null);
+  if (isMultiStore) {
+    deal.stores.forEach(s => {
+      const storeInfo = allData.stores.find(st => st.id === s.store_id) || { name: s.store_id, logo_url: '' };
+      addStoreItem(`${storeInfo.name} — $${s.sale_price.toFixed(2)}`, s.product_url || '', storeInfo);
+    });
+  } else if (store) {
+    addStoreItem('Store', store.name, store);
+  } else {
+    addStoreItem('Store ID', deal.store_id, null);
+  }
 
   document.getElementById('modalProductLink').href = deal.product_url || '#';
   const pv = document.getElementById('modalPrev');

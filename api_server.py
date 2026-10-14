@@ -120,6 +120,33 @@ def _product_dedupe_key(product):
             _get(product, "sale_price"), _get(product, "original_price"))
 
 
+def _cross_store_dedupe_key(product):
+    """Key identifying the same physical product ACROSS stores.
+
+    Uses name + brand + category + weight (normalized) to match the same
+    product carried by different dispensaries. Excludes store_id and prices
+    so the same product at different prices merges into one entry with
+    multiple store offerings.
+    """
+    def _get(product, key, default=""):
+        if isinstance(product, dict):
+            return product.get(key, default)
+        return getattr(product, key, default)
+
+    name = (_get(product, "name") or "").strip().lower()
+    if not name:
+        return None
+
+    brand = (_get(product, "brand") or "").strip().lower()
+    category = (_get(product, "category") or "").strip().lower()
+    weight = (_get(product, "weight") or "").strip().lower()
+
+    # Normalize weight: "3.5g" == "3.5 g" == "3.5g "
+    weight = weight.replace(" ", "")
+
+    return (name, brand, category, weight)
+
+
 def dedupe_products(products):
     """Collapse a store's duplicate listings of the same product.
 
@@ -139,6 +166,84 @@ def dedupe_products(products):
         seen.add(key)
         unique.append(product)
     return unique
+
+
+def aggregate_cross_store_products(products):
+    """Merge the same product across multiple stores into single entries.
+
+    Returns a list where each product has a `stores` array containing
+    per-store price, availability, and URL info. The primary product uses
+    the best (lowest) sale price across stores.
+    """
+    groups = {}
+    for product in products:
+        key = _cross_store_dedupe_key(product)
+        if key is None:
+            # No name - keep as-is
+            groups[id(product)] = [product]
+            continue
+        groups.setdefault(key, []).append(product)
+
+    aggregated = []
+    for key, group in groups.items():
+        if len(group) == 1:
+            # Only at one store - keep as-is but add stores array
+            p = dict(group[0])
+            p["stores"] = [{
+                "store_id": p.get("store_id"),
+                "sale_price": p.get("sale_price"),
+                "original_price": p.get("original_price"),
+                "discount_pct": p.get("discount_pct"),
+                "in_stock": p.get("in_stock", True),
+                "product_url": p.get("product_url"),
+            }]
+            p["price_min"] = p.get("sale_price")
+            p["price_max"] = p.get("sale_price")
+            p["original_price_min"] = p.get("original_price")
+            p["original_price_max"] = p.get("original_price")
+            p["store_count"] = 1
+            aggregated.append(p)
+        else:
+            # Multiple stores - merge into one entry
+            # Use the entry with the best (lowest) sale price as the primary
+            primary = min(group, key=lambda x: x.get("sale_price", float("inf")) or float("inf"))
+            p = dict(primary)
+            p["stores"] = []
+            sale_prices = []
+            original_prices = []
+            for g in group:
+                sp = g.get("sale_price")
+                op = g.get("original_price")
+                if sp is not None:
+                    sale_prices.append(sp)
+                if op is not None:
+                    original_prices.append(op)
+                p["stores"].append({
+                    "store_id": g.get("store_id"),
+                    "sale_price": sp,
+                    "original_price": op,
+                    "discount_pct": g.get("discount_pct"),
+                    "in_stock": g.get("in_stock", True),
+                    "product_url": g.get("product_url"),
+                })
+            # Sort stores by price (best deal first)
+            p["stores"].sort(key=lambda s: s.get("sale_price", float("inf")) or float("inf"))
+            # Primary price is the best price
+            p["sale_price"] = p["stores"][0]["sale_price"]
+            p["original_price"] = p["stores"][0]["original_price"]
+            p["discount_pct"] = p["stores"][0]["discount_pct"]
+            p["in_stock"] = any(s.get("in_stock", True) for s in p["stores"])
+            p["product_url"] = p["stores"][0]["product_url"]
+            # Price range across stores
+            p["price_min"] = min(sale_prices) if sale_prices else p["sale_price"]
+            p["price_max"] = max(sale_prices) if sale_prices else p["sale_price"]
+            p["original_price_min"] = min(original_prices) if original_prices else p["original_price"]
+            p["original_price_max"] = max(original_prices) if original_prices else p["original_price"]
+            # Track how many stores carry it
+            p["store_count"] = len(p["stores"])
+            aggregated.append(p)
+
+    return aggregated
 
 
 class DashboardHandler(SimpleHTTPRequestHandler):
@@ -1055,7 +1160,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             # different spellings and would otherwise split into several rows.
             deal["brand"] = self._brand_canonicalizer()(deal.get("brand"))
             deals.append(deal)
-        return self._attach_strains(dedupe_products(deals))
+        # First dedupe within each store, then aggregate across stores
+        deduped = dedupe_products(deals)
+        aggregated = aggregate_cross_store_products(deduped)
+        return self._attach_strains(aggregated)
 
     def _enabled_store_ids(self) -> set:
         """Store ids that should appear in the dashboard.
@@ -1126,6 +1234,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         # Dutchie can list the same product under two ids, so the menu is
         # deduplicated after the stores and canonicalisation are decided.
         all_products = dedupe_products(all_products)
+        all_products = aggregate_cross_store_products(all_products)
         self._attach_strains(all_products)
         return all_products
 
