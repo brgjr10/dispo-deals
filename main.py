@@ -3,7 +3,7 @@ import argparse
 import logging
 import sys
 import signal
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional
 
 from config import Config
@@ -64,6 +64,24 @@ class DispoDeals:
     def _signal_handler(self, signum, frame):
         logging.getLogger(__name__).info("Shutdown signal received")
         self.running = False
+
+    def should_skip_initial_run(self, window_hours: int = 6) -> bool:
+        """Check if a scrape was done within the last `window_hours`."""
+        last_scrape = self.storage.get_most_recent_scrape_time()
+        if not last_scrape:
+            return False
+        now = datetime.now(timezone.utc)
+        # Make last_scrape timezone-aware if it isn't
+        if last_scrape.tzinfo is None:
+            last_scrape = last_scrape.replace(tzinfo=timezone.utc)
+        elapsed = now - last_scrape
+        if elapsed < timedelta(hours=window_hours):
+            logging.getLogger(__name__).info(
+                "Last scrape was %.1f hours ago (within %dh window), skipping initial run",
+                elapsed.total_seconds() / 3600, window_hours
+            )
+            return True
+        return False
 
     def run_once(self) -> bool:
         logger = logging.getLogger(__name__)
@@ -397,6 +415,12 @@ def main():
         success = app.run_once()
         return 0 if success else 1
     else:
+        # On scheduler startup, skip initial run if a scrape was done recently
+        if app.should_skip_initial_run(window_hours=6):
+            logging.getLogger(__name__).info("Skipping initial scrape, waiting for next scheduled run")
+        else:
+            logging.getLogger(__name__).info("No recent scrape found, running initial scrape")
+            app.run_once()
         app.run_scheduler()
         return 0
 

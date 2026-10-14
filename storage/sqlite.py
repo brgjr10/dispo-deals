@@ -333,6 +333,21 @@ class SQLiteStorage:
                 return WeeklySnapshot.from_dict(data)
         return None
 
+    def get_most_recent_scrape_time(self) -> Optional[datetime]:
+        """Return the most recent capture time across all weekly snapshots."""
+        with self._get_connection() as conn:
+            row = conn.execute("""
+                SELECT captured_at FROM weekly_snapshots
+                ORDER BY captured_at DESC
+                LIMIT 1
+            """).fetchone()
+            if row and row[0]:
+                try:
+                    return datetime.fromisoformat(row[0].replace('Z', '+00:00'))
+                except Exception:
+                    pass
+        return None
+
     def claim_weekly_summary(self, store_id: str, week_start: date) -> bool:
         """Reserve the right to send this store's weekly menu for this week.
 
