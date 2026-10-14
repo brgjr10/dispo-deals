@@ -3099,10 +3099,13 @@ function populateFilters() {
   const sortSelect = document.getElementById('sortSelect');
   const SORT_OPTIONS = [
     { value: 'discount-desc', label: 'Best discount first' },
+    { value: 'discount-asc', label: 'Worst discount first' },
     { value: 'price-asc', label: 'Price: Low to high' },
     { value: 'price-desc', label: 'Price: High to low' },
     { value: 'name-asc', label: 'Name: A to Z' },
-    { value: 'name-desc', label: 'Name: Z to A' }
+    { value: 'name-desc', label: 'Name: Z to A' },
+    { value: 'date-desc', label: 'Newest first' },
+    { value: 'date-asc', label: 'Oldest first' }
   ];
   SORT_OPTIONS.forEach(opt => {
     const option = document.createElement('option');
@@ -3438,6 +3441,16 @@ function sortProducts(products) {
     case 'price-desc': return sorted.sort((a, b) => b.sale_price - a.sale_price);
     case 'name-asc': return sorted.sort((a, b) => a.name.localeCompare(b.name));
     case 'name-desc': return sorted.sort((a, b) => b.name.localeCompare(a.name));
+    case 'date-desc': return sorted.sort((a, b) => {
+      const da = a.detected_at ? new Date(a.detected_at).getTime() : 0;
+      const db = b.detected_at ? new Date(b.detected_at).getTime() : 0;
+      return db - da; // Newest first
+    });
+    case 'date-asc': return sorted.sort((a, b) => {
+      const da = a.detected_at ? new Date(a.detected_at).getTime() : 0;
+      const db = b.detected_at ? new Date(b.detected_at).getTime() : 0;
+      return da - db; // Oldest first
+    });
     default: return sorted;
   }
 }
