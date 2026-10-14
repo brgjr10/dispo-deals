@@ -11,6 +11,7 @@ that is already consistent gets renamed.
 """
 
 import re
+from typing import Dict
 
 # Anything not listed is left untouched rather than guessed at.
 CATEGORY_ALIASES = {

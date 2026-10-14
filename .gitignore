@@ -42,3 +42,7 @@ output.txt
 check_db*.py
 modal.js
 modal_inject.js
+
+# Browser captures (contain live session cookies / cf_clearance)
+*.har
+
