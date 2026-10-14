@@ -12,6 +12,7 @@ search term instead.
 """
 
 import logging
+import re
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
@@ -26,6 +27,12 @@ logger = logging.getLogger(__name__)
 class MagentoScraper(BaseScraper):
     PAGE_SIZE = 100
     MAX_PAGES = 10
+
+    # Titles containing any of these words are dropped entirely. Zumiez is a
+    # skate shop, so its 420 collection also carries candy-branded apparel and
+    # accessories that are not cannabis products and would show up as noise on
+    # the deals board. A store can override the list in its config.
+    EXCLUDE_TERMS = ("candy",)
 
     CATEGORY_QUERY = """
     query($path: String) {
@@ -207,6 +214,10 @@ class MagentoScraper(BaseScraper):
         A sale is ``regular_price`` being set and higher than ``final_price``,
         which is Magento's own "was / now" convention.
         """
+        name = (product.get("name") or "").strip()
+        if self._is_excluded(name):
+            return None
+
         price_range = (product.get("price_range") or {}).get("minimum_price") or {}
         final = price_range.get("final_price") or {}
         regular = price_range.get("regular_price") or {}
@@ -234,7 +245,7 @@ class MagentoScraper(BaseScraper):
         return Deal(
             store_id=self.store_config.id,
             product_id=str(product.get("sku") or url_key),
-            name=(product.get("name") or "").strip(),
+            name=name,
             category=canonical_category("Accessories"),
             original_price=original,
             sale_price=sale,
@@ -244,6 +255,25 @@ class MagentoScraper(BaseScraper):
             in_stock=(product.get("stock_status") == "IN_STOCK"),
             weight="",
             brand="",
+        )
+
+    def _is_excluded(self, name: str) -> bool:
+        """True when a product title carries an excluded term.
+
+        Matched on word boundaries so "candy" drops "Sour Candy Tee" but leaves
+        "Candyman" alone. An empty override list disables filtering, which is
+        what a store with no exclusions should get.
+        """
+        terms = getattr(self.store_config, "exclude_terms", None)
+        if terms is None:
+            terms = self.EXCLUDE_TERMS
+        if not name or not terms:
+            return False
+        lowered = name.lower()
+        return any(
+            re.search(rf"\b{re.escape(str(term).lower())}\b", lowered)
+            for term in terms
+            if str(term).strip()
         )
 
     def fetch_logo(self) -> Optional[bytes]:

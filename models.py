@@ -364,6 +364,10 @@ class StoreConfig:
     # instead of resolving a cName slug, which removes any chance of matching
     # a different dispensary that happens to share the slug.
     dispensary_id: Optional[str] = None
+    # Product-title terms a store should never contribute. Zumiez's 420
+    # collection mixes in candy-branded merch that is not cannabis, and a skate
+    # shop has no other place to file it.
+    exclude_terms: Optional[List[str]] = None
 
     @classmethod
     def from_dict(cls, data: dict) -> "StoreConfig":
@@ -377,4 +381,5 @@ class StoreConfig:
             enabled=data.get("enabled", True),
             webhook_enabled=data.get("webhook_enabled", False),
             dispensary_id=data.get("dispensary_id"),
+            exclude_terms=data.get("exclude_terms"),
         )

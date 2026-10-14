@@ -140,6 +140,9 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+  # The collection is a skate shop's, so it also carries candy-branded merch.
+  exclude_terms:
+  - candy
 - id: pure-ohio-tallmadge
   name: Pure Ohio Wellness — Tallmadge
   url: https://pureohiowellness.com/stores/tallmadge
@@ -150,7 +153,7 @@ stores:
   webhook_enabled: false
   dispensary_id: 685b09c970977ec2ed6c2f92
 - id: dutchie-akron-menu
-  name: Dutchie — Akron Menu
+  name: The Botanist - Akron
   url: https://dutchie.com/dispensary/akron-menu
   scraper: dutchie
   logo_url: ''
@@ -166,7 +169,7 @@ stores:
   enabled: true
   webhook_enabled: false
 - id: dutchie-canton-menu
-  name: Dutchie — Canton Menu
+  name: The Botanist - Canton
   url: https://dutchie.com/dispensary/canton-menu
   scraper: dutchie
   logo_url: ''

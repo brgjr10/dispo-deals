@@ -164,6 +164,18 @@ CATEGORY_ALIASES = {
     # Kits.
     "kit": "Kits",
     "kits": "Kits",
+    # Dab mats get their own shelf. A mat is a large silicone sheet rather than
+    # a dab tool, so folding it into "dab tools" would hide the biggest items
+    # on the shelf behind the smallest, and "mat" on its own is used by stores
+    # that mean nothing else.
+    "dabmat": "Dab Mats",
+    "dabmats": "Dab Mats",
+    "dab-mat": "Dab Mats",
+    "dab-mats": "Dab Mats",
+    "dabpad": "Dab Mats",
+    "dabpads": "Dab Mats",
+    "mat": "Dab Mats",
+    "mats": "Dab Mats",
     # "cleaningcare" folds cleaning supplies into Accessories, which already
     # owns the plain "cleaning" alias above. Vape coils are replacement parts.
     "cleaningcare": "Accessories",
@@ -299,6 +311,11 @@ SUBCATEGORY_ALIASES = {
     ("accessories", "glassware"): "glassware",
     ("accessories", "dabtools"): "dab tools",
     ("accessories", "dabtool"): "dab tools",
+    # Keys are normalised, so "dab-mats" and "dab mats" both arrive as dabmats.
+    ("accessories", "dabmats"): "dab mats",
+    ("accessories", "dabmat"): "dab mats",
+    ("accessories", "mats"): "dab mats",
+    ("accessories", "mat"): "dab mats",
     ("accessories", "papersrollingsupplies"): "papers & rolling supplies",
     ("accessories", "papersrollingsupplies"): "papers & rolling supplies",
     ("accessories", "ashtrays"): "ashtrays",

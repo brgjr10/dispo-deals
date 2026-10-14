@@ -224,5 +224,35 @@ class TestConsolidatedShelves:
         assert canonical_category(raw) == f"Accessories{SEP}supplies"
 
 
+class TestDabMats:
+    """Dab mats are their own shelf, not a dab tool and not merch."""
+
+    @pytest.mark.parametrize("raw,expected", [
+        ("Dab Mats", "Dab Mats"),
+        ("dab mats", "Dab Mats"),
+        ("Dab Mat", "Dab Mats"),
+        ("mat", "Dab Mats"),
+        ("mats", "Dab Mats"),
+        ("Dab Pad", "Dab Mats"),
+    ])
+    def test_spellings_collapse_onto_one_shelf(self, raw, expected):
+        assert canonical_category(raw) == expected
+
+    def test_subcategory_is_normalised_under_accessories(self):
+        """A store that files mats under Accessories keeps the shelf, but the
+        row name stops depending on how that store spells it."""
+        assert canonical_category(f"Accessories{SEP}dab mats") == f"Accessories{SEP}dab mats"
+        assert canonical_category(f"Accessories{SEP}mats") == f"Accessories{SEP}dab mats"
+
+    def test_other_shelves_are_untouched(self):
+        """"mat" must not swallow a shelf that merely contains the letters."""
+        assert canonical_category("Merch") == "Merch"
+        assert canonical_category("Accessories") == "Accessories"
+
+    def test_idempotent(self):
+        raw = "Dab Mats"
+        assert canonical_category(canonical_category(raw)) == canonical_category(raw)
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

@@ -105,6 +105,53 @@ class TestDealConversion:
         assert deal.category == "Accessories"
 
 
+class TestExcludedTerms:
+    """A skate shop's 420 collection mixes in candy-branded merch."""
+
+    def test_candy_is_excluded_by_default(self):
+        deal = make_scraper()._to_deal(make_product(name="Sour Candy Tee"), "https://x")
+
+        assert deal is None
+
+    def test_exclusion_matches_the_whole_word(self):
+        """'Candyman' contains 'candy' but is a different product name."""
+        deal = make_scraper()._to_deal(make_product(name="Candyman Socks"), "https://x")
+
+        assert deal is not None
+
+    def test_exclusion_is_case_insensitive(self):
+        for spelling in ("CANDY", "Candy", "candy", "CANdy"):
+            assert make_scraper()._to_deal(make_product(name=spelling), "https://x") is None
+
+    def test_other_products_survive(self):
+        deal = make_scraper()._to_deal(make_product(name="HUF Plantlife Socks"), "https://x")
+
+        assert deal is not None
+
+    def test_a_store_can_override_the_terms(self):
+        store = types.SimpleNamespace(
+            id="s", name="S", scraper="magento",
+            url="https://www.zumiez.com/collections/weed.html",
+            dispensary_id=None, exclude_terms=["socks"],
+        )
+        scraper = make_scraper()
+        scraper.store_config = store
+
+        assert scraper._to_deal(make_product(name="Crew Socks"), "https://x") is None
+        assert scraper._to_deal(make_product(name="Sour Candy Tee"), "https://x") is not None
+
+    def test_an_empty_list_disables_filtering(self):
+        store = types.SimpleNamespace(
+            id="s", name="S", scraper="magento",
+            url="https://www.zumiez.com/collections/weed.html",
+            dispensary_id=None, exclude_terms=[],
+        )
+        scraper = make_scraper()
+        scraper.store_config = store
+
+        assert scraper._to_deal(make_product(name="Sour Candy Tee"), "https://x") is not None
+
+
 class TestCollectionUrlHandling:
     def test_search_term_drops_the_html_suffix(self):
         assert make_scraper()._search_term() == "weed"
