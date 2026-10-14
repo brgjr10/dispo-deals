@@ -1033,6 +1033,18 @@ body {
 .strain-nav-label.type-sativa .type-badge-short { background: #e3b341; }
 .strain-nav-label.type-indica .type-badge-short { background: #c297ff; }
 .strain-nav-label.type-hybrid .type-badge-short { background: var(--primary); }
+/* Sidebar phenotype icons: the icon replaces the old coloured letter circle,
+   so it inherits the per-type colour and the same size. */
+.strain-nav-label .type-badge-icon { width: 18px; height: 18px; }
+.strain-nav-label.type-sativa .type-badge-icon { color: #e3b341; }
+.strain-nav-label.type-indica .type-badge-icon { color: #c297ff; }
+.strain-nav-label.type-hybrid .type-badge-icon { color: var(--primary); }
+.type-badge-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .type-badge {
   display: inline-flex;
   align-items: center;
@@ -3431,11 +3443,11 @@ function populateStrainNav() {
       setUrlState(currentFilters);
       applyFilters();
     };
-    const strainInfo = STRAIN_TYPES[type] || { label: type, short: type[0]?.toUpperCase() || '?' };
-    const { label, short } = strainInfo;
+    const strainInfo = STRAIN_TYPES[type] || { label: type };
+    const { label } = strainInfo;
     item.innerHTML = `
       <span class="strain-nav-label type-${type}">
-        <span class="type-badge-short" aria-hidden="true">${short}</span>
+        ${strainTypeIcon(type)}
         <span>${escapeHtml(label)}</span>
       </span>
       <span class="nav-item-count">${counts[type]}</span>
@@ -4337,15 +4349,28 @@ function renderStrainBadge(strain, product) {
 // The phenotype badge is deliberately rendered in its own row inside the card
 // header rather than absolutely positioned with the deal and stock tags, so it
 // cannot overlap the compare checkbox that sits in the top-right corner.
+// Phenotype icons: a moon for Indica, a sun for Sativa, and a split of the
+// two for Hybrid, so the type reads at a glance without letters.
+function strainTypeIcon(type) {
+  const attrs = 'class="type-badge-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+  const icons = {
+    indica:
+      `<svg ${attrs}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
+    sativa:
+      `<svg ${attrs}><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"/></svg>`,
+    hybrid:
+      `<svg ${attrs}><path d="M12 2a10 10 0 1 0 10 10z"/><path d="M12 2v20"/><circle cx="6" cy="12" r="2.5"/></svg>`
+  };
+  return icons[type] || '';
+}
+
 function renderTypeBadge(product) {
   const type = strainTypeOf(product);
   if (!type) return '';
-  const strainInfo = STRAIN_TYPES[type] || { label: type, short: type[0]?.toUpperCase() || '?' };
-  const { label, short } = strainInfo;
-  // The short form is the accessible name so the badge still reads correctly
-  // when only one letter is shown.
+  const strainInfo = STRAIN_TYPES[type] || { label: type };
+  const { label } = strainInfo;
   return `<span class="type-badge type-${type}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">
-    <span class="type-badge-short" aria-hidden="true">${short}</span>
+    ${strainTypeIcon(type)}
     <span class="type-badge-full">${escapeHtml(label)}</span>
   </span>`;
 }
