@@ -4324,7 +4324,6 @@ function renderModal() {
     }
   }
   if (deal.detected_at) addInfoItem('Detected', new Date(deal.detected_at).toLocaleDateString());
-  if (deal.hash) addInfoItem('Hash', deal.hash);
 
   // Multi-store: show all stores carrying this product
   const sgEl = document.getElementById('modalStoreGrid');
@@ -4340,7 +4339,14 @@ function renderModal() {
     addStoreItem('Store ID', deal.store_id, null);
   }
 
-  document.getElementById('modalProductLink').href = deal.product_url || '#';
+  // Make the View Product button link to the product page(s)
+  const primaryUrl = isMultiStore ? deal.stores[0]?.product_url : deal.product_url;
+  document.getElementById('modalProductLink').href = primaryUrl || '#';
+  if (isMultiStore && deal.stores.length > 1) {
+    document.getElementById('modalProductLink').textContent = 'View at Store';
+  } else {
+    document.getElementById('modalProductLink').textContent = 'View Product';
+  }
   const pv = document.getElementById('modalPrev');
   const nx = document.getElementById('modalNext');
   pv.disabled = visibleDeals.length <= 1 || currentDealIndex === 0;
