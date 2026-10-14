@@ -3869,7 +3869,6 @@ function renderProductCard(product) {
         <div class="product-tags">
           ${dealBadge}
           ${stockBadge}
-          ${strain ? renderStrainBadge(strain, product) : ''}
           ${isMultiStore ? `<span class="product-tag multi-store">${product.store_count} stores</span>` : ''}
         </div>
         <img class="product-img" src="${imgSrc}" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">
