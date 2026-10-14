@@ -240,6 +240,14 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+- id: mothership-glass
+  name: Mothership Glass
+  url: https://mothershipglass.com/shop/
+  scraper: woocommerce
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
 scrapers:
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql
@@ -258,6 +266,11 @@ scrapers:
       User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
       Accept: application/json
       Content-Type: application/json
+  woocommerce:
+    timeout: 30
+    headers:
+      User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+      Accept: application/json
 images:
   cache_dir: ./cache/images
   max_width: 800

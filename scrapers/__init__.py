@@ -3,6 +3,7 @@ from scrapers.dutchie import DutchieScraper
 from scrapers.magento import MagentoScraper
 from scrapers.shopify import ShopifyScraper
 from scrapers.shoplightspeed import ShoplightspeedScraper
+from scrapers.woocommerce import WooCommerceScraper
 from models import StoreConfig
 from config import Config
 
@@ -13,6 +14,7 @@ __all__ = [
     "MagentoScraper",
     "ShopifyScraper",
     "ShoplightspeedScraper",
+    "WooCommerceScraper",
     "create_scraper",
 ]
 
@@ -29,6 +31,7 @@ def create_scraper(store_config: StoreConfig, config: Config) -> BaseScraper:
         "magento": MagentoScraper,
         "shopify": ShopifyScraper,
         "shoplightspeed": ShoplightspeedScraper,
+        "woocommerce": WooCommerceScraper,
     }
 
     scraper_class = scraper_classes.get(store_config.scraper)

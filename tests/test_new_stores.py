@@ -91,6 +91,7 @@ class TestConfiguredStores:
         "tuff-tethers": "shopify",
         "the-dopest-shop": "shopify",
         "rove-brand": "shopify",
+        "mothership-glass": "woocommerce",
     }
 
     def _stores(self):

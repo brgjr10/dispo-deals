@@ -12,6 +12,7 @@ class ScraperConfig:
     dutchie: Dict[str, Any] = field(default_factory=dict)
     klutch: Dict[str, Any] = field(default_factory=dict)
     magento: Dict[str, Any] = field(default_factory=dict)
+    woocommerce: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
