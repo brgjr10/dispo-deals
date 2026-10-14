@@ -4359,7 +4359,7 @@ function strainTypeIcon(type) {
     sativa:
       `<svg ${attrs}><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"/></svg>`,
     hybrid:
-      `<svg ${attrs}><path d="M12 2a10 10 0 1 0 10 10z"/><path d="M12 2v20"/><circle cx="6" cy="12" r="2.5"/></svg>`
+      `<svg ${attrs}><path d="M12 4.5v15"/><g transform="translate(8.5 12) scale(0.42) translate(-12 -12)"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></g><g transform="translate(15.5 12) scale(0.36) translate(-12 -12)"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77"/></g></svg>`
   };
   return icons[type] || '';
 }
