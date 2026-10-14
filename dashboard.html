@@ -78,6 +78,16 @@ body {
   letter-spacing: 0.5px;
   margin: 12px 8px 6px 8px;
 }
+.nav-section-footer {
+  padding: 8px;
+  margin-top: 4px;
+}
+.nav-section-footer .btn {
+  width: 100%;
+  justify-content: center;
+  font-size: 12px;
+  padding: 6px 12px;
+}
 .nav-item {
   display: flex;
   align-items: center;
@@ -1436,6 +1446,30 @@ body {
 .nav-item-remove:focus-visible { display: inline-flex; }
 .nav-item-remove:hover { background: rgba(248, 81, 73, 0.18); color: var(--danger); }
 
+.nav-item-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.nav-item-hide {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-item:hover .nav-item-hide,
+.nav-item-hide:focus-visible { display: inline-flex; }
+.nav-item-hide:hover { background: rgba(139, 148, 158, 0.18); color: var(--warning); }
+
 /* Button and interactive element transitions */
 .btn {
     transition: background 0.15s ease, transform 0.08s ease, box-shadow 0.15s ease, border-color 0.15s ease;
@@ -1724,6 +1758,12 @@ html {
     <nav class="nav-section">
       <div class="nav-section-title">Stores</div>
       <div id="storeNavList"></div>
+      <div class="nav-section-footer">
+        <button class="btn ghost" id="showHiddenStoresBtn" onclick="showHiddenStores()" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-5.52 0-10-4.48-10-10S6.48 2 12 2c5.52 0 10 4.48 10 10 0 2.27-0.76 4.37-2 6.14"/></svg>
+          Show hidden stores
+        </button>
+      </div>
     </nav>
 
     <nav class="nav-section">
@@ -2921,7 +2961,11 @@ function populateSidebar() {
   // Stores
   const storeNav = document.getElementById('storeNavList');
   storeNav.innerHTML = '';
+  const hiddenStores = getHiddenStores();
+  
   allData.stores.forEach(store => {
+    if (hiddenStores.has(store.id)) return; // Skip hidden stores
+    
     const item = document.createElement('div');
     item.className = 'nav-item';
     item.dataset.storeId = store.id;
@@ -2935,17 +2979,47 @@ function populateSidebar() {
       setUrlState(currentFilters);
       applyFilters();
     };
+    const isHidden = false; // We already filtered them out
+    const isConfigStore = !store.removable;
     item.innerHTML = `
       <div class="nav-item-store">
         ${store.logo_url ? `<img src="${store.logo_url}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
         <span>${escapeHtml(store.name)}</span>
       </div>
       <span class="nav-item-count">${storeCount(store.id)}</span>
-      ${store.removable ? `<button class="nav-item-remove" data-remove-store="${escapeHtml(store.id)}" title="Remove ${escapeHtml(store.name)}" aria-label="Remove ${escapeHtml(store.name)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>` : ''}
+      <div class="nav-item-actions">
+        <button class="nav-item-hide" data-store-id="${escapeHtml(store.id)}" title="Hide store" aria-label="Hide ${escapeHtml(store.name)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-5.52 0-10-4.48-10-10S6.48 2 12 2c5.52 0 10 4.48 10 10 0 2.27-0.76 4.37-2 6.14"/></svg></button>
+        ${store.removable ? `<button class="nav-item-remove" data-remove-store="${escapeHtml(store.id)}" title="Remove ${escapeHtml(store.name)}" aria-label="Remove ${escapeHtml(store.name)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>` : ''}
+      </div>
     `;
     storeNav.appendChild(item);
   });
-
+  
+  // Add event listeners for hide buttons
+  storeNav.querySelectorAll('.nav-item-hide').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const storeId = btn.dataset.storeId;
+      if (confirm(`Hide ${btn.closest('.nav-item').querySelector('span').textContent}? You can restore it from settings.`)) {
+        setHiddenStore(storeId, true);
+        populateSidebar();
+        populateFilters();
+        if (currentFilters.store === storeId) {
+          currentFilters.store = '';
+          updateFilterControls();
+          setUrlState(currentFilters);
+          applyFilters();
+        }
+      }
+    });
+  });
+  
+  // Show/hide "Show hidden stores" button
+  const hiddenBtn = document.getElementById('showHiddenStoresBtn');
+  if (hiddenBtn) {
+    hiddenBtn.style.display = hiddenStores.size > 0 ? 'inline-flex' : 'none';
+  }
+  
   // Categories, grouped by main category. Each group is one collapsible row
   // with its subcategories nested inside, so the sidebar no longer repeats
   // "Flower" above every "Flower · <subcategory>" entry.
@@ -3233,6 +3307,45 @@ function categorySub(cat) {
 }
 
 const EXPANDED_GROUPS_KEY = 'dispo-category-groups';
+const HIDDEN_STORES_KEY = 'dispo-hidden-stores';
+
+function getHiddenStores() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(HIDDEN_STORES_KEY) || '[]');
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function setHiddenStore(storeId, hidden) {
+  const hidden = getHiddenStores();
+  if (hidden) hidden.add(storeId);
+  else hidden.delete(storeId);
+  try {
+    localStorage.setItem(HIDDEN_STORES_KEY, JSON.stringify([...hidden]));
+  } catch (e) { /* private mode */ }
+}
+
+function isStoreHidden(storeId) {
+  return getHiddenStores().has(storeId);
+}
+
+function showHiddenStores() {
+  const hidden = getHiddenStores();
+  if (hidden.size === 0) return;
+  
+  const storeNames = [...hidden].map(id => {
+    const store = (allData.stores || []).find(s => s.id === id);
+    return store ? store.name : id;
+  }).join(', ');
+  
+  if (confirm(`Show hidden stores: ${storeNames}?`)) {
+    hidden.forEach(id => setHiddenStore(id, false));
+    populateSidebar();
+    populateFilters();
+  }
+}
 
 function getExpandedGroups() {
   try {
@@ -3736,58 +3849,150 @@ const KNOWN_BRANDS = new Set([
   'cresco', 'runtz', 'cookies', 'alien labs', 'connected', 'backpack boyz',
   'jungle boys', 'bomb', 'heavy hitters', 'kurvana', 'select', 'dime',
   'humboldt', 'flora', 'caliva', 'eaze', 'savant', 'level', 'abstrakt',
-  'dime bag', '710 labs', 'persy', 'loudpack', 'alienlabs', 'humboldt farms'
+  'dime bag', '710 labs', 'persy', 'loudpack', 'alienlabs', 'humboldt farms',
+  'certified cultivators', 'riviera creek', 'buckeye', 'farkas farms', 'savvy',
+  'klutch', 'josh d', 'rythm', 'butterfly effect by grow ohio', 'eden\'s trees',
+  'galenas', 'the standard', 'wellspring fields', 'buckeye relief', 'the essence',
+  'ancient roots', 'treehaus', 'good green', 'white label', 'savant', 'bloom',
+  'aeriz', 'cannabiotix', 'caviar', 'chronic', 'coastal', 'connected cannabis',
+  'cresco labs', 'dime industries', 'dosist', 'dr. jolly', 'element', 'esteem',
+  'evermore', 'firelands', 'flower co', 'frosted', 'galaxy', 'golden state',
+  'grassroots', 'green truck', 'guilty', 'harvest', 'heaven', 'high supply',
+  'honest', 'incredibles', 'jetpack', 'kikoko', 'kind tree', 'kiva', 'klutch',
+  'legion', 'lime', 'livwell', 'lost farm', 'marijuanacompany', 'mary', 'maven',
+  'midwest', 'miracle', 'moxie', 'mr. nice', 'nairobi', 'north', 'old pal',
+  'orange', 'papa', 'peace', 'pennywise', 'pistil', 'pocket', 'potent', 'pure',
+  'rational', 'revolution', 'rise', 'roguish', 'sacred', 'sage', 'satori',
+  'select', 'serene', 'seven', 'shift', 'sierra', 'silent', 'skymint', 'slang',
+  'social', 'sol', 'space', 'spark', 'spectrum', 'spirit', 'star', 'sticky',
+  'sublime', 'summit', 'sun', 'sunmed', 'sunny', 'super', 'sweet', 'swift',
+  'terrapin', 'theory', 'tincture', 'titan', 'top', 'trend', 'tribe', 'true',
+  'trust', 'twax', 'unite', 'uptown', 'valence', 'verano', 'vert', 'vibe',
+  'victory', 'vital', 'vivid', 'wave', 'west', 'white', 'wildflower', 'willie',
+  'wonder', 'wood', 'works', 'x', 'y', 'z', 'zen', 'zero', 'zone'
 ]);
+
+function extractWeight(name) {
+  // Match various weight formats: 2.83G, 14.15G, 3.5g, 1/8oz, 1/4oz, 1/2oz, 1oz, 7g, etc.
+  // Also handles "2.83G-" or "14.15G -" prefix format
+  const patterns = [
+    /^(\d+(?:\.\d+)?\s*(?:g|oz|mg|ml))\s*[-–—]\s*/i,  // "2.83G - "
+    /\s[-–—]\s(\d+(?:\.\d+)?\s*(?:g|oz|mg|ml))\b/i,   // " - 3.5g"
+    /\s(\d+(?:\.\d+)?\s*(?:g|oz|mg|ml))\s*$/i,       // "3.5g" at end
+    /[\(\[\{](\d+(?:\.\d+)?\s*(?:g|oz|mg|ml))[\)\]\}]/i, // "(3.5g)"
+    /\b(\d+(?:\.\d+)?\s*(?:g|oz|mg|ml))\b/i           // standalone
+  ];
+  
+  for (const re of patterns) {
+    const match = name.match(re);
+    if (match) {
+      const weight = match[1].trim().toUpperCase();
+      // Remove the weight from name
+      name = name.replace(re, ' ').replace(/\s{2,}/g, ' ').trim();
+      return { name, weight };
+    }
+  }
+  return { name, weight: null };
+}
+
+function extractSubcategory(name) {
+  // Extract subcategory like "premium", "whole flower", "small buds", "small bud", "budlet", "budlets"
+  const subcats = ['premium', 'whole flower', 'small buds', 'small bud', 'budlet', 'budlets', 'shake', 'trim', 'popcorn', 'mini', 'ground', 'shake/trim'];
+  for (const sub of subcats) {
+    const pattern = new RegExp(`[-–—·•|]\\s*${escapeRegExp(sub)}\\s*$`, 'i');
+    const match = name.match(pattern);
+    if (match) {
+      name = name.replace(pattern, '').trim();
+      return { name, subcategory: sub };
+    }
+    // Also handle "Flower · premium" format
+    const dotPattern = new RegExp(`\\s*[·•]\\s*${escapeRegExp(sub)}\\s*$`, 'i');
+    const dotMatch = name.match(dotPattern);
+    if (dotMatch) {
+      name = name.replace(dotPattern, '').trim();
+      return { name, subcategory: sub };
+    }
+  }
+  return { name, subcategory: null };
+}
 
 function cleanProductName(product) {
   if (!product || !product.name) return '';
   
   let name = product.name.trim();
   
-  // 1. Remove brand from title (if we know the brand)
-  if (product.brand) {
-    const brandLower = product.brand.toLowerCase();
-    // Match brand at start of title, followed by separator (-, :, |, —)
-    const brandPattern = new RegExp(`^${escapeRegExp(brandLower)}\\s*[-:|—]\\s*`, 'i');
-    name = name.replace(brandPattern, '');
-    // Also match brand anywhere with separators around it
-    const brandAnywhere = new RegExp(`\\s[-:|—]\\s${escapeRegExp(brandLower)}\\s*[-:|—]\\s`, 'i');
-    name = name.replace(brandAnywhere, ' - ');
+  // 1. Extract weight first (so we can use it as badge)
+  const weightResult = extractWeight(name);
+  name = weightResult.name;
+  const extractedWeight = weightResult.weight;
+  
+  // 2. Extract subcategory
+  const subcatResult = extractSubcategory(name);
+  name = subcatResult.name;
+  const subcategory = subcatResult.subcategory;
+  
+  // 3. Remove brand from title
+  const allBrands = new Set([...KNOWN_BRANDS, (product.brand || '').toLowerCase()].filter(b => b));
+  
+  // Brand patterns to remove:
+  // "Brand - Name", "Brand — Name", "Brand | Name", "Brand - - Name"
+  // "Name | Brand", "Name — Brand", "Name - Brand"
+  // "Brand: Name"
+  const brandPatterns = [
+    // Brand at start with separators
+    /^[^|–—\-]+?\s*[-–—|:]\s*/,
+    // Brand at end with separators  
+    /\s*[-–—|]\s*[^|–—\-]+?$/,
+    // Double dash brand: "Brand - - Name"
+    /^[^|–—\-]+?\s*[-–—]\s*[-–—]\s*/,
+    // "Brand | Name" at start
+    /^[^|]+\|\s*/
+  ];
+  
+  for (const brand of allBrands) {
+    if (!brand) continue;
+    const escaped = escapeRegExp(brand);
+    // Match brand at start with various separators
+    name = name.replace(new RegExp(`^${escaped}\\s*[-–—|:|]\\s*`, 'i'), '');
+    // Match brand at end with separators
+    name = name.replace(new RegExp(`\\s*[-–—|]\\s*${escaped}\\s*$`, 'i'), '');
+    // Match "Brand - - Name"
+    name = name.replace(new RegExp(`^${escaped}\\s*[-–—]\\s*[-–—]\\s*`, 'i'), '');
+    // Match "Name | Brand" 
+    name = name.replace(new RegExp(`\\s*[-–—|]\\s*${escaped}\\s*$`, 'i'), '');
   }
-  // Also remove known brands even if not in product.brand
-  KNOWN_BRANDS.forEach(b => {
-    const pattern = new RegExp(`^${escapeRegExp(b)}\\s*[-:|—]\\s*`, 'i');
-    name = name.replace(pattern, '');
-  });
   
-  // 2. Remove weight/quantity from title (e.g., "3.5g", "14.15g", "1g", "7g", "1/8oz", "1/4oz", "1/2oz", "1oz")
-  const weightPattern = /\s*[-|—]\s*\d+(?:\.\d+)?\s*(?:g|oz|mg|ml)\b/gi;
-  name = name.replace(weightPattern, '');
-  // Also remove weight in parentheses: "(3.5g)", "[3.5g]"
-  name = name.replace(/\s*[\(\[\{]\s*\d+(?:\.\d+)?\s*(?:g|oz|mg|ml)\s*[\)\]\}]/gi, '');
-  
-  // 3. Remove category from title (Flower, Pre-Roll, Edible, Concentrate, Vape, etc.)
+  // 4. Remove category from title
   const categories = ['flower', 'pre-roll', 'pre roll', 'preroll', 'edible', 'concentrate', 'vape', 'vaporizer', 'tincture', 'topical', 'capsule', 'drink', 'beverage'];
-  categories.forEach(cat => {
-    const pattern = new RegExp(`\\s*[-|—]\\s*${escapeRegExp(cat)}\\s*$`, 'i');
-    name = name.replace(pattern, '');
-    // Also at start: "Flower - Blue Dream"
-    const patternStart = new RegExp(`^${escapeRegExp(cat)}\\s*[-|—]\\s*`, 'i');
-    name = name.replace(patternStart, '');
-  });
+  for (const cat of categories) {
+    // "Category - Name" or "Category — Name"
+    name = name.replace(new RegExp(`^${escapeRegExp(cat)}\\s*[-–—]\\s*`, 'i'), '');
+    // "Name - Category" at end
+    name = name.replace(new RegExp(`\\s*[-–—]\\s*${escapeRegExp(cat)}\\s*$`, 'i'), '');
+    // "Flower · premium" format
+    name = name.replace(new RegExp(`\\s*[·•]\\s*${escapeRegExp(cat)}\\s*$`, 'i'), '');
+  }
   
-  // 4. Remove strain type indicators from title (since we have the type badge)
-  // (Sativa), [Indica], - Hybrid, etc. - already handled by strainTypeFromName patterns
-  // but clean up any remaining
-  const typePattern = /\s*[-|—]\s*(?:sativa|indica|hybrid)\s*$/i;
-  name = name.replace(typePattern, '');
-  name = name.replace(/\s*[\(\[\{]\s*(?:sativa|indica|hybrid)\s*[\)\]\}]/gi, '');
+  // 5. Remove strain type indicators
+  // Parenthesized: (S), (I), (H), (Sativa), (Indica), (Hybrid)
+  name = name.replace(/\s*[\(\[\{]\s*(?:sativa|indica|hybrid|s|i|h)\s*[\)\]\}]/gi, '');
+  // Bracketed: [S], [I], [H], [SH]
+  name = name.replace(/\s*[\[\{]\s*(?:sativa|indica|hybrid|s|i|h|sh)\s*[\]\}]/gi, '');
+  // At end: "- Indica", "— Sativa", " Hybrid"
+  name = name.replace(/\s*[-–—]\s*(?:sativa|indica|hybrid)\s*$/gi, '');
+  // Full word on boundary
+  name = name.replace(/\b(?:sativa|indica|hybrid)\b/gi, '');
   
-  // Clean up extra separators and whitespace
-  name = name.replace(/^[-|—]\s*/, '').replace(/\s*[-|—]\s*$/, '');
+  // 6. Clean up extra separators and whitespace
+  name = name.replace(/^[-–—|:·•]\s*/, '').replace(/\s*[-–—|:·•]\s*$/, '');
   name = name.replace(/\s{2,}/g, ' ').trim();
   
-  return name;
+  // Return cleaned name plus extracted info
+  return {
+    name,
+    weight: extractedWeight,
+    subcategory
+  };
 }
 
 // Helper for regex escaping
@@ -3941,9 +4146,16 @@ function renderProductCard(product) {
       </div>
       <div class="product-type-row">
         ${renderTypeBadge(product)}
+        ${(() => {
+          const cleaned = cleanProductName(product);
+          const badges = [];
+          if (cleaned.weight) badges.push(`<span class="product-tag weight">${escapeHtml(cleaned.weight)}</span>`);
+          if (cleaned.subcategory) badges.push(`<span class="product-tag subcategory">${escapeHtml(cleaned.subcategory)}</span>`);
+          return badges.join(' ');
+        })()}
       </div>
       <div class="product-info">
-        <div class="product-name">${escapeHtml(cleanProductName(product))}</div>
+        <div class="product-name">${escapeHtml(cleanProductName(product).name)}</div>
         <div class="product-meta">
           ${product.brand ? `<span class="product-brand">${escapeHtml(product.brand)}</span>` : ''}
           ${product.thc_pct !== null && product.thc_pct !== undefined ? `<span class="product-thc">THC ${product.thc_pct}%</span>` : ''}
@@ -4382,7 +4594,12 @@ function renderModal() {
 
   const igEl = document.getElementById('modalInfoGrid');
   igEl.innerHTML = '';
-  addInfoItem('Product ID', deal.product_id);
+  
+  // Show weight and subcategory in modal if available
+  const cleaned = cleanProductName(deal);
+  if (cleaned.weight) addInfoItem('Weight', cleaned.weight);
+  if (cleaned.subcategory) addInfoItem('Type', cleaned.subcategory);
+  
   if (deal.is_deal) addInfoItem('Status', 'On sale');
   addInfoItem('In Stock', deal.in_stock ? 'Yes' : 'No');
 
