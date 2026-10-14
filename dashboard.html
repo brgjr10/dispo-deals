@@ -4135,16 +4135,135 @@ function cleanProductName(product) {
   const extractedWeight = weightResult.weight;
   
   // Remove quoted brand names: "The Goods" Black Amber -> Black Amber
-  raw = raw.replace(/[""'"']([^""'"']+)[""'"']\s*/g, '');
+  raw = raw.replace(/["\u201c\u201d']([^"\u201c\u201d']+)["\u201c\u201d']\s*/g, '');
   
-  // Split on separators: " - ", " — ", " | ", " – ", "-" (no space), ":"
-  const parts = raw.split(/\s*[-–—|:]\s*|(?<=[a-zA-Z])-\s*/).filter(p => p.trim());
+  // Normalize separators for splitting: " . ", " - ", " | ", " : ", "- "
+  // Keep the raw for now; split into parts.
   
-  // Remove parenthetical suffixes: (Smalls), (10pk), (3pk), etc.
-  let cleanedParts = parts.map(p => {
-    // Strip trailing parentheticals but keep internal ones like x
-    return p.replace(/\s*[\(\[{][^\)\]}]*[\)\]}]\s*$/g, '').trim();
-  }).filter(p => p);
+  // ---- Remove category/product-type phrases ANYWHERE in the string ----
+  // These are all the ways dispensaries label the product form.
+  const CATEGORY_PHRASES = [
+    'live rosin terpene infused', 'live resin terpene infused',
+    'live rosin infused', 'live resin infused',
+    'rosin infused', 'resin infused',
+    'diamond infused', 'hash infused', 'crumble infused',
+    'kief infused', 'terpene infused', 'infused preroll', 'infused pre-roll',
+    'infused pre roll', 'infused prerolls', 'infused pre-rolls', 'infused pre rolls',
+    'multi pack preroll', 'multi pack pre-roll', 'multi pack pre roll',
+    'half gram preroll', 'half gram pre-roll',
+    'quad infused', 'single infused',
+    'baby infused', 'baby preroll', 'baby pre-roll', 'baby pre roll',
+    'pre roll 5 pk', 'preroll 5 pk', 'pre-roll 5pk',
+    'mini preroll', 'mini pre-roll', 'mini pre roll', 'mini infused',
+    'riv stick', 'riv stick minis',
+    'luster pod', 'solventless pod',
+    'live rosin disposable', 'live resin disposable', 'fse disposable',
+    'raw pre-rolled', 'raw prerolled', 'raw pre rolled', 'raw pre roll',
+    'live rosin gummies', 'live resin gummies',
+    'live rosin', 'live resin',
+    'chocolate bar',
+    'riv stick',
+    '5 pk preroll', '5pk preroll', '5 pack preroll',
+    'pre roll 5pk', 'preroll 5pk', 'pre rolls 5pk',
+    'pre roll 3 pk', 'preroll 3pk',
+    'pre roll 2pk', 'preroll 2pk',
+    'pre rolled 50ct',
+    'multi pack', 'multipack',
+    '5 pack', '5pk', '3 pack', '3pk', '2 pack', '2pk', '10pk', '10 pack', '20pk', '20 pack', '10pc', '50ct',
+    'pre roll', 'pre-roll', 'preroll', 'pre rolls', 'pre-rolls', 'prerolls',
+    'pre-roll 5', 'preroll 5',
+    'infused', 'infusion',
+    'diamond', 'crumble', 'kief',
+    'disposable', 'disposables',
+    'cartridge', 'cartridges', 'cart', 'carts',
+    'rosin', 'resin',
+    'gummies', 'gummy',
+    'tincture', 'tinctures', 'topical', 'topicals', 'capsule', 'capsules',
+    'drink', 'drinks', 'beverage', 'beverages',
+    'concentrate', 'concentrates', 'vape', 'vapes', 'vaporizer', 'vaporizers',
+    'pen', 'pens',
+    'edible', 'edibles',
+    'flower', 'buds', 'bud',
+    'smalls', 'small', 'budlet', 'budlets',
+    'shake', 'trim', 'popcorn', 'mini', 'ground',
+    'premium', 'whole flower',
+    'quad', 'single', 'pack',
+    'tube', 'tubes', 'jar', 'jars',
+    'solventless',
+  ];
+  
+  // Build a single regex from the phrases (longest first so compounds match first)
+  const sortedPhrases = [...CATEGORY_PHRASES].sort((a, b) => b.length - a.length);
+  const phraseRegex = new RegExp('\\b(' + sortedPhrases.map(escapeRegExp).join('|') + ')\\b', 'gi');
+  raw = raw.replace(phraseRegex, ' ');
+  
+  // Remove strain type words anywhere
+  raw = raw.replace(/\b(sativa|indica|hybrid)\b/gi, ' ');
+  
+  // Now split on separators to find the remaining meaningful parts
+  const parts = raw.split(/[\s]*[-–—|:.]{1,2}[\s]*|[\s]{2,}/).filter(p => p && p.trim());
+  
+  // Get brand words for filtering
+  const allBrands = new Set([...KNOWN_BRANDS, (product.brand || '').toLowerCase()].filter(b => b));
+  // Add brand variants
+  allBrands.forEach(b => {
+    allBrands.add(b.replace(/\s+(pharmaceuticals|scientific|wellness|labs|growers|farms|cannabis|co|inc|llc|records|fine cannabis|herb co)$/i, ''));
+    allBrands.add(b.replace(/[.\s]+$/, ''));
+  });
+  const brandWords = (product.brand || '').toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  // Also add known brand words
+  const knownBrandWords = new Set();
+  KNOWN_BRANDS.forEach(b => {
+    if (b.length > 2) knownBrandWords.add(b);
+    b.split(/\s+/).forEach(w => { if (w.length > 2) knownBrandWords.add(w); });
+  });
+  
+  const meaningfulParts = [];
+  for (const part of parts) {
+    const clean = part.replace(/[()\[\]{}]/g, '').trim();
+    const lower = clean.toLowerCase();
+    if (!clean) continue;
+    // Skip pure single-letter type indicators
+    if (/^[sih]$/i.test(clean)) continue;
+    // Skip pure sizes
+    if (/^\d+(\.\d+)?\s*(g|mg|ml|oz|pc|pk|piece|pack|ct)$/i.test(clean)) continue;
+    // Skip ratios
+    if (/^\d+(:\d+)*$/.test(clean)) continue;
+    // Skip brand exact match
+    if (allBrands.has(lower)) continue;
+    // Skip brand word match
+    if (brandWords.includes(lower)) continue;
+    if (knownBrandWords.has(lower)) continue;
+    // Skip very short meaningless parts
+    if (clean.length <= 1) continue;
+    meaningfulParts.push(clean);
+  }
+  
+  let name;
+  if (meaningfulParts.length) {
+    name = meaningfulParts.join(' ');
+  } else {
+    // Fallback: use the longest part
+    name = parts.length ? parts.reduce((a, b) => a.length >= b.length ? a : b) : raw;
+  }
+  
+  // Final cleanup: remove leftover category words that survived as substrings
+  name = name.replace(/\b(pre[\s-]*rolls?|prerolls?|infused|infusion|disposable|cart|carts|cartridge|cartridges|gummies?|rosin|resin|kief|crumble|diamond|quad|single|pack|mini|smalls|small|budlets?|buds?)\b/gi, '');
+  name = name.replace(/\b(sativa|indica|hybrid)\b/gi, '');
+  name = name.replace(/\s{2,}/g, ' ').replace(/[\s]{2,}/g, ' ').trim();
+  name = name.replace(/^[\s-–—|:.,·•']+|[\s-–—|:.,·•']+$/g, '').trim();
+  
+  // Extract subcategory info
+  let subcategory = null;
+  const subcatMatch = product.name.match(/[-–—·•|]\s*(premium|whole flower|small buds|budlet|smalls|shake|trim|popcorn|mini)$/i);
+  if (subcatMatch) subcategory = subcatMatch[1];
+  
+  return {
+    name,
+    weight: extractedWeight,
+    subcategory
+  };
+}).filter(p => p);
   
   // Category/subcategory words that should be filtered out as parts
   const CATEGORY_PARTS = new Set([
