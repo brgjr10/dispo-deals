@@ -350,7 +350,7 @@ body {
   border-color: var(--primary);
   color: var(--bg);
 }
-.deal-cat-main { min-width: 0; flex: 1; }
+.deal-cat-main { min-width: 0; width: 0; flex: 1; }
 .deal-cat-item-name {
   font-size: 12.5px;
   font-weight: 500;
@@ -2316,6 +2316,7 @@ html {
 
 <script>
 // ---- State ----
+// Cache bust: 2026-10-14
 let allData = { products: [], stores: [], categories: [], brands: [] };
 let debounceTimer = null;
 // Strain profiles are imported from Leafly by the API server and served as one
