@@ -4797,7 +4797,17 @@ async function loadFavorites() {
     const response = await fetch('/api/favorites');
     if (!response.ok) return;
     const data = await response.json();
-    favorites = new Set((data.favorites || []).map(f => f.product_id));
+    favorites = new Set();
+    (data.favorites || []).forEach(f => {
+      // Use cross_store_key if available, otherwise fall back to product_id
+      const csk = f.cross_store_key || f.product_id;
+      // Add all products matching this cross_store_key
+      allData.products.forEach(p => {
+        if (crossStoreKey(p) === csk || p.product_id === f.product_id) {
+          favorites.add(p.hash);
+        }
+      });
+    });
     updateFavoriteButtons();
     // Update favorites filter button label
     const label = document.getElementById('favoritesOnlyLabel');
@@ -4809,15 +4819,24 @@ async function loadFavorites() {
   }
 }
 
+// ---- Cross-store dedupe key (must match API server) ----
+function crossStoreKey(product) {
+  const name = (product.name || '').trim().toLowerCase();
+  const brand = (product.brand || '').trim().toLowerCase();
+  const category = (product.category || '').trim().toLowerCase();
+  const weight = (product.weight || '').trim().toLowerCase().replace(/\s+/g, '');
+  return `${name}|${brand}|${category}|${weight}`;
+}
+
 async function toggleFavorite(hash) {
   const product = allData.products.find(p => p.hash === hash);
   if (!product) return;
   
   const isFavorite = favorites.has(hash);
-  const store = allData.stores.find(s => s.id === product.store_id);
+  const csk = crossStoreKey(product);
   
   try {
-    const url = `/api/favorites/${encodeURIComponent(product.store_id)}/${encodeURIComponent(product.id)}`;
+    const url = `/api/favorites/${encodeURIComponent(product.store_id)}/${encodeURIComponent(product.id)}?cross_store_key=${encodeURIComponent(csk)}`;
     const response = await fetch(url, {
       method: isFavorite ? 'DELETE' : 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4838,8 +4857,15 @@ async function toggleFavorite(hash) {
     if (response.ok) {
       if (isFavorite) {
         favorites.delete(hash);
+        // Also remove any other products with same cross_store_key
+        allData.products.forEach(p => {
+          if (crossStoreKey(p) === csk) favorites.delete(p.hash);
+        });
       } else {
-        favorites.add(hash);
+        // Add all products with same cross_store_key
+        allData.products.forEach(p => {
+          if (crossStoreKey(p) === csk) favorites.add(p.hash);
+        });
       }
       updateFavoriteButtons();
       // Update favorites filter button label

@@ -141,9 +141,11 @@ class SQLiteStorage:
                 );
 
                 -- Favorites / wishlist: user can mark products to track across sessions
+                -- cross_store_key enables cross-store favorites (same product at multiple dispensaries)
                 CREATE TABLE IF NOT EXISTS favorites (
                     store_id TEXT NOT NULL,
                     product_id TEXT NOT NULL,
+                    cross_store_key TEXT,
                     created_at TEXT NOT NULL,
                     PRIMARY KEY (store_id, product_id)
                 );
@@ -184,6 +186,14 @@ class SQLiteStorage:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_seen_deals_strain ON seen_deals(strain_name)"
             )
+            # Migrate favorites table for cross-store favorites
+            fav_columns = {
+                row["name"] for row in conn.execute("PRAGMA table_info(favorites)").fetchall()
+            }
+            if "cross_store_key" not in fav_columns:
+                conn.execute("ALTER TABLE favorites ADD COLUMN cross_store_key TEXT")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_favorites_cross_store ON favorites(cross_store_key)")
+                logger.info("Added cross_store_key column to favorites")
             conn.commit()
 
     def get_seen_deal(self, deal_hash: str) -> Optional[SeenDeal]:
@@ -738,26 +748,52 @@ class SQLiteStorage:
             )
             conn.commit()
 
-    # ---- Favorites / Wishlist ----
+    @staticmethod
+    def _cross_store_key(name: str, brand: str, category: str, weight: str) -> str:
+        """Generate cross-store dedupe key matching API server logic."""
+        name = (name or "").strip().lower()
+        brand = (brand or "").strip().lower()
+        category = (category or "").strip().lower()
+        weight = (weight or "").strip().lower().replace(" ", "")
+        return f"{name}|{brand}|{category}|{weight}"
 
-    def add_favorite(self, store_id: str, product_id: str) -> bool:
-        """Add a product to favorites."""
+    def add_favorite(self, store_id: str, product_id: str, cross_store_key: str = None) -> bool:
+        """Add a product to favorites. If cross_store_key provided, favorites all stores carrying it."""
         now = datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO favorites (store_id, product_id, created_at) VALUES (?, ?, ?)",
-                (store_id, product_id, now),
-            )
+            if cross_store_key:
+                # Favorite all stores carrying this product (same cross_store_key in seen_deals)
+                # First, find all products with this cross_store_key
+                rows = conn.execute("""
+                    SELECT store_id, product_id FROM seen_deals
+                    WHERE lower(name) || '|' || lower(brand) || '|' || lower(category) || '|' || REPLACE(lower(weight), ' ', '') = ?
+                """, (cross_store_key,)).fetchall()
+                for row in rows:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO favorites (store_id, product_id, cross_store_key, created_at) VALUES (?, ?, ?, ?)",
+                        (row[0], row[1], cross_store_key, now),
+                    )
+            else:
+                conn.execute(
+                    "INSERT OR REPLACE INTO favorites (store_id, product_id, cross_store_key, created_at) VALUES (?, ?, ?, ?)",
+                    (store_id, product_id, cross_store_key, now),
+                )
             conn.commit()
         return True
 
-    def remove_favorite(self, store_id: str, product_id: str) -> bool:
-        """Remove a product from favorites."""
+    def remove_favorite(self, store_id: str, product_id: str, cross_store_key: str = None) -> bool:
+        """Remove a product from favorites. If cross_store_key provided, removes from all stores."""
         with self._get_connection() as conn:
-            conn.execute(
-                "DELETE FROM favorites WHERE store_id = ? AND product_id = ?",
-                (store_id, product_id),
-            )
+            if cross_store_key:
+                conn.execute(
+                    "DELETE FROM favorites WHERE cross_store_key = ?",
+                    (cross_store_key,),
+                )
+            else:
+                conn.execute(
+                    "DELETE FROM favorites WHERE store_id = ? AND product_id = ?",
+                    (store_id, product_id),
+                )
             conn.commit()
         return True
 
@@ -765,7 +801,7 @@ class SQLiteStorage:
         """Get all favorited products with their details."""
         with self._get_connection() as conn:
             rows = conn.execute("""
-                SELECT f.store_id, f.product_id, f.created_at,
+                SELECT f.store_id, f.product_id, f.created_at, f.cross_store_key,
                        s.name, s.category, s.original_price, s.sale_price,
                        s.discount_pct, s.image_url, s.product_url, s.in_stock,
                        s.thc_pct, s.cbd_pct, s.weight, s.brand, s.strain_name
@@ -775,13 +811,19 @@ class SQLiteStorage:
             """).fetchall()
         return [dict(row) for row in rows]
 
-    def is_favorite(self, store_id: str, product_id: str) -> bool:
-        """Check if a product is favorited."""
+    def is_favorite(self, store_id: str, product_id: str, cross_store_key: str = None) -> bool:
+        """Check if a product is favorited. If cross_store_key provided, checks any store."""
         with self._get_connection() as conn:
-            row = conn.execute(
-                "SELECT 1 FROM favorites WHERE store_id = ? AND product_id = ?",
-                (store_id, product_id),
-            ).fetchone()
+            if cross_store_key:
+                row = conn.execute(
+                    "SELECT 1 FROM favorites WHERE cross_store_key = ?",
+                    (cross_store_key,),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT 1 FROM favorites WHERE store_id = ? AND product_id = ?",
+                    (store_id, product_id),
+                ).fetchone()
         return row is not None
 
     # ---- Price History ----

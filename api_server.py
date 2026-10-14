@@ -552,7 +552,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self._send_json_error(400, 'Invalid path')
                 return
             store_id, product_id = parts
-            is_fav = self.storage.is_favorite(store_id, product_id)
+            # Check for cross_store_key in query params
+            parsed = urlparse(self.path)
+            query = parse_qs(parsed.query)
+            cross_store_key = query.get('cross_store_key', [None])[0]
+            is_fav = self.storage.is_favorite(store_id, product_id, cross_store_key)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -887,14 +891,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self._send_json_error(404, 'Not found')
 
     def receive_add_favorite(self, path: str):
-        """Add a product to favorites. POST /api/favorites/<store_id>/<product_id>"""
+        """Add a product to favorites. POST /api/favorites/<store_id>/<product_id>
+        
+        Optional query param: cross_store_key - if provided, favorites the product at ALL stores carrying it.
+        """
         try:
             parts = path.strip('/').split('/')
             if len(parts) != 2:
                 self._send_json_error(400, 'Invalid path')
                 return
             store_id, product_id = parts
-            self.storage.add_favorite(store_id, product_id)
+            # Get cross_store_key from query params
+            parsed = urlparse(self.path)
+            query = parse_qs(parsed.query)
+            cross_store_key = query.get('cross_store_key', [None])[0]
+            self.storage.add_favorite(store_id, product_id, cross_store_key)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -906,14 +917,20 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self._send_json_error(500, str(e))
 
     def receive_delete_favorite(self, path: str):
-        """Remove a product from favorites. DELETE /api/favorites/<store_id>/<product_id>"""
+        """Remove a product from favorites. DELETE /api/favorites/<store_id>/<product_id>
+        
+        Optional query param: cross_store_key - if provided, removes from ALL stores.
+        """
         try:
             parts = path.strip('/').split('/')
             if len(parts) != 2:
                 self._send_json_error(400, 'Invalid path')
                 return
             store_id, product_id = parts
-            self.storage.remove_favorite(store_id, product_id)
+            parsed = urlparse(self.path)
+            query = parse_qs(parsed.query)
+            cross_store_key = query.get('cross_store_key', [None])[0]
+            self.storage.remove_favorite(store_id, product_id, cross_store_key)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')
