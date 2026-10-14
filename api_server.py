@@ -36,7 +36,7 @@ from utils.images import (
     resize_image,
 )
 from utils.strain_match import normalize_name
-from utils.categories import canonical_category
+from utils.categories import canonical_category, canonical_category_named
 
 logger = logging.getLogger(__name__)
 
@@ -1169,8 +1169,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             # Add weekly status if we can compute it
             deal["weekly_status"] = "NEW"  # Default
             # Rows written before the canonical names existed keep the raw one,
-            # so normalise here too or the sidebar still splits the shelf.
-            deal["category"] = canonical_category(deal.get("category"))
+            # so normalise here too or the sidebar still splits the shelf. The
+            # name is passed so a mat filed under "misc" is rescued onto the
+            # Dab Mats shelf rather than staying in the catch-all.
+            deal["category"] = canonical_category_named(deal.get("category"), deal.get("name"))
             # Mark whether this product is actually on sale.
             deal["is_deal"] = (deal.get("discount_pct") or 0) > 0
             # Brands are typed per store, so the same brand arrives with
@@ -1236,8 +1238,9 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     item["weekly_status"] = item.get("weekly_status", "NEW")
                     # Stores disagree on shelf names, and a snapshot written by
                     # an older scraper can still carry a stale one, so the
-                    # category is canonicalised on the way out.
-                    item["category"] = canonical_category(item.get("category"))
+                    # category is canonicalised on the way out. The name lets a
+                    # mat filed under a catch-all shelf move to Dab Mats.
+                    item["category"] = canonical_category_named(item.get("category"), item.get("name"))
                     # Snapshots store the brand exactly as it was typed when
                     # the menu was scraped, so the same canonicalisation has to
                     # be applied here or the menu view splits brands again.

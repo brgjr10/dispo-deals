@@ -10,6 +10,7 @@ import pytest
 
 from utils.categories import (
     canonical_category,
+    canonical_category_named,
     category_key,
     is_canonical,
     main_category,
@@ -252,6 +253,42 @@ class TestDabMats:
     def test_idempotent(self):
         raw = "Dab Mats"
         assert canonical_category(canonical_category(raw)) == canonical_category(raw)
+
+
+class TestDabMatNameRescue:
+    """A mat filed under a catch-all shelf with no subcategory is recovered
+    from its product name, so it lands on Dab Mats instead of Misc."""
+
+    @pytest.mark.parametrize("category,name", [
+        ("misc", "Puffco Dab Mat"),
+        ("Misc", "Puffco Dab Mat XL"),
+        ("Uncategorized", "Dab Mat"),
+        ("", "Dab Mat"),
+        (None, "Dab Mat"),
+        ("misc", "dab-mat"),
+        ("misc", "Dab Pad"),
+    ])
+    def test_rescued_onto_dab_mats(self, category, name):
+        assert canonical_category_named(category, name) == "Dab Mats"
+
+    @pytest.mark.parametrize("category,name", [
+        ("misc", "Package Protection"),   # a Misc item stays in Misc
+        ("Misc", "Add On Donation"),
+        ("", "Grinder"),
+    ])
+    def test_other_items_left_alone(self, category, name):
+        assert canonical_category_named(category, name) == canonical_category(category)
+
+    def test_named_rescue_does_not_touch_real_shelves(self):
+        # A mat title must not hijack a product genuinely filed elsewhere.
+        assert canonical_category_named("Flower", "Dab Mat Cake") == "Flower"
+        assert canonical_category_named("Puffco", "Puffco Dab Mat") == "Puffco"
+
+    def test_canonical_category_signature_unchanged(self):
+        # The rescue lives in a separate helper; canonical_category keeps its
+        # single-argument contract and None passthrough.
+        assert canonical_category("misc") == "Misc"
+        assert canonical_category(None) is None
 
 
 if __name__ == "__main__":
