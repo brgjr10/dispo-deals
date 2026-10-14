@@ -191,5 +191,38 @@ class TestApiCanonicalisesCategories:
         assert [p["category"] for p in products] == ["Vaporizers"]
 
 
+class TestConsolidatedShelves:
+    """Small shelves and event names that duplicate a bigger category."""
+
+    @pytest.mark.parametrize("raw,expected", [
+        # Cleaning supplies are accessories, not a shelf of their own.
+        ("Cleaning & Care", "Accessories"),
+        ("cleaning care", "Accessories"),
+        ("Cleaning Supplies", "Accessories"),
+        # Vape coils are replacement parts.
+        ("Coil", "Accessories"),
+        ("Coils", "Accessories"),
+        # Event and artist drops from the glass stores are still glass art.
+        ("Ohio Glassblowers Show 2025", "Glass"),
+        ("Steve Sizelove Drop 2025", "Glass"),
+        # Donation and Insurance are not product shelves.
+        ("Donation", "Misc"),
+        ("Insurance", "Misc"),
+    ])
+    def test_small_shelves_fold_into_bigger_ones(self, raw, expected):
+        assert canonical_category(raw) == expected
+
+    @pytest.mark.parametrize("raw", [
+        "Accessories", "Glass", "Misc", f"Accessories{SEP}dab tools",
+        f"Glass{SEP}rigs",
+    ])
+    def test_consolidation_targets_are_idempotent(self, raw):
+        assert canonical_category(canonical_category(raw)) == canonical_category(raw)
+
+    def test_subcategory_survives_consolidation(self):
+        raw = f"Cleaning & Care{SEP}supplies"
+        assert canonical_category(raw) == f"Accessories{SEP}supplies"
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

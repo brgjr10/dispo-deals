@@ -164,12 +164,21 @@ CATEGORY_ALIASES = {
     # Kits.
     "kit": "Kits",
     "kits": "Kits",
-    # Cleaning.
-    "cleaningcare": "Cleaning & Care",
-    "cleaning": "Cleaning & Care",
-    # Donation, Insurance, Misc - keep as-is (low volume).
-    "donation": "Donation",
-    "insurance": "Insurance",
+    # "cleaningcare" folds cleaning supplies into Accessories, which already
+    # owns the plain "cleaning" alias above. Vape coils are replacement parts.
+    "cleaningcare": "Accessories",
+    "cleaningsupplies": "Accessories",
+    "cleaningsupply": "Accessories",
+    "coil": "Accessories",
+    "coils": "Accessories",
+    # Event and artist drops from the glass stores are still glass art.
+    "ohioglassblowersshow2025": "Glass",
+    "ohioglassblowersshow": "Glass",
+    "stevesizelovedrop2025": "Glass",
+    "stevesizelovedrop": "Glass",
+    # Donation and Insurance are not product shelves; fold them into Misc.
+    "donation": "Misc",
+    "insurance": "Misc",
     "misc": "Misc",
     # Merch.
     "merch": "Merch",

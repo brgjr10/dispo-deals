@@ -80,10 +80,15 @@ def helpers():
     start = script.index("const STRAIN_TYPES")
     region = script[start:_function_end(script, "strainTypeLabel")]
 
-    render_badge = _extract_functions(script, ["renderTypeBadge"])["renderTypeBadge"]
+    render_badge = "\n\n".join(
+        _extract_functions(script, ["strainTypeIcon", "renderTypeBadge"])[name]
+        for name in ("strainTypeIcon", "renderTypeBadge")
+    )
 
     # renderTypeBadge needs an escaper.
     harness = "\n".join([
+        # The icon counter sits outside the extracted functions.
+        "let strainIconUid = 0;",
         "const escapeHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')"
         ".replace(/>/g,'&gt;').replace(/\"/g,'&quot;');",
     ])
@@ -215,16 +220,30 @@ class TestTypeFallback:
         )
         assert out == ""
 
-
 class TestTypeBadge:
-    def test_badge_uses_the_short_and_full_forms(self, helpers):
+    def test_badge_uses_the_icon_and_full_form(self, helpers):
+        """The phenotype shows as an icon (moon/sun/split) plus the full label."""
         product = {"name": "GG#4 (I)"}
         out = _run_js(
-            helpers, f"console.log(JSON.stringify(renderTypeBadge({json.dumps(product)})))"
+            helpers,
+            f"console.log(JSON.stringify(renderTypeBadge({json.dumps(product)})))"
         )
         assert "type-indica" in out
-        assert ">I<" in out
+        assert "type-badge-icon" in out
         assert "Indica" in out
+
+    def test_each_type_gets_its_own_icon(self, helpers):
+        """Indica, Sativa and Hybrid must not share one icon."""
+        def icon_for(name):
+            out = _run_js(
+                helpers,
+                f"console.log(JSON.stringify(renderTypeBadge({json.dumps({'name': name})})))"
+            )
+            return out
+
+        assert icon_for("GG#4 (I)") != icon_for("Blue Dream (S)")
+        assert icon_for("GG#4 (I)") != icon_for("Blue Dream (H)")
+        assert icon_for("Blue Dream (S)") != icon_for("Blue Dream (H)")
 
     def test_strain_without_a_category_still_yields_its_type(self, helpers):
         """A profile with strain_type but no category must not be skipped."""
