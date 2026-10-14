@@ -71,6 +71,20 @@ class TestDispensaryId:
         assert store.dispensary_id == "abc123"
 
 
+class TestAyrAkron:
+    def test_embedded_menu_url_slugs_to_ayr_akron(self):
+        store = StoreConfig(
+            id="ayr-akron",
+            name="AYR Ohio — Akron",
+            url="https://dutchie.com/embedded-menu/ayr-akron",
+            scraper="dutchie",
+            logo_url="",
+        )
+        scraper = make_dutchie_scraper(store)
+
+        assert scraper._extract_slug(store.url) == "ayr-akron"
+
+
 class TestConfiguredStores:
     """Every store the run reads must be in config.yaml with a known scraper."""
 
@@ -94,6 +108,7 @@ class TestConfiguredStores:
         "mothership-glass": "woocommerce",
         "illadelph-clothing": "woocommerce",
         "curaleaf-cuyahoga-falls": "sweed",
+        "ayr-akron": "dutchie",
     }
 
     def _stores(self):

@@ -268,6 +268,14 @@ stores:
     api_host: https://web-ui-curaleaf.sweedpos.com
     storeid: '142'
     sale_type: Recreational
+- id: ayr-akron
+  name: AYR Ohio — Akron
+  url: https://dutchie.com/embedded-menu/ayr-akron
+  scraper: dutchie
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
 scrapers:
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql
