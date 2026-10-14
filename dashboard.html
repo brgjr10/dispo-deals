@@ -4190,6 +4190,12 @@ function cleanProductName(product) {
     if (CATEGORY_PARTS.has(lower)) continue;
     // Skip pure brand names (exact match)
     if (allBrands.has(lower)) continue;
+    // Skip if this part is a word from the product brand (e.g. "Scientific" from "Firelands Scientific")
+    const brandWords = (product.brand || '').toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (brandWords.includes(lower)) continue;
+    // Also skip if part matches brand with common suffix stripped
+    const strippedPart = lower.replace(/\s+(pharmaceuticals|scientific|wellness|labs|growers|farms|cannabis|co|inc|llc)$/i, '');
+    if (allBrands.has(strippedPart)) continue;
     // Skip parts that are just sizes/numbers
     if (/^\d+(\.\d+)?\s*(g|mg|ml|oz|pc|pk|piece|pack)$/i.test(part)) continue;
     // Skip if part is just a ratio like "1:2" or "5:1"
