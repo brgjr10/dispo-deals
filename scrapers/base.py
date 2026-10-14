@@ -20,11 +20,17 @@ class BaseScraper(ABC):
 
     def _create_session(self) -> requests.Session:
         session = requests.Session()
+        # A 429 is the store throttling us, so honour the Retry-After it sends
+        # (Shopify and WooCommerce both do) rather than hammering again on our
+        # own short timer, which is what exhausts the retries and fails a page.
+        # backoff_factor=1 yields ~{0,2,4}s between attempts unless Retry-After
+        # asks for longer, so a throttle storm is ridden out instead of given up.
         retry_strategy = Retry(
             total=3,
             backoff_factor=1,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["HEAD", "GET", "OPTIONS", "POST"],
+            respect_retry_after_header=True,
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("http://", adapter)
