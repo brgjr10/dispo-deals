@@ -2891,15 +2891,16 @@ async function renderWeeklyMenu() {
 
     return `
       <section class="menu-store">
-        <header class="menu-store-head">
+        <header class="menu-store-head" onclick="toggleWeeklyStore('${escapeHtml(storeId)}')">
           ${store.logo_url ? `<img class="menu-store-logo" src="${escapeHtml(store.logo_url)}" onerror="this.style.display='none'">` : ''}
           <span>
             <span class="menu-store-name">${escapeHtml(store.name)}</span>
             <span class="menu-store-meta">${items.length} new ${items.length === 1 ? 'item' : 'items'}</span>
           </span>
           <span class="menu-store-count">New this week</span>
+          <svg class="menu-store-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
         </header>
-        <div class="menu-list">${rows}</div>
+        <div class="menu-list" id="menu-store-${escapeHtml(storeId)}">${rows}</div>
       </section>
     `;
   }).join('');
