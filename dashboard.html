@@ -3045,16 +3045,18 @@ function renderWeeklyDeals() {
         .sort((a, b) => (b.discount_pct || 0) - (a.discount_pct || 0))
         .slice(0, DEALS_PER_CATEGORY);
 
-      const rows = items.map((item, index) => `
+      const rows = items.map((item, index) => {
+        const cleaned = cleanProductName(item);
+        return `
         <div class="deal-cat-row" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
           <span class="deal-rank">${index + 1}</span>
           <span class="deal-cat-main">
-            <span class="deal-cat-item-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.name)}</span>
+            <span class="deal-cat-item-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(cleaned.name)}</span>
             <span class="deal-cat-item-meta" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.storeName || storeName(item.store_id))}</span>
           </span>
           <span class="deal-off">-${(item.discount_pct || 0).toFixed(0)}%</span>
         </div>
-      `).join('');
+      `}).join('');
 
       const total = byCategory.get(main).length;
       return `
