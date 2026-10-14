@@ -4367,16 +4367,17 @@ function strainTypeIcon(type) {
     hybrid:
       (() => {
         // Clip paths need unique ids because the icon renders once per card.
-        // The split is angled so the crescent keeps most of its body.
+        // The split is angled clockwise (top-right to bottom-left) so the
+        // crescent keeps most of its body.
         const uid = ++strainIconUid;
         return `<svg ${attrs}>
       <defs>
-        <clipPath id="mh${uid}"><polygon points="0,0 10,0 18,24 0,24"/></clipPath>
-        <clipPath id="sh${uid}"><polygon points="10,0 24,0 24,24"/></clipPath>
+        <clipPath id="mh${uid}"><polygon points="0,0 16,0 8,24 0,24"/></clipPath>
+        <clipPath id="sh${uid}"><polygon points="16,0 24,0 24,24 8,24"/></clipPath>
       </defs>
       <g clip-path="url(#mh${uid})"><path d="${moonPath}"/></g>
       <g clip-path="url(#sh${uid})">${sunShapes}</g>
-      <path d="M10 0 L18 24"/>
+      <path d="M16 0 L8 24"/>
     </svg>`;
       })()
   };
