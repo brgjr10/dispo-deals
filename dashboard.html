@@ -2278,6 +2278,38 @@ let preloadedImages = new Set();
 // ---- URL state ----
 const URL_PARAMS = { store: 'store', category: 'cat', brand: 'brand', strainType: 'type', deal: 'deal', fav: 'fav', compare: 'compare', stock: 'stock', sort: 'sort', search: 'q' };
 
+// Image placeholder (SVG data URI) - must be defined before use in templates
+const IMAGE_PLACEHOLDER = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">' +
+  '<rect width="80" height="80" rx="8" fill="#161b22"/>' +
+  '<path d="M40 22c6 0 11 5 11 11 0 4-2 7-5 9 3 3 4 6 4 9v7H30v-7c0-3 1-6 4-9-3-2-5-5-5-9 0-6 5-11 11-11z" fill="#3fb950"/>' +
+  '</svg>'
+);
+
+function handleImageError(img) {
+  if (img.dataset.fallbackApplied) return;
+  img.dataset.fallbackApplied = 'true';
+  img.src = IMAGE_PLACEHOLDER;
+}
+
+function productImageSrc(product) {
+  const key = product && product.image_key;
+  if (!key) return IMAGE_PLACEHOLDER;
+  return '/api/image/' + key;
+}
+
+function storeLogoSrc(store) {
+  if (!store || !store.id) return IMAGE_PLACEHOLDER;
+  return '/api/logo/' + encodeURIComponent(store.id);
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 function getUrlState() {
   const params = new URLSearchParams(window.location.search);
   return {
@@ -3318,9 +3350,9 @@ function getHiddenStores() {
   }
 }
 
-function setHiddenStore(storeId, hidden) {
+function setHiddenStore(storeId, hide) {
   const hidden = getHiddenStores();
-  if (hidden) hidden.add(storeId);
+  if (hide) hidden.add(storeId);
   else hidden.delete(storeId);
   try {
     localStorage.setItem(HIDDEN_STORES_KEY, JSON.stringify([...hidden]));
@@ -4481,38 +4513,6 @@ function removeFilter(key) {
 
 function updateProductsCount() {
   document.getElementById('productsCount').textContent = `Showing ${displayedProducts.length} of ${allData.products.length} products`;
-}
-
-// ---- Quick View Modal ----
-const IMAGE_PLACEHOLDER = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">' +
-  '<rect width="80" height="80" rx="8" fill="#161b22"/>' +
-  '<path d="M40 22c6 0 11 5 11 11 0 4-2 7-5 9 3 3 4 6 4 9v7H30v-7c0-3 1-6 4-9-3-2-5-5-5-9 0-6 5-11 11-11z" fill="#3fb950"/>' +
-  '</svg>'
-);
-
-function productImageSrc(product) {
-  const key = product && product.image_key;
-  if (!key) return IMAGE_PLACEHOLDER;
-  return '/api/image/' + key;
-}
-
-function storeLogoSrc(store) {
-  if (!store || !store.id) return IMAGE_PLACEHOLDER;
-  return '/api/logo/' + encodeURIComponent(store.id);
-}
-
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function handleImageError(img) {
-  if (img.dataset.fallbackApplied) return;
-  img.dataset.fallbackApplied = 'true';
-  img.src = IMAGE_PLACEHOLDER;
 }
 
 function openQuickView(product) {
