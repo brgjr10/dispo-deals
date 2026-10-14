@@ -3703,15 +3703,27 @@ const STRAIN_TYPES = {
 // Word forms. The bracketed/abbreviated forms are patterns because they can be
 // followed by a price or a size, e.g. "GG#4 (I) 3.5g".
 const STRAIN_NAME_PATTERNS = [
-  { type: 'sativa', re: /\(?\s*\[\s*s\s*\]\s*\)?/i },
-  { type: 'indica', re: /\(?\s*\[\s*i\s*\]\s*\)?/i },
-  { type: 'hybrid', re: /\(?\s*\[\s*h\s*\]\s*\)?/i },
-  // A parenthesised single letter, e.g. "(H)".
+  // Bracketed: [S], [I], [H], [ Sativa ], etc.
+  { type: 'sativa', re: /\(?\s*\[\s*s(?:ativa)?\s*\]\s*\)?/i },
+  { type: 'indica', re: /\(?\s*\[\s*i(?:ndica)?\s*\]\s*\)?/i },
+  { type: 'hybrid', re: /\(?\s*\[\s*h(?:ybrid)?\s*\]\s*\)?/i },
+  // Parenthesized single letter: (S), (I), (H)
   { type: 'sativa', re: /\(\s*s\s*\)/i },
   { type: 'indica', re: /\(\s*i\s*\)/i },
   { type: 'hybrid', re: /\(\s*h\s*\)/i },
-  // Full words, which must sit on a word boundary so "Indica" inside another
-  // word cannot match.
+  // Parenthesized full words: (Sativa), (Indica), (Hybrid)
+  { type: 'sativa', re: /\(\s*sativa\s*\)/i },
+  { type: 'indica', re: /\(\s*indica\s*\)/i },
+  { type: 'hybrid', re: /\(\s*hybrid\s*\)/i },
+  // Dash/space separated at end: "Blue Dream - Sativa", "Blue Dream Sativa"
+  { type: 'sativa', re: /[\s\-]\s*s(?:ativa)?\s*$/i },
+  { type: 'indica', re: /[\s\-]\s*i(?:ndica)?\s*$/i },
+  { type: 'hybrid', re: /[\s\-]\s*h(?:ybrid)?\s*$/i },
+  // Slash separated: "I/S/H"
+  { type: 'sativa', re: /\b[ISH]\/\s*s\b/i },
+  { type: 'indica', re: /\b[ISH]\/\s*i\b/i },
+  { type: 'hybrid', re: /\b[ISH]\/\s*h\b/i },
+  // Full words on word boundary
   { type: 'sativa', re: /\bsativa\b/i },
   { type: 'indica', re: /\bindica\b/i },
   { type: 'hybrid', re: /\bhybrid\b/i }
@@ -3758,9 +3770,10 @@ function strainTypeLabel(type) {
   return STRAIN_TYPES[type] ? STRAIN_TYPES[type].label : 'Strain';
 }
 
-function renderStrainBadge(strain) {
+function renderStrainBadge(strain, product) {
   if (!strain) return '';
-  const type = strain.strain_type || 'hybrid';
+  // Use name-parsed type (priority) over Leafly strain type
+  const type = product ? strainTypeOf(product) : (strain.strain_type || 'hybrid');
   const label = strain.category || 'Strain';
   return `<span class="strain-badge strain-${type}" title="${escapeHtml(strain.name)}">${escapeHtml(label)}</span>`;
 }
@@ -3856,7 +3869,7 @@ function renderProductCard(product) {
         <div class="product-tags">
           ${dealBadge}
           ${stockBadge}
-          ${strain ? renderStrainBadge(strain) : ''}
+          ${strain ? renderStrainBadge(strain, product) : ''}
           ${isMultiStore ? `<span class="product-tag multi-store">${product.store_count} stores</span>` : ''}
         </div>
         <img class="product-img" src="${imgSrc}" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">
