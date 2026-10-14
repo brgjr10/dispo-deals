@@ -248,6 +248,14 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+- id: illadelph-clothing
+  name: Illadelph
+  url: https://illadelphclothing.com/shop/
+  scraper: woocommerce
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
 scrapers:
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql

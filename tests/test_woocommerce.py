@@ -1,5 +1,7 @@
 """The WooCommerce Store API parser, parsed from a fake product payload."""
 
+import pytest
+
 from models import StoreConfig
 from scrapers.woocommerce import WooCommerceScraper
 
@@ -88,3 +90,71 @@ class TestParse:
         product = sample_product(categories=[], name="Mystery Widget")
         deal = make_scraper()._to_deal(product)
         assert deal.category == "Accessories"
+
+
+SHOP_HTML = """
+<ul class="products columns-3">
+  <li class="product type-product post-1713 status-publish instock product_cat-accessories product_cat-hemp-grinder has-post-thumbnail">
+    <a href="https://illadelphclothing.com/product/grinder-3pc/" class="woocommerce-LoopProduct-link woocommerce-loop-product__link">
+      <img width="324" height="324" src="https://illadelphclothing.com/thumb.png" class="attachment-woocommerce_thumbnail">
+      <h2 class="woocommerce-loop-product__title">Shredder Grinder 3pc</h2>
+      <span class="price"><span class="woocommerce-Price-amount amount"><bdi><span class="woocommerce-Price-currencySymbol">&#36;</span>45.00</bdi></span></span>
+    </a>
+  </li>
+  <li class="product type-product post-1720 status-publish outofstock product_cat-accessories">
+    <a href="https://illadelphclothing.com/product/tee/" class="woocommerce-LoopProduct-link woocommerce-loop-product__link">
+      <h2 class="woocommerce-loop-product__title">Logo Tee</h2>
+      <span class="price"><del aria-hidden="true"><span class="woocommerce-Price-amount amount"><bdi><span class="woocommerce-Price-currencySymbol">&#36;</span>30.00</bdi></span></del><ins><span class="woocommerce-Price-amount amount"><bdi><span class="woocommerce-Price-currencySymbol">&#36;</span>20.00</bdi></span></ins></span>
+    </a>
+  </li>
+</ul>
+"""
+
+
+class TestHtmlFallback:
+    """When the Store API is disabled, the /shop/ loop is parsed instead."""
+
+    def test_parses_product_cards(self):
+        deals = make_scraper()._parse_html(SHOP_HTML, "https://illadelphclothing.com/shop")
+        assert [d.name for d in deals] == ["Shredder Grinder 3pc", "Logo Tee"]
+        assert [d.product_id for d in deals] == ["1713", "1720"]
+
+    def test_plain_price_has_no_discount(self):
+        deals = make_scraper()._parse_html(SHOP_HTML, "x")
+        grinder = deals[0]
+        assert grinder.sale_price == 45.0
+        assert grinder.original_price == 45.0
+        assert grinder.discount_pct == 0.0
+        assert grinder.in_stock is True
+
+    def test_sale_card_reports_discount_and_stock(self):
+        deals = make_scraper()._parse_html(SHOP_HTML, "x")
+        tee = deals[1]
+        assert tee.sale_price == 20.0
+        assert tee.original_price == 30.0
+        assert tee.discount_pct == 33.3
+        assert tee.in_stock is False
+
+    def test_known_category_wins_and_title_infers_subcategory(self):
+        # product_cat-accessories + product_cat-hemp-grinder: the known shelf
+        # (Accessories) wins, and the title adds the subcategory.
+        deals = make_scraper()._parse_html(SHOP_HTML, "x")
+        assert deals[0].category.startswith("Accessories")
+        assert deals[0].category.endswith("grinders")
+
+    def test_range_price_uses_min_without_discount(self):
+        html = """<li class="product post-1 instock product_cat-accessories">
+          <a href="https://x/p/" class="woocommerce-loop-product__link">
+            <h2 class="woocommerce-loop-product__title">Variable Thing</h2>
+            <span class="price"><span class="woocommerce-Price-amount amount"><bdi>10.00</bdi></span> &ndash;
+            <span class="woocommerce-Price-amount amount"><bdi>25.00</bdi></span></span>
+          </a></li>"""
+        deals = make_scraper()._parse_html(html, "x")
+        assert len(deals) == 1
+        assert deals[0].sale_price == 10.0
+        assert deals[0].original_price == 10.0
+        assert deals[0].discount_pct == 0.0
+
+
+if __name__ == "__main__":
+    raise SystemExit(pytest.main([__file__, "-v"]))
