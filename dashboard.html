@@ -3901,7 +3901,8 @@ const KNOWN_BRANDS = new Set([
   'terrapin', 'theory', 'tincture', 'titan', 'top', 'trend', 'tribe', 'true',
   'trust', 'twax', 'unite', 'uptown', 'valence', 'verano', 'vert', 'vibe',
   'victory', 'vital', 'vivid', 'wave', 'west', 'white', 'wildflower', 'willie',
-  'wonder', 'wood', 'works', 'x', 'y', 'z', 'zen', 'zero', 'zone'
+  'wonder', 'wood', 'works', 'appalachian pharm', 'later days', 'neighborgoods',
+  'pure ohio wellness', 'pure ohio', 'x', 'y', 'z', 'zen', 'zero', 'zone'
 ]);
 
 function extractWeight(name) {
@@ -3992,6 +3993,9 @@ function cleanProductName(product) {
     name = name.replace(new RegExp(`^${escaped}\\s*[-–—]\\s*[-–—]\\s*`, 'i'), '');
     // Match "Name | Brand" 
     name = name.replace(new RegExp(`\\s*[-–—|]\\s*${escaped}\\s*$`, 'i'), '');
+    // Match brand at start WITHOUT separator (e.g., "Appalachian Pharm Zeld-J")
+    // Only if brand is at start followed by space and more text
+    name = name.replace(new RegExp(`^${escaped}\\s+(?=.+)`, 'i'), '');
   }
   
   // 4. Remove category from title
