@@ -1967,6 +1967,8 @@ html {
         </div>
         <div class="page-actions">
           <button class="btn secondary" onclick="loadData()">Refresh</button>
+          <button class="btn ghost" id="collapseAllStoresBtn" onclick="toggleAllWeeklyStores(false)" style="display:none;">Collapse All</button>
+          <button class="btn ghost" id="expandAllStoresBtn" onclick="toggleAllWeeklyStores(true)" style="display:none;">Expand All</button>
         </div>
       </div>
       <div id="weeklyMenuBody" class="menu-body"></div>
@@ -1983,7 +1985,7 @@ html {
           <button class="btn secondary" onclick="loadData()">Refresh</button>
         </div>
       </div>
-      <div id="weeklyDealsBody" class="deals-body"></div>
+      <div id="weeklyDealsBody" class="deals-body" style="overflow-x: hidden;"></div>
     </section>
 
     <!-- Executive Summary: CEO dashboard - best deals first, no fluff. -->
@@ -2074,6 +2076,15 @@ html {
             <h2>Store Performance</h2>
           </div>
           <div class="store-rank-list" id="storeRankList"></div>
+        </section>
+
+        <!-- Store Comparison: side-by-side best deals per store -->
+        <section class="executive-section">
+          <div class="section-head">
+            <h2>Store Comparison</h2>
+            <button class="btn ghost" onclick="showView('browser'); currentFilters.dealOnly=true; updateFilterControls(); applyFilters(); setUrlState(currentFilters);">View All Deals →</button>
+          </div>
+          <div class="store-compare-grid" id="storeCompareGrid"></div>
         </section>
       </div>
     </section>
@@ -2568,6 +2579,8 @@ function renderExecutive() {
   renderBrandRankings();
   // Store Performance
   renderStoreRankings();
+  // Store Comparison
+  renderStoreComparison();
 }
 
 function renderCategoryRankings() {
@@ -2892,8 +2905,8 @@ function renderWeeklyDeals() {
         <div class="deal-cat-row" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
           <span class="deal-rank">${index + 1}</span>
           <span class="deal-cat-main">
-            <span class="deal-cat-item-name">${escapeHtml(item.name)}</span>
-            <span class="deal-cat-item-meta">${escapeHtml(item.storeName || storeName(item.store_id))}</span>
+            <span class="deal-cat-item-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.name)}</span>
+            <span class="deal-cat-item-meta" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.storeName || storeName(item.store_id))}</span>
           </span>
           <span class="deal-off">-${(item.discount_pct || 0).toFixed(0)}%</span>
         </div>
