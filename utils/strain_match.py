@@ -54,6 +54,15 @@ NOISE_WORDS = {
     "high-dose", "higher-dose", "high-dose-thc", "1:1", "ratio",
 }
 
+# A candidate that must never be treated as a strain, even when Leafly has a
+# record for the word. These are materials and gem names that appear in glass
+# and hardware product titles: "Opal" is a gem used in pendants and rigs, and
+# Leafly also lists a hybrid called Opal, so without this the badge would claim
+# a piece of glass is a cannabis strain. Compared against the normalised name.
+STRAIN_NAME_BLACKLIST = {
+    "opal",
+}
+
 PHENOTYPE_RE = re.compile(
     r"^(sativa|indica|hybrid|sativa-dominant|indica-dominant|"
     r"sativa\s*dominant|indica\s*dominant|cbd|thc|balanced)[\s\-]*(dominant)?$",
@@ -401,6 +410,12 @@ class StrainResolver:
 
         key = normalize_name(candidate)
         if not key:
+            return None
+
+        # Checked before the caches so an already-stored record for a blacklisted
+        # word stays inert, and before Leafly so it is never queried for it.
+        if key in STRAIN_NAME_BLACKLIST:
+            logger.debug("Skipping blacklisted strain candidate %r", candidate)
             return None
 
         if key in self._memory_cache:
