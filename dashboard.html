@@ -2979,28 +2979,42 @@ function populateSidebar() {
     // The row itself is the toggle, and the chevron is only its indicator. A
     // small chevron target made collapsing a matter of hitting a few pixels;
     // clicking anywhere on the row is the forgiving target.
+    const hasSubs = group.subs.length > 0;
+    const isActive = currentFilters.category === main;
     header.innerHTML = `
       <span class="nav-group-label">
-        <span class="nav-chevron" aria-hidden="true"></span>
+        ${hasSubs ? '<span class="nav-chevron" aria-hidden="true"></span>' : ''}
         <span>${escapeHtml(main)}</span>
       </span>
       <span class="nav-item-count">${group.count}</span>
+      ${isActive ? '<span class="nav-item-count" style="background:var(--primary);color:var(--bg)">active</span>' : ''}
     `;
     header.setAttribute('role', 'button');
     header.setAttribute('tabindex', '0');
-    header.setAttribute('aria-expanded', expanded.has(main) ? 'true' : 'false');
-    header.setAttribute('aria-label', `${escapeHtml(main)}, ${group.count} products`);
+    header.setAttribute('aria-expanded', hasSubs && expanded.has(main) ? 'true' : 'false');
+    header.setAttribute('aria-label', `${escapeHtml(main)}, ${group.count} products${hasSubs ? ' (click to expand)' : ', click to filter'}`);
     wrap.appendChild(header);
 
-    // Clicking the row opens or closes the group without changing the filter,
-    // so expanding a group never disturbs what is being shown.
-    header.addEventListener('click', () => toggleCategoryGroup(main));
-    header.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggleCategoryGroup(main);
-      }
-    });
+    if (hasSubs) {
+      // Clicking the row opens or closes the group without changing the filter,
+      // so expanding a group never disturbs what is being shown.
+      header.addEventListener('click', () => toggleCategoryGroup(main));
+      header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleCategoryGroup(main);
+        }
+      });
+    } else {
+      // No subcategories: clicking the header filters by this category directly
+      header.addEventListener('click', () => selectCategory(main));
+      header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectCategory(main);
+        }
+      });
+    }
 
     if (group.subs.length) {
       const subs = document.createElement('div');
