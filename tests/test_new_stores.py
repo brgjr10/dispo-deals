@@ -93,6 +93,7 @@ class TestConfiguredStores:
         "rove-brand": "shopify",
         "mothership-glass": "woocommerce",
         "illadelph-clothing": "woocommerce",
+        "curaleaf-cuyahoga-falls": "sweed",
     }
 
     def _stores(self):

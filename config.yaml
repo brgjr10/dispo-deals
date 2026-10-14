@@ -256,6 +256,18 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+- id: curaleaf-cuyahoga-falls
+  name: Curaleaf — Cuyahoga Falls
+  url: https://oh.curaleaf.com/shop/ohio/curaleaf-cuyahoga-falls/recreational
+  scraper: sweed
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+  scraper_options:
+    api_host: https://web-ui-curaleaf.sweedpos.com
+    storeid: '142'
+    sale_type: Recreational
 scrapers:
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql
@@ -269,6 +281,12 @@ scrapers:
     headers:
       User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
   magento:
+    timeout: 30
+    headers:
+      User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+      Accept: application/json
+      Content-Type: application/json
+  sweed:
     timeout: 30
     headers:
       User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36

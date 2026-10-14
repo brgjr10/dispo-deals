@@ -364,6 +364,10 @@ class StoreConfig:
     # instead of resolving a cName slug, which removes any chance of matching
     # a different dispensary that happens to share the slug.
     dispensary_id: Optional[str] = None
+    # Generic per-store scraper settings for sources that need more than a URL
+    # to locate their data. For Sweed, for example, this carries the API host,
+    # the numeric store id and the sale type ("Recreational").
+    scraper_options: Optional[Dict[str, str]] = None
     # Product-title terms a store should never contribute. Zumiez's 420
     # collection mixes in candy-branded merch that is not cannabis, and a skate
     # shop has no other place to file it.
@@ -382,4 +386,5 @@ class StoreConfig:
             webhook_enabled=data.get("webhook_enabled", False),
             dispensary_id=data.get("dispensary_id"),
             exclude_terms=data.get("exclude_terms"),
+            scraper_options=data.get("scraper_options"),
         )
