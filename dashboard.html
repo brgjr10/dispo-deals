@@ -2857,6 +2857,24 @@ async function renderWeeklyMenu() {
   host.innerHTML = blocks;
 }
 
+function toggleWeeklyStore(storeId) {
+  const list = document.getElementById('menu-store-' + storeId)
+  const header = list ? list.previousElementSibling : null
+  if (!list || !header) return
+  const isOpen = list.style.display !== 'none'
+  list.style.display = isOpen ? 'none' : 'block'
+  header.classList.toggle('collapsed', isOpen)
+}
+
+function toggleAllWeeklyStores(expand) {
+  document.querySelectorAll('.menu-store .menu-list').forEach(list => {
+    const header = list.previousElementSibling
+    if (!header) return
+    list.style.display = expand ? 'block' : 'none'
+    header.classList.toggle('collapsed', !expand)
+  })
+}
+
 function formatWeekLabel(isoWeekStart) {
   try {
     const d = new Date(`${isoWeekStart}T00:00:00`);
@@ -4237,7 +4255,6 @@ function renderProductCard(product) {
         <div class="product-meta">
           ${product.brand ? `<span class="product-brand">${escapeHtml(product.brand)}</span>` : ''}
           ${product.thc_pct !== null && product.thc_pct !== undefined ? `<span class="product-thc">THC ${product.thc_pct}%</span>` : ''}
-          <span class="product-thc">${escapeHtml(product.category)}</span>
           ${strain ? `<span class="product-strain">🌿 ${escapeHtml(strain.name)}</span>` : ''}
         </div>
         <div class="product-price-row">
