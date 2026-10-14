@@ -109,6 +109,10 @@ class TestConfiguredStores:
         "illadelph-clothing": "woocommerce",
         "curaleaf-cuyahoga-falls": "sweed",
         "ayr-akron": "dutchie",
+        "kk-apparel": "shopify",
+        "710-labs": "shopify",
+        "alien-labs-apparel": "shopify",
+        "stiiizy": "shopify",
     }
 
     def _stores(self):

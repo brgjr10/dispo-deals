@@ -276,6 +276,38 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+- id: kk-apparel
+  name: KK Apparel
+  url: https://shopkkapparel.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: 710-labs
+  name: 710 Labs
+  url: https://shop.710labs.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: alien-labs-apparel
+  name: Alien Labs Apparel
+  url: https://alienlabsapparel.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: stiiizy
+  name: STIIIZY
+  url: https://www.stiiizy.com/pages/shop
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
 scrapers:
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql
