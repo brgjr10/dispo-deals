@@ -184,6 +184,62 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+- id: daily-high-club
+  name: Daily High Club
+  url: https://dailyhighclub.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: focus-v
+  name: Focus V
+  url: https://focusv.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: calibear-glass
+  name: Calibear Glass
+  url: https://calibearglass.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: empire-smokes
+  name: Empire Smokes
+  url: https://empiresmokes.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: tuff-tethers
+  name: Tuff Tethers
+  url: https://tufftethers.com/collections/all
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: the-dopest-shop
+  name: The Dopest Shop
+  url: https://thedopestshop.com/
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: rove-brand
+  name: ROVE
+  url: https://rovebrand.com/collections/apparel
+  scraper: shopify
+  logo_url: ''
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
 scrapers:
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql

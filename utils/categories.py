@@ -419,27 +419,83 @@ def canonical_category(category: str) -> str:
 # Some stores file a dab mat under a catch-all shelf ("misc", "Uncategorized")
 # with no subcategory to key off, so canonical_category alone leaves it on the
 # wrong shelf. When the canonical main is a catch-all and the product title
-# names a mat, it is moved onto the Dab Mats shelf. Kept separate from
-# canonical_category so that function keeps its single-argument contract and
-# its existing, tested behaviour.
+# names a mat, it is moved onto the Dab Mats shelf. This and the title-based
+# subcategory inference below are kept separate from canonical_category so that
+# function keeps its single-argument contract and its existing behaviour.
 _CATCH_ALL_MAINS = {"", "misc", "uncategorized", "other"}
 _DAB_MAT_NAME_RE = re.compile(
     r"\b(dab\s*-?\s*mats?|dab\s*-?\s*pads?|dabbing\s+mat)\b", re.IGNORECASE
 )
 
 
-def canonical_category_named(category: str, name: str = "") -> str:
-    """canonical_category, plus a name-based rescue for catch-all shelves.
+def _subcategory_patterns() -> Dict[str, list]:
+    """Match keys for each canonical main's known subcategories.
 
-    A dab mat filed under "misc" (no subcategory) cannot be recovered from the
-    category string alone, so as a last resort the product title is consulted:
-    if the canonical main is a catch-all and the name names a mat, the product
-    lands on the Dab Mats shelf instead of Misc.
+    The subcategory alias keys already encode the singular, plural and unhyphen
+    spellings a store might type, so they are reused directly as match keys.
+    The longest match wins so the most specific shelf is chosen.
+    """
+    index: Dict[str, list] = {}
+    for (main_key, sub_alias), canonical in SUBCATEGORY_ALIASES.items():
+        key = category_key(sub_alias)
+        if key:
+            index.setdefault(main_key, []).append((key, canonical))
+    for entries in index.values():
+        entries.sort(key=lambda kv: len(kv[0]), reverse=True)
+    return index
+
+
+_SUBCATEGORY_PATTERNS = _subcategory_patterns()
+
+
+def infer_subcategory(main: str, name: str) -> str:
+    """The known subcategory named in a product title, or "" for none.
+
+    Only the subcategories curated for ``main`` are considered, matched as
+    whole keys inside the de-spaced title, so a shelf that merely shares a few
+    letters is not chosen. Returns "" when the title gives no confident shelf,
+    leaving the product on its main category.
+    """
+    if not name:
+        return ""
+    entries = _SUBCATEGORY_PATTERNS.get(category_key(main))
+    if not entries:
+        return ""
+    title_key = category_key(name)
+    for key, canonical in entries:
+        if key in title_key:
+            return canonical
+    return ""
+
+
+def canonical_category_named(category: str, name: str = "") -> str:
+    """canonical_category, plus two title-based corrections.
+
+    1. A dab mat filed under "misc" (no subcategory) cannot be recovered from
+       the category string alone, so its title moves it onto the Dab Mats shelf.
+    2. When the canonical category has no subcategory but the product title
+       names a known subcategory for that main, that subcategory is attached,
+       so a store with no taxonomy still lands on the right shelf.
     """
     result = canonical_category(category)
-    if name and category_key(main_category(result)) in _CATCH_ALL_MAINS:
+    if not name:
+        return result
+
+    main = main_category(result)
+    main_key = category_key(main)
+
+    # A catch-all shelf is never right for any product, but a mat can be
+    # recovered from its title; anything else on a catch-all stays put.
+    if main_key in _CATCH_ALL_MAINS:
         if _DAB_MAT_NAME_RE.search(name):
             return "Dab Mats"
+        return result
+
+    # Only add a subcategory when none is already present.
+    if SUB_SEPARATOR not in result:
+        sub = infer_subcategory(main, name)
+        if sub:
+            return f"{main}{SUB_SEPARATOR}{sub}"
     return result
 
 

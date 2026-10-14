@@ -84,6 +84,13 @@ class TestConfiguredStores:
         "mothership-cannabis": "dutchie",
         "dutchie-canton-menu": "dutchie",
         "ayr-parma-heights": "dutchie",
+        "daily-high-club": "shopify",
+        "focus-v": "shopify",
+        "calibear-glass": "shopify",
+        "empire-smokes": "shopify",
+        "tuff-tethers": "shopify",
+        "the-dopest-shop": "shopify",
+        "rove-brand": "shopify",
     }
 
     def _stores(self):

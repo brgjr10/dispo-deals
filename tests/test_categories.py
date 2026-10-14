@@ -12,6 +12,7 @@ from utils.categories import (
     canonical_category,
     canonical_category_named,
     category_key,
+    infer_subcategory,
     is_canonical,
     main_category,
     sub_category,
@@ -289,6 +290,41 @@ class TestDabMatNameRescue:
         # single-argument contract and None passthrough.
         assert canonical_category("misc") == "Misc"
         assert canonical_category(None) is None
+
+
+class TestSubcategoryFromTitle:
+    """When a product has no subcategory, a known one in its title is used."""
+
+    @pytest.mark.parametrize("main,name,expected_sub", [
+        # Accessories: brand stores file these with no product_type beyond the shelf.
+        ("Accessories", "Premium Herb Grinder 4pc", "grinders"),
+        ("Accessories", "Torch Lighter Refillable", "lighters"),
+        ("Accessories", "4 Piece Grinder", "grinders"),
+        ("Vaporizers", "510 Thread Cartridge", "cartridges"),
+        ("Vaporizers", "Disposable Vape Pen", "disposables"),
+        ("Flower", "Small Buds Jar", "small buds"),
+        ("Concentrate", "Blue Dream Live Rosin", "live rosin"),
+    ])
+    def test_known_subcategory_attached_from_title(self, main, name, expected_sub):
+        assert canonical_category_named(main, name) == f"{main}{SEP}{expected_sub}"
+
+    def test_existing_subcategory_is_kept(self):
+        raw = f"Flower{SEP}premium"
+        assert canonical_category_named(raw, "Small Buds") == raw
+
+    def test_main_without_subcategories_is_untouched(self):
+        # Apparel, Hats and Bags have no curated subcategories, so the title
+        # must not invent one.
+        assert canonical_category_named("Apparel", "Graphic Hoodie Blue") == "Apparel"
+        assert canonical_category_named("Bags", "Woven Backpack") == "Bags"
+
+    def test_no_match_leaves_main_alone(self):
+        assert canonical_category_named("Vaporizers", "Arcata-TL") == "Vaporizers"
+
+    def test_infer_subcategory_helper(self):
+        assert infer_subcategory("Concentrate", "live rosin") == "live rosin"
+        assert infer_subcategory("Accessories", "cool gadget") == ""
+        assert infer_subcategory("Apparel", "hoodie") == ""
 
 
 if __name__ == "__main__":
