@@ -465,6 +465,135 @@ body {
 .landing-arch-item h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--primary); }
 .landing-arch-item p { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0; }
 
+/* ---- Executive / CEO Dashboard ---- */
+.view-executive { padding: 0; }
+.executive-inner { max-width: 1400px; margin: 0 auto; padding: 24px; }
+.executive-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.executive-header h1 { font-size: 24px; font-weight: 700; margin: 0; }
+.executive-meta { font-size: 13px; color: var(--muted); }
+
+.kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.kpi {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.kpi-value { font-size: 28px; font-weight: 700; color: var(--primary); line-height: 1; }
+.kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.executive-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.section-head h2 { font-size: 16px; font-weight: 700; margin: 0; }
+
+.top-deals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.top-deal-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.top-deal-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.top-deal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.top-deal-name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.top-deal-discount { font-size: 18px; font-weight: 700; color: var(--danger); white-space: nowrap; }
+.top-deal-meta { display: flex; gap: 8px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+.top-deal-price { display: flex; align-items: baseline; gap: 8px; margin-top: auto; }
+.top-deal-sale { font-size: 16px; font-weight: 700; color: var(--success); }
+.top-deal-original { font-size: 12px; color: var(--muted); text-decoration: line-through; }
+.top-deal-store { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.top-deal-store img { width: 20px; height: 20px; border-radius: 4px; background: var(--bg); }
+
+.new-week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.new-week-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.new-week-store { font-size: 12px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 6px; }
+.new-week-store img { width: 18px; height: 18px; border-radius: 4px; }
+.new-week-name { font-size: 12.5px; font-weight: 500; }
+.new-week-price { display: flex; align-items: baseline; gap: 6px; }
+.new-week-sale { font-size: 14px; font-weight: 700; color: var(--success); }
+.new-week-original { font-size: 11px; color: var(--muted); text-decoration: line-through; }
+.new-week-discount { font-size: 11px; font-weight: 600; color: var(--danger); background: rgba(248,81,73,0.1); padding: 2px 6px; border-radius: 4px; }
+
+.cat-rank-list, .brand-rank-list, .store-rank-list {
+  display: grid;
+  gap: 8px;
+}
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 0.15s;
+}
+.rank-item:hover { border-color: var(--primary); }
+.rank-num { width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--primary); color: var(--bg); border-radius: 6px; font-size: 12px; font-weight: 700; }
+.rank-item:nth-child(1) .rank-num { background: var(--primary); }
+.rank-item:nth-child(2) .rank-num { background: #d29922; }
+.rank-item:nth-child(3) .rank-num { background: #8b5cf6; }
+.rank-name { flex: 1; font-weight: 500; min-width: 0; }
+.rank-metric { font-size: 13px; font-weight: 700; color: var(--primary); white-space: nowrap; }
+.rank-sub { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.store-rank-item .rank-name { display: flex; align-items: center; gap: 8px; }
+.store-rank-item img { width: 24px; height: 24px; border-radius: 6px; background: var(--bg); }
+
 @media (max-width: 768px) {
   .view-nav { padding: 8px 12px 0; }
   .view-page { padding: 16px 12px 100px; }
@@ -1610,11 +1739,11 @@ html {
          the product browser, the weekly menu, the weekly deals ranking, and
          the portfolio landing page. -->
     <nav class="view-nav" aria-label="Views">
-      <button class="view-tab" data-view="landing" aria-label="Overview">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-        <span>Overview</span>
+      <button class="view-tab active" data-view="executive" aria-label="Executive Summary">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        <span>Executive</span>
       </button>
-      <button class="view-tab active" data-view="browser" aria-label="Products">
+      <button class="view-tab" data-view="browser" aria-label="Products">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         <span>Products</span>
       </button>
@@ -1808,144 +1937,95 @@ html {
       <div id="weeklyDealsBody" class="deals-body"></div>
     </section>
 
-    <!-- Overview: the portfolio landing page. -->
-    <section class="view-page view-landing" id="view-landing" aria-labelledby="landingTitle" hidden>
-      <div class="landing-inner">
-        <header class="landing-header">
-          <p class="landing-eyebrow">Dispo Browser</p>
-          <h2 id="landingTitle">Every store, every product, one board.</h2>
-          <p class="landing-lede">
-            A self-hosted, multi-dispensary menu browser built for cannabis consumers who want to compare prices, track deals, and discover products across every Dutchie-powered store in their area.
-          </p>
-          <div class="landing-metrics" id="landingMetrics">
-            <div class="landing-metric">
-              <span class="landing-metric-value" id="landingTotalProducts">—</span>
-              <span class="landing-metric-label">Products Tracked</span>
-            </div>
-            <div class="landing-metric">
-              <span class="landing-metric-value" id="landingTotalStores">—</span>
-              <span class="landing-metric-label">Dispensaries</span>
-            </div>
-            <div class="landing-metric">
-              <span class="landing-metric-value" id="landingTotalDeals">—</span>
-              <span class="landing-metric-label">Active Deals</span>
-            </div>
-            <div class="landing-metric">
-              <span class="landing-metric-value" id="landingTotalBrands">—</span>
-              <span class="landing-metric-label">Brands</span>
-            </div>
-          </div>
+    <!-- Executive Summary: CEO dashboard - best deals first, no fluff. -->
+    <section class="view-page view-executive" id="view-executive" aria-labelledby="executiveTitle" hidden>
+      <div class="executive-inner">
+        <header class="executive-header">
+          <h1 id="executiveTitle">Executive Summary</h1>
+          <div class="executive-meta" id="executiveMeta"></div>
         </header>
 
-        <div class="landing-cards">
-          <button class="landing-card" onclick="showStorePicker()">
-            <span class="landing-card-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l2-5h14l2 5M3 9v11h18V9M3 9h18M9 20v-6h6v6"/></svg>
-            </span>
-            <span class="landing-card-title">Browse per store</span>
-            <span class="landing-card-sub">Open one dispensary's full menu</span>
-          </button>
-          <button class="landing-card" onclick="browseAllStores()">
-            <span class="landing-card-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-            </span>
-            <span class="landing-card-title">Browse all stores</span>
-            <span class="landing-card-sub">Every product across the portfolio</span>
-          </button>
-          <button class="landing-card" onclick="openAddStoreModal()">
-            <span class="landing-card-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
-            </span>
-            <span class="landing-card-title">Add a store</span>
-            <span class="landing-card-sub">Bring in a dispensary by its Dutchie link</span>
-          </button>
+        <!-- Top KPI row -->
+        <div class="kpi-bar" id="kpiBar">
+          <div class="kpi">
+            <span class="kpi-value" id="kpiTotalProducts">—</span>
+            <span class="kpi-label">Products</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-value" id="kpiActiveDeals">—</span>
+            <span class="kpi-label">Active Deals</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-value" id="kpiBestDiscount">—</span>
+            <span class="kpi-label">Best Discount</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-value" id="kpiStores">—</span>
+            <span class="kpi-label">Stores</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-value" id="kpiNewThisWeek">—</span>
+            <span class="kpi-label">New This Week</span>
+          </div>
         </div>
 
-        <section class="landing-section">
-          <h3 class="landing-section-title">Key Features</h3>
-          <div class="landing-features">
-            <div class="landing-feature">
-              <div class="landing-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-              </div>
-              <h4>Unified Product Browser</h4>
-              <p>Search, filter, and sort across all dispensaries at once. Virtualized grid handles 10,000+ products smoothly.</p>
-            </div>
-            <div class="landing-feature">
-              <div class="landing-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-              </div>
-              <h4>Deal Intelligence</h4>
-              <p>Automatic discount detection, category/brand rankings, and weekly deal summaries. Know where the value is.</p>
-            </div>
-            <div class="landing-feature">
-              <div class="landing-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-              </div>
-              <h4>Favorites & Wishlist</h4>
-              <p>Save products across sessions. Get notified when favorited items go on sale or come back in stock.</p>
-            </div>
-            <div class="landing-feature">
-              <div class="landing-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              </div>
-              <h4>Price History</h4>
-              <p>Track price changes over time with interactive charts. Spot patterns and time your purchases.</p>
-            </div>
-            <div class="landing-feature">
-              <div class="landing-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </div>
-              <h4>Compare & Export</h4>
-              <p>Side-by-side comparison of up to 4 products. Export to CSV/JSON or share a compare link.</p>
-            </div>
-            <div class="landing-feature">
-              <div class="landing-feature-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-              </div>
-              <h4>Keyboard-First UX</h4>
-              <p>Full keyboard navigation: arrow keys to browse, Enter to view, C/F/R/A shortcuts. Press ? for help.</p>
-            </div>
+        <!-- Top Deals: best discounts across all stores -->
+        <section class="executive-section">
+          <div class="section-head">
+            <h2>Top Deals Right Now</h2>
+            <button class="btn ghost" onclick="showView('browser'); currentFilters.dealOnly=true; updateFilterControls(); applyFilters(); setUrlState(currentFilters);">View All Deals →</button>
           </div>
+          <div class="top-deals-grid" id="topDealsGrid"></div>
         </section>
 
-        <section class="landing-section">
-          <h3 class="landing-section-title">Tech Stack</h3>
-          <div class="landing-tech">
-            <span class="tech-badge">Python</span>
-            <span class="tech-badge">FastAPI</span>
-            <span class="tech-badge">SQLite</span>
-            <span class="tech-badge">Chart.js</span>
-            <span class="tech-badge">Vanilla JS</span>
-            <span class="tech-badge">Docker</span>
-            <span class="tech-badge">Dutchie API</span>
-            <span class="tech-badge">Leafly Strains</span>
+        <!-- New This Week -->
+        <section class="executive-section">
+          <div class="section-head">
+            <h2>New This Week</h2>
+            <button class="btn ghost" onclick="showView('weekly-menu')">View Full Menu →</button>
           </div>
+          <div class="new-week-grid" id="newWeekGrid"></div>
         </section>
 
-        <section class="landing-section">
-          <h3 class="landing-section-title">Architecture</h3>
-          <div class="landing-arch">
-            <div class="landing-arch-item">
-              <h4>Scrapers</h4>
-              <p>Modular scraper classes per platform (Shopify, Dutchie, Lightspeed, WooCommerce) with shared base.</p>
-            </div>
-            <div class="landing-arch-item">
-              <h4>API Server</h4>
-              <p>FastAPI backend serving menu data, favorites, price history, and store management endpoints.</p>
-            </div>
-            <div class="landing-arch-item">
-              <h4>Scheduler</h4>
-              <p>APScheduler runs incremental scrapes every 15 minutes. Full re-index nightly.</p>
-            </div>
-            <div class="landing-arch-item">
-              <h4>Frontend</h4>
-              <p>Single-file HTML dashboard with virtualized grid, Chart.js visualizations, zero build step.</p>
-            </div>
+        <!-- Category Rankings -->
+        <section class="executive-section">
+          <div class="section-head">
+            <h2>Best Categories</h2>
+            <select class="filter-select" id="catRankMetric" style="width:auto;">
+              <option value="avg">Best Avg Discount</option>
+              <option value="count">Most Deals</option>
+              <option value="best">Deepest Single</option>
+            </select>
           </div>
+          <div class="insight-canvas-wrap" style="height:200px;">
+            <canvas id="catRankChart"></canvas>
+          </div>
+          <div class="cat-rank-list" id="catRankList"></div>
         </section>
 
-        <div id="landingStores" class="landing-stores"></div>
+        <!-- Brand Rankings -->
+        <section class="executive-section">
+          <div class="section-head">
+            <h2>Best Brands</h2>
+            <select class="filter-select" id="brandRankMetric" style="width:auto;">
+              <option value="avg">Best Avg Discount</option>
+              <option value="count">Most Deals</option>
+              <option value="best">Deepest Single</option>
+            </select>
+          </div>
+          <div class="insight-canvas-wrap" style="height:200px;">
+            <canvas id="brandRankChart"></canvas>
+          </div>
+          <div class="brand-rank-list" id="brandRankList"></div>
+        </section>
+
+        <!-- Store Performance -->
+        <section class="executive-section">
+          <div class="section-head">
+            <h2>Store Performance</h2>
+          </div>
+          <div class="store-rank-list" id="storeRankList"></div>
+        </section>
       </div>
     </section>
   </main>
@@ -1999,7 +2079,7 @@ html {
       <div class="shortcuts-category">
         <h3>Views</h3>
         <div class="shortcuts-list">
-          <div class="shortcut-item"><span class="shortcut-desc">Overview (landing)</span><span class="shortcut-key"><kbd>1</kbd></span></div>
+          <div class="shortcut-item"><span class="shortcut-desc">Executive Summary</span><span class="shortcut-key"><kbd>1</kbd></span></div>
           <div class="shortcut-item"><span class="shortcut-desc">Products browser</span><span class="shortcut-key"><kbd>2</kbd></span></div>
           <div class="shortcut-item"><span class="shortcut-desc">Weekly menu</span><span class="shortcut-key"><kbd>3</kbd></span></div>
           <div class="shortcut-item"><span class="shortcut-desc">Weekly deals</span><span class="shortcut-key"><kbd>4</kbd></span></div>
@@ -2217,9 +2297,9 @@ async function loadData() {
     applyFilters();
     renderLandingStats();
     // Re-render whichever page is on screen so a refresh is not a no-op.
+    if (currentView === 'executive') renderExecutive();
     if (currentView === 'weekly-menu') renderWeeklyMenu();
     if (currentView === 'weekly-deals') renderWeeklyDeals();
-    if (currentView === 'landing') renderLanding();
   } catch (e) {
     console.error(e);
     const grid = document.getElementById('productGrid');
@@ -2230,9 +2310,9 @@ async function loadData() {
 // ---- View router ----
 // The dashboard is several pages sharing one dataset. Each page is a section
 // that is shown or hidden, so only the visible one does any work.
-const VIEWS = ['landing', 'browser', 'weekly-menu', 'weekly-deals'];
+const VIEWS = ['executive', 'browser', 'weekly-menu', 'weekly-deals'];
 
-let currentView = 'landing';
+let currentView = 'executive';
 
 function showView(name) {
   if (!VIEWS.includes(name)) name = 'browser';
@@ -2261,9 +2341,9 @@ function showView(name) {
 
   // The pages that need their own rendering are rendered on entry, so switching
   // is never a blank screen while data is fetched.
+  if (name === 'executive') renderExecutive();
   if (name === 'weekly-menu') renderWeeklyMenu();
   if (name === 'weekly-deals') renderWeeklyDeals();
-  if (name === 'landing') renderLanding();
 }
 
 function browseAllStores() {
@@ -2277,9 +2357,9 @@ function browseAllStores() {
 }
 
 function showStorePicker() {
-  // Landing already lists the stores, so jump there and let the user pick.
-  showView('landing');
-  const list = document.getElementById('landingStores');
+  // Executive already lists the stores, so jump there and let the user pick.
+  showView('executive');
+  const list = document.getElementById('storeRankList');
   if (list) list.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -2314,6 +2394,250 @@ function renderLandingStats() {
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+function renderExecutive() {
+  const products = allData.products || [];
+  const stores = allData.stores || [];
+  const deals = products.filter(p => p.is_deal);
+  const brands = new Set(products.map(p => p.brand).filter(Boolean));
+
+  // KPI bar
+  setText('kpiTotalProducts', products.length.toLocaleString());
+  setText('kpiActiveDeals', deals.length.toLocaleString());
+  setText('kpiBestDiscount', deals.length ? '-' + Math.max(...deals.map(d => d.discount_pct || 0)).toFixed(0) + '%' : '—');
+  setText('kpiStores', stores.length);
+  setText('kpiNewThisWeek', '—'); // Would need weekly diff data
+
+  // Executive meta
+  const meta = document.getElementById('executiveMeta');
+  if (meta) {
+    const pct = products.length ? Math.round((deals.length / products.length) * 100) : 0;
+    meta.textContent = `${products.length.toLocaleString()} products · ${stores.length} stores · ${deals.length.toLocaleString()} deals (${pct}%)`;
+  }
+
+  // Top Deals: best 10 discounts across all stores
+  const topDeals = deals
+    .slice()
+    .sort((a, b) => (b.discount_pct || 0) - (a.discount_pct || 0))
+    .slice(0, 10);
+  const topDealsGrid = document.getElementById('topDealsGrid');
+  if (topDealsGrid) {
+    topDealsGrid.innerHTML = topDeals.map(deal => {
+      const store = stores.find(s => s.id === deal.store_id) || {};
+      return `
+        <article class="top-deal-card" onclick="openQuickViewByHash('${escapeHtml(deal.hash)}')">
+          <header class="top-deal-header">
+            <span class="top-deal-name">${escapeHtml(deal.name)}</span>
+            <span class="top-deal-discount">-${(deal.discount_pct || 0).toFixed(0)}%</span>
+          </header>
+          <div class="top-deal-meta">
+            ${deal.category ? `<span>${escapeHtml(deal.category)}</span>` : ''}
+            ${deal.brand ? `<span>${escapeHtml(deal.brand)}</span>` : ''}
+            ${deal.weight ? `<span>${escapeHtml(deal.weight)}</span>` : ''}
+          </div>
+          <div class="top-deal-price">
+            <span class="top-deal-sale">$${deal.sale_price.toFixed(2)}</span>
+            <span class="top-deal-original">$${deal.original_price.toFixed(2)}</span>
+          </div>
+          <div class="top-deal-store">
+            ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
+            <span>${escapeHtml(store.name || deal.store_id)}</span>
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  // New This Week - use weekly diff if available
+  const newWeekGrid = document.getElementById('newWeekGrid');
+  if (newWeekGrid && weeklyMenuCache && weeklyMenuCache.weeklyDiff) {
+    const diff = weeklyMenuCache.weeklyDiff;
+    const newItems = ((diff && diff.new_items) || []).map(entry => entry.deal).slice(0, 8);
+    if (newItems.length) {
+      newWeekGrid.innerHTML = newItems.map(item => {
+        const store = stores.find(s => s.id === item.store_id) || {};
+        return `
+          <article class="new-week-card" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
+            <div class="new-week-store">
+              ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
+              <span>${escapeHtml(store.name || item.store_id)}</span>
+            </div>
+            <span class="new-week-name">${escapeHtml(item.name)}</span>
+            <div class="new-week-price">
+              ${item.is_deal ? `
+                <span class="new-week-sale">$${item.sale_price.toFixed(2)}</span>
+                <span class="new-week-original">$${item.original_price.toFixed(2)}</span>
+                <span class="new-week-discount">-${(item.discount_pct || 0).toFixed(0)}%</span>
+              ` : `<span class="new-week-sale">$${item.original_price.toFixed(2)}</span>`}
+            </div>
+          </article>
+        `;
+      }).join('');
+    } else {
+      newWeekGrid.innerHTML = '<div class="menu-empty">No new items this week yet.</div>';
+    }
+  } else if (newWeekGrid) {
+    newWeekGrid.innerHTML = '<div class="menu-empty">Loading weekly data…</div>';
+  }
+
+  // Category Rankings
+  renderCategoryRankings();
+  // Brand Rankings
+  renderBrandRankings();
+  // Store Performance
+  renderStoreRankings();
+}
+
+function renderCategoryRankings() {
+  const products = allData.products || [];
+  const deals = products.filter(p => p.is_deal);
+  const metric = document.getElementById('catRankMetric')?.value || 'avg';
+  
+  const byCat = new Map();
+  deals.forEach(p => {
+    const main = categoryMain(p.category) || 'Other';
+    if (!byCat.has(main)) byCat.set(main, []);
+    byCat.get(main).push(p);
+  });
+
+  const ranked = [...byCat.entries()].map(([cat, items]) => {
+    const discounts = items.map(i => i.discount_pct || 0);
+    const avg = discounts.reduce((a,b)=>a+b,0) / discounts.length;
+    const best = Math.max(...discounts);
+    return { cat, count: items.length, avg, best };
+  }).sort((a,b) => metric === 'avg' ? b.avg - a.avg : metric === 'count' ? b.count - a.count : b.best - a.best);
+
+  // Chart
+  const ctx = document.getElementById('catRankChart')?.getContext('2d');
+  if (ctx) {
+    if (window.catRankChartInstance) window.catRankChartInstance.destroy();
+    window.catRankChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ranked.slice(0,8).map(r => r.cat),
+        datasets: [{
+          label: metric === 'avg' ? 'Avg Discount %' : metric === 'count' ? 'Deal Count' : 'Best Discount %',
+          data: ranked.slice(0,8).map(r => metric === 'avg' ? r.avg : metric === 'count' ? r.count : r.best),
+          backgroundColor: 'rgba(63, 185, 80, 0.7)',
+          borderColor: 'rgba(63, 185, 80, 1)',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(48,54,61,0.3)' } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+
+  // List
+  const list = document.getElementById('catRankList');
+  if (list) {
+    list.innerHTML = ranked.slice(0,8).map((r, i) => `
+      <div class="rank-item">
+        <span class="rank-num">${i+1}</span>
+        <span class="rank-name">${escapeHtml(r.cat)}</span>
+        <span class="rank-metric">${metric === 'avg' ? r.avg.toFixed(1)+'%' : metric === 'count' ? r.count : r.best.toFixed(0)+'%'}</span>
+        <span class="rank-sub">${r.count} deals</span>
+      </div>
+    `).join('');
+  }
+}
+
+function renderBrandRankings() {
+  const products = allData.products || [];
+  const deals = products.filter(p => p.is_deal);
+  const metric = document.getElementById('brandRankMetric')?.value || 'avg';
+  
+  const byBrand = new Map();
+  deals.forEach(p => {
+    const brand = p.brand || 'Unknown';
+    if (!byBrand.has(brand)) byBrand.set(brand, []);
+    byBrand.get(brand).push(p);
+  });
+
+  const ranked = [...byBrand.entries()].map(([brand, items]) => {
+    const discounts = items.map(i => i.discount_pct || 0);
+    const avg = discounts.reduce((a,b)=>a+b,0) / discounts.length;
+    const best = Math.max(...discounts);
+    return { brand, count: items.length, avg, best };
+  }).sort((a,b) => metric === 'avg' ? b.avg - a.avg : metric === 'count' ? b.count - a.count : b.best - a.best);
+
+  const ctx = document.getElementById('brandRankChart')?.getContext('2d');
+  if (ctx) {
+    if (window.brandRankChartInstance) window.brandRankChartInstance.destroy();
+    window.brandRankChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ranked.slice(0,8).map(r => r.brand),
+        datasets: [{
+          label: metric === 'avg' ? 'Avg Discount %' : metric === 'count' ? 'Deal Count' : 'Best Discount %',
+          data: ranked.slice(0,8).map(r => metric === 'avg' ? r.avg : metric === 'count' ? r.count : r.best),
+          backgroundColor: 'rgba(88, 166, 255, 0.7)',
+          borderColor: 'rgba(88, 166, 255, 1)',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(48,54,61,0.3)' } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+
+  const list = document.getElementById('brandRankList');
+  if (list) {
+    list.innerHTML = ranked.slice(0,8).map((r, i) => `
+      <div class="rank-item">
+        <span class="rank-num">${i+1}</span>
+        <span class="rank-name">${escapeHtml(r.brand)}</span>
+        <span class="rank-metric">${metric === 'avg' ? r.avg.toFixed(1)+'%' : metric === 'count' ? r.count : r.best.toFixed(0)+'%'}</span>
+        <span class="rank-sub">${r.count} deals</span>
+      </div>
+    `).join('');
+  }
+}
+
+function renderStoreRankings() {
+  const products = allData.products || [];
+  const stores = allData.stores || [];
+  const deals = products.filter(p => p.is_deal);
+  
+  const byStore = new Map();
+  deals.forEach(p => {
+    if (!byStore.has(p.store_id)) byStore.set(p.store_id, []);
+    byStore.get(p.store_id).push(p);
+  });
+
+  const ranked = stores.map(s => {
+    const items = byStore.get(s.id) || [];
+    const discounts = items.map(i => i.discount_pct || 0);
+    const avg = discounts.length ? discounts.reduce((a,b)=>a+b,0) / discounts.length : 0;
+    const best = discounts.length ? Math.max(...discounts) : 0;
+    return { store: s, count: items.length, avg, best, totalProducts: (products.filter(p => p.store_id === s.id)).length };
+  }).filter(r => r.count > 0).sort((a,b) => b.avg - a.avg);
+
+  const list = document.getElementById('storeRankList');
+  if (list) {
+    list.innerHTML = ranked.map((r, i) => `
+      <div class="rank-item store-rank-item">
+        <span class="rank-num">${i+1}</span>
+        <span class="rank-name">
+          ${r.store.logo_url ? `<img src="${escapeHtml(r.store.logo_url)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
+          ${escapeHtml(r.store.name)}
+        </span>
+        <span class="rank-metric">${r.avg.toFixed(1)}% avg</span>
+        <span class="rank-sub">${r.count} deals · ${r.totalProducts.toLocaleString()} products</span>
+      </div>
+    `).join('');
+  }
 }
 
 function renderLanding() {
@@ -4062,6 +4386,8 @@ document.getElementById('stockFilter')?.addEventListener('change', updateStockFi
 document.getElementById('sortSelect')?.addEventListener('change', updateSort);
 document.getElementById('categoryMetric')?.addEventListener('change', updateCategoryChart);
 document.getElementById('brandMetric')?.addEventListener('change', updateBrandChart);
+document.getElementById('catRankMetric')?.addEventListener('change', renderCategoryRankings);
+document.getElementById('brandRankMetric')?.addEventListener('change', renderBrandRankings);
 document.getElementById('insightsToggle')?.addEventListener('click', toggleInsights);
 document.getElementById('sidebarToggle')?.addEventListener('click', toggleSidebar);
 document.querySelectorAll('.view-tab').forEach(tab => {
