@@ -11,9 +11,13 @@ from utils.strain_match import normalize_name
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_DB_PATH = Path(__file__).parent.parent / "data" / "dispo_deals.db"
+
 
 class SQLiteStorage:
-    def __init__(self, db_path: str = "./data/dispo_deals.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            db_path = str(DEFAULT_DB_PATH)
         self.db_path = db_path
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self._init_db()

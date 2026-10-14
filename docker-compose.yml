@@ -28,8 +28,8 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./data:/app/data
-      - ./cache:/app/cache
+      - dispo-data:/app/data
+      - dispo-cache:/app/cache
       - ./config.yaml:/app/config.yaml:ro
       # Source is bind-mounted so code changes (dashboard.html, api_server.py,
       # scrapers/) take effect without rebuilding the image.
@@ -47,7 +47,10 @@ services:
       flaresolverr:
         condition: service_healthy
     restart: unless-stopped
-    command: python main.py
+    command: >
+      sh -c "python main.py --once && python main.py"
+    healthcheck:
+      disable: true
 
   # API server for dashboard
   api:
@@ -60,8 +63,8 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./data:/app/data
-      - ./cache:/app/cache
+      - dispo-data:/app/data
+      - dispo-cache:/app/cache
       # config.yaml drives the logo lookup for /api/logo/<store_id>.
       - ./config.yaml:/app/config.yaml:ro
       - ./api_server.py:/app/api_server.py:ro
@@ -74,6 +77,12 @@ services:
       - ./utils:/app/utils:ro
     restart: unless-stopped
     command: python api_server.py --port 4040
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4040/api/data || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # Optional: Manual trigger service
   manual-scrape:
@@ -86,8 +95,8 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./data:/app/data
-      - ./cache:/app/cache
+      - dispo-data:/app/data
+      - dispo-cache:/app/cache
       - ./config.yaml:/app/config.yaml:ro
       - ./api_server.py:/app/api_server.py:ro
       - ./dashboard.html:/app/dashboard.html:ro
@@ -104,6 +113,10 @@ services:
     profiles:
       - manual
     command: python main.py --once
+
+volumes:
+  dispo-data:
+  dispo-cache:
 
 networks:
   default:
