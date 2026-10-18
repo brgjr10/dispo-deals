@@ -7,6 +7,7 @@ import json
 import sqlite3
 import os
 import re
+import secrets
 import sys
 import logging
 import signal
@@ -49,15 +50,19 @@ PLACEHOLDER_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="80" height="
 # stray path segment or an unrelated URL before it is treated as a store.
 CN_NAME_RE = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
 
-# Security headers to add to all responses
+# Security headers to add to all responses. Content-Security-Policy is emitted
+# dynamically by _send_security_headers() so it can carry a per-request nonce.
 SECURITY_HEADERS = {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self'",
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
 }
+
+# Maximum size allowed for a single POST request body. Prevents a malicious or
+# runaway client from exhausting memory via /api/stores/add or webhook endpoints.
+MAX_BODY_SIZE = 1 * 1024 * 1024  # 1 MB
 
 class LRUCache:
     """Simple LRU cache with max size."""
@@ -263,10 +268,32 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self._strain_cache = LRUCache(maxsize=1000)
         super().__init__(*args, directory=str(self.project_root), **kwargs)
 
+    def _csp_header(self):
+        """Build a per-request Content-Security-Policy with a fresh nonce.
+
+        The nonce authorizes the inline <script> and <style> blocks in
+        dashboard.html. Inline event handlers have been removed from the HTML
+        (moved to unobtrusive listeners), so 'unsafe-inline' is no longer
+        needed on either script-src or style-src.
+        """
+        nonce = getattr(self, "_csp_nonce", None)
+        if not nonce:
+            nonce = secrets.token_urlsafe(16)
+            self._csp_nonce = nonce
+        return (
+            "default-src 'self'; "
+            f"script-src 'self' 'nonce-{nonce}'; "
+            f"style-src 'self' 'nonce-{nonce}'; "
+            "img-src 'self' data: https: blob:; "
+            "font-src 'self'; "
+            "connect-src 'self'"
+        )
+
     def _send_security_headers(self):
         """Add security headers to the response."""
         for header, value in SECURITY_HEADERS.items():
             self.send_header(header, value)
+        self.send_header('Content-Security-Policy', self._csp_header())
 
     def _send_json_error(self, status: int, message: str):
         """Return an API error as JSON rather than an HTML error page.
@@ -285,6 +312,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         )
 
     def do_GET(self):
+        self._csp_nonce = secrets.token_urlsafe(16)
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
@@ -309,6 +337,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             try:
                 with open(self.project_root / 'dashboard.html', 'r', encoding='utf-8') as f:
                     content = f.read()
+                # Nonce the inline <style> and <script> blocks so the dashboard
+                # can be served under a strict CSP (no 'unsafe-inline'). The
+                # vendored chart script keeps its src and is covered by 'self'.
+                content = content.replace('<style>', f'<style nonce="{self._csp_nonce}">', 1)
+                content = content.replace('<script>\n', f'<script nonce="{self._csp_nonce}">\n', 1)
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self._send_security_headers()
@@ -867,8 +900,18 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         }
 
     def do_POST(self):
+        self._csp_nonce = secrets.token_urlsafe(16)
         parsed = urlparse(self.path)
         path = parsed.path
+
+        # Reject oversized request bodies before reading them (M-003).
+        try:
+            content_length = int(self.headers.get('Content-Length') or 0)
+        except (TypeError, ValueError):
+            content_length = 0
+        if content_length > MAX_BODY_SIZE:
+            self._send_json_error(413, 'Request body too large')
+            return
 
         if path == '/api/stores/add':
             self.receive_add_store()

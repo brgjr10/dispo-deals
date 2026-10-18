@@ -1,7 +1,7 @@
+import logging
+
 from scrapers.base import BaseScraper
-from scrapers.bigcartel import BigCartelScraper
 from scrapers.dutchie import DutchieScraper
-from scrapers.fourthwall import FourthwallScraper
 from scrapers.magento import MagentoScraper
 from scrapers.shopify import ShopifyScraper
 from scrapers.shoplightspeed import ShoplightspeedScraper
@@ -10,12 +10,27 @@ from scrapers.woocommerce import WooCommerceScraper
 from models import StoreConfig
 from config import Config
 
+logger = logging.getLogger(__name__)
+
+# bigcartel and fourthwall ship as untracked modules in some checkouts. Import
+# them opportunistically so `import scrapers` never hard-fails on a clean
+# clone; stores naming those scrapers then get a clear "Unknown scraper" error
+# instead of a crash at import time.
+try:
+    from scrapers.bigcartel import BigCartelScraper  # noqa: F401
+except ImportError as e:
+    logger.warning(f"bigcartel scraper not available: {e}")
+    BigCartelScraper = None
+try:
+    from scrapers.fourthwall import FourthwallScraper  # noqa: F401
+except ImportError as e:
+    logger.warning(f"fourthwall scraper not available: {e}")
+    FourthwallScraper = None
+
 
 __all__ = [
     "BaseScraper",
-    "BigCartelScraper",
     "DutchieScraper",
-    "FourthwallScraper",
     "MagentoScraper",
     "ShopifyScraper",
     "ShoplightspeedScraper",
@@ -23,6 +38,11 @@ __all__ = [
     "WooCommerceScraper",
     "create_scraper",
 ]
+
+if BigCartelScraper is not None:
+    __all__.append("BigCartelScraper")
+if FourthwallScraper is not None:
+    __all__.append("FourthwallScraper")
 
 
 def create_scraper(store_config: StoreConfig, config: Config) -> BaseScraper:

@@ -1,4 +1,10 @@
+# NOTE: Action tags should be pinned to immutable SHA digests (e.g. actions/checkout@<SHA>).
+# Web access was unavailable during this edit, so floating tags are retained; pin them before release.
+
 name: CI/CD Pipeline
+
+permissions:
+  contents: read
 
 on:
   push:

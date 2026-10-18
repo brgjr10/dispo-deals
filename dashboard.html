@@ -1853,7 +1853,7 @@ html {
 <body>
 <div class="app">
   <!-- Sidebar overlay for mobile -->
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay" data-action="toggleSidebar"></div>
   <!-- Sidebar: stores + categories -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -1865,7 +1865,7 @@ html {
       <div class="nav-section-title">Stores</div>
       <div id="storeNavList"></div>
       <div class="nav-section-footer">
-        <button class="btn ghost" id="showHiddenStoresBtn" onclick="showHiddenStores()" style="display:none;">
+        <button class="btn ghost" id="showHiddenStoresBtn" data-action="showHiddenStores" style="display:none;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-5.52 0-10-4.48-10-10S6.48 2 12 2c5.52 0 10 4.48 10 10 0 2.27-0.76 4.37-2 6.14"/></svg>
           Show hidden stores
         </button>
@@ -1948,16 +1948,16 @@ html {
       </div>
       <div class="filter-row">
         <div class="deal-segment">
-          <button class="btn btn-toggle active" id="dealFilterBtn" onclick="toggleDealFilter(true)">
+          <button class="btn btn-toggle active" id="dealFilterBtn" data-action="toggleDealFilter" data-action-arg="true">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
             All Products
           </button>
-          <button class="btn btn-toggle" id="dealsOnlyBtn" onclick="toggleDealFilter(false)">
+          <button class="btn btn-toggle" id="dealsOnlyBtn" data-action="toggleDealFilter" data-action-arg="false">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
             Deals Only
           </button>
         </div>
-        <button class="btn btn-toggle" id="favoritesOnlyBtn" onclick="toggleFavoritesFilter()">
+        <button class="btn btn-toggle" id="favoritesOnlyBtn" data-action="toggleFavoritesFilter">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
           <span id="favoritesOnlyLabel">Favorites</span>
         </button>
@@ -1967,7 +1967,7 @@ html {
           <option value="out-of-stock">Out of Stock</option>
         </select>
         <span class="spacer"></span>
-        <button class="btn ghost" id="clearFiltersBtn" onclick="clearFilters()">Clear Filters</button>
+        <button class="btn ghost" id="clearFiltersBtn" data-action="clearFilters">Clear Filters</button>
       </div>
       <div class="filter-chips" id="filterChips" aria-live="polite"></div>
     </header>
@@ -1994,10 +1994,10 @@ html {
           <div class="products-count" id="productsCount">Showing all products across all stores</div>
         </div>
         <div class="products-header-actions">
-          <button class="btn" id="compareToggle" onclick="toggleCompareMode()" style="display:none;" aria-pressed="false">
+          <button class="btn" id="compareToggle" data-action="toggleCompareMode" style="display:none;" aria-pressed="false">
             Compare (<span id="compareCount">0</span>)
           </button>
-          <button class="btn secondary" onclick="loadData()">Refresh</button>
+          <button class="btn secondary" data-action="loadData">Refresh</button>
         </div>
       </div>
 
@@ -2072,9 +2072,9 @@ html {
           <p class="page-sub" id="weeklyMenuSub">Everything that landed on the shelves this week, store by store.</p>
         </div>
         <div class="page-actions">
-          <button class="btn secondary" onclick="loadData()">Refresh</button>
-          <button class="btn ghost" id="collapseAllStoresBtn" onclick="toggleAllWeeklyStores(false)" style="display:none;">Collapse All</button>
-          <button class="btn ghost" id="expandAllStoresBtn" onclick="toggleAllWeeklyStores(true)" style="display:none;">Expand All</button>
+          <button class="btn secondary" data-action="loadData">Refresh</button>
+          <button class="btn ghost" id="collapseAllStoresBtn" data-action="toggleAllWeeklyStores" data-action-arg="false" style="display:none;">Collapse All</button>
+          <button class="btn ghost" id="expandAllStoresBtn" data-action="toggleAllWeeklyStores" data-action-arg="true" style="display:none;">Expand All</button>
         </div>
       </div>
       <div id="weeklyMenuBody" class="menu-body"></div>
@@ -2088,7 +2088,7 @@ html {
           <p class="page-sub">The deepest discount in each category, across every store.</p>
         </div>
         <div class="page-actions">
-          <button class="btn secondary" onclick="loadData()">Refresh</button>
+          <button class="btn secondary" data-action="loadData">Refresh</button>
         </div>
       </div>
       <div id="weeklyDealsBody" class="deals-body" style="overflow-x: hidden;"></div>
@@ -2130,7 +2130,7 @@ html {
         <section class="executive-section">
           <div class="section-head">
             <h2>Top Deals Right Now</h2>
-            <button class="btn ghost" onclick="showView('browser'); currentFilters.dealOnly=true; updateFilterControls(); applyFilters(); setUrlState(currentFilters);">View All Deals →</button>
+            <button class="btn ghost" data-action="showBrowserDeals">View All Deals →</button>
           </div>
           <div class="top-deals-grid" id="topDealsGrid"></div>
         </section>
@@ -2139,7 +2139,7 @@ html {
         <section class="executive-section">
           <div class="section-head">
             <h2>New This Week</h2>
-            <button class="btn ghost" onclick="showView('weekly-menu')">View Full Menu →</button>
+            <button class="btn ghost" data-action="showView" data-action-arg="weekly-menu">View Full Menu →</button>
           </div>
           <div class="new-week-grid" id="newWeekGrid"></div>
         </section>
@@ -2188,7 +2188,7 @@ html {
         <section class="executive-section">
           <div class="section-head">
             <h2>Store Comparison</h2>
-            <button class="btn ghost" onclick="showView('browser'); currentFilters.dealOnly=true; updateFilterControls(); applyFilters(); setUrlState(currentFilters);">View All Deals →</button>
+            <button class="btn ghost" data-action="showBrowserDeals">View All Deals →</button>
           </div>
           <div class="store-compare-grid" id="storeCompareGrid"></div>
         </section>
@@ -2202,11 +2202,11 @@ html {
   <div class="compare-header">
     <h3>Compare Products</h3>
     <div class="compare-actions">
-      <button class="btn ghost" onclick="exportCompare('csv')" title="Export as CSV"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> CSV</button>
-      <button class="btn ghost" onclick="exportCompare('json')" title="Export as JSON"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> JSON</button>
-      <button class="btn ghost" onclick="shareCompare()" title="Share compare link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share</button>
-      <button class="btn secondary" onclick="clearCompare()">Clear All</button>
-      <button class="btn" onclick="closeComparePanel()">Done</button>
+      <button class="btn ghost" data-action="exportCompare" data-action-arg="csv" title="Export as CSV"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> CSV</button>
+      <button class="btn ghost" data-action="exportCompare" data-action-arg="json" title="Export as JSON"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> JSON</button>
+      <button class="btn ghost" data-action="shareCompare" title="Share compare link"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share</button>
+      <button class="btn secondary" data-action="clearCompare">Clear All</button>
+      <button class="btn" data-action="closeComparePanel">Done</button>
     </div>
   </div>
   <div class="compare-grid" id="compareGrid"></div>
@@ -2217,7 +2217,7 @@ html {
   <div class="shortcuts-content" role="document">
     <div class="shortcuts-header">
       <h2 id="shortcutsTitle">Keyboard Shortcuts</h2>
-      <button class="shortcuts-close" onclick="closeShortcutsModal()" aria-label="Close">&times;</button>
+      <button class="shortcuts-close" data-action="closeShortcutsModal" aria-label="Close">&times;</button>
     </div>
     <div class="shortcuts-body">
       <div class="shortcuts-category">
@@ -2299,7 +2299,7 @@ html {
     <div class="modal-content">
       <div class="modal-image-section">
         <div class="modal-image-wrapper">
-          <img class="modal-image" id="modalImage" src="" alt="" onerror="handleImageError(this)">
+          <img class="modal-image" id="modalImage" src="" alt="" data-onerror>
           <button class="modal-nav prev" id="modalPrev" aria-label="Previous product">‹</button>
           <button class="modal-nav next" id="modalNext" aria-label="Next product">›</button>
         </div>
@@ -2539,6 +2539,14 @@ const VIEWS = ['executive', 'browser', 'weekly-menu', 'weekly-deals'];
 
 let currentView = 'executive';
 
+function showBrowserDeals() {
+  showView('browser');
+  currentFilters.dealOnly = true;
+  updateFilterControls();
+  applyFilters();
+  setUrlState(currentFilters);
+}
+
 function showView(name) {
   if (!VIEWS.includes(name)) name = 'browser';
   currentView = name;
@@ -2651,7 +2659,7 @@ function renderExecutive() {
     topDealsGrid.innerHTML = topDeals.map(deal => {
       const store = stores.find(s => s.id === deal.store_id) || {};
       return `
-        <article class="top-deal-card" onclick="openQuickViewByHash('${escapeHtml(deal.hash)}')">
+        <article class="top-deal-card" data-action="openQuickViewByHash" data-action-arg="${escapeHtml(deal.hash)}">
           <header class="top-deal-header">
             <span class="top-deal-name">${escapeHtml(deal.name)}</span>
             <span class="top-deal-discount">-${(deal.discount_pct || 0).toFixed(0)}%</span>
@@ -2666,7 +2674,7 @@ function renderExecutive() {
             <span class="top-deal-original">$${deal.original_price.toFixed(2)}</span>
           </div>
           <div class="top-deal-store">
-            ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
+            ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" data-onerror="hide">` : ''}
             <span>${escapeHtml(store.name || deal.store_id)}</span>
           </div>
         </article>
@@ -2683,9 +2691,9 @@ function renderExecutive() {
       newWeekGrid.innerHTML = newItems.map(item => {
         const store = stores.find(s => s.id === item.store_id) || {};
         return `
-          <article class="new-week-card" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
+          <article class="new-week-card" data-action="openQuickViewByHash" data-action-arg="${escapeHtml(item.hash)}">
             <div class="new-week-store">
-              ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
+              ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" data-onerror="hide">` : ''}
               <span>${escapeHtml(store.name || item.store_id)}</span>
             </div>
             <span class="new-week-name">${escapeHtml(item.name)}</span>
@@ -2857,7 +2865,7 @@ function renderStoreRankings() {
       <div class="rank-item store-rank-item">
         <span class="rank-num">${i+1}</span>
         <span class="rank-name">
-          ${r.store.logo_url ? `<img src="${escapeHtml(r.store.logo_url)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
+          ${r.store.logo_url ? `<img src="${escapeHtml(r.store.logo_url)}" loading="lazy" decoding="async" data-onerror="hide">` : ''}
           ${escapeHtml(r.store.name)}
         </span>
         <span class="rank-metric">${r.avg.toFixed(1)}% avg</span>
@@ -2892,7 +2900,7 @@ function renderStoreComparison() {
       const rows = items.map(item => {
         const cleaned = cleanProductName(item);
         return `
-          <div class="compare-row" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
+          <div class="compare-row" data-action="openQuickViewByHash" data-action-arg="${escapeHtml(item.hash)}">
             <span class="compare-name">${escapeHtml(cleaned.name)}</span>
             <span class="compare-price">$${item.sale_price.toFixed(2)}</span>
             <span class="compare-discount">-${(item.discount_pct || 0).toFixed(0)}%</span>
@@ -2903,7 +2911,7 @@ function renderStoreComparison() {
       return `
         <div class="compare-store-card">
           <header class="compare-store-head">
-            ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" onerror="this.style.display='none'">` : ''}
+            ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" data-onerror="hide">` : ''}
             <span>
               <span class="compare-store-name">${escapeHtml(store.name)}</span>
               <span class="compare-store-count">${items.length} top deals</span>
@@ -2935,8 +2943,8 @@ function renderLanding() {
       ? `<span class="landing-store-deals">${deals.length} deals<br><span style="color:var(--muted);font-weight:500">best -${best.toFixed(0)}%</span></span>`
       : '<span class="landing-store-deals" style="color:var(--muted)">no deals</span>';
     return `
-      <button class="landing-store" onclick="openStore('${escapeHtml(store.id)}')">
-        ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
+      <button class="landing-store" data-action="openStore" data-action-arg="${escapeHtml(store.id)}">
+        ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" data-onerror="hide">` : ''}
         <span>
           <span class="landing-store-name">${escapeHtml(store.name)}</span>
           <span class="landing-store-meta">${products.length.toLocaleString()} products</span>
@@ -3014,7 +3022,7 @@ async function renderWeeklyMenu() {
            <span class="menu-row-badge">-${item.discount_pct.toFixed(0)}%</span>`
         : `<span class="menu-row-price">$${item.original_price.toFixed(2)}</span>`;
       return `
-        <div class="menu-row" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
+        <div class="menu-row" data-action="openQuickViewByHash" data-action-arg="${escapeHtml(item.hash)}">
           <span class="menu-row-name">${escapeHtml(item.name)}</span>
           <span class="menu-row-leader" aria-hidden="true">·············</span>
           ${price}
@@ -3024,8 +3032,8 @@ async function renderWeeklyMenu() {
 
     return `
       <section class="menu-store">
-        <header class="menu-store-head" onclick="toggleWeeklyStore('${escapeHtml(storeId)}')">
-          ${store.logo_url ? `<img class="menu-store-logo" src="${escapeHtml(store.logo_url)}" onerror="this.style.display='none'">` : ''}
+        <header class="menu-store-head" data-action="toggleWeeklyStore" data-action-arg="${escapeHtml(storeId)}">
+          ${store.logo_url ? `<img class="menu-store-logo" src="${escapeHtml(store.logo_url)}" data-onerror="hide">` : ''}
           <span>
             <span class="menu-store-name">${escapeHtml(store.name)}</span>
             <span class="menu-store-meta">${items.length} new ${items.length === 1 ? 'item' : 'items'}</span>
@@ -3106,7 +3114,7 @@ function renderWeeklyDeals() {
       const rows = items.map((item, index) => {
         const cleaned = cleanProductName(item);
         return `
-        <div class="deal-cat-row" onclick="openQuickViewByHash('${escapeHtml(item.hash)}')">
+        <div class="deal-cat-row" data-action="openQuickViewByHash" data-action-arg="${escapeHtml(item.hash)}">
           <span class="deal-rank">${index + 1}</span>
           <span class="deal-cat-main">
             <span class="deal-cat-item-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(cleaned.name)}</span>
@@ -3235,7 +3243,7 @@ function populateSidebar() {
     const isConfigStore = !store.removable;
     item.innerHTML = `
       <div class="nav-item-store">
-        ${store.logo_url ? `<img src="${storeLogoSrc(store)}" loading="lazy" decoding="async" onerror="handleImageError(this)">` : ''}
+        ${store.logo_url ? `<img src="${storeLogoSrc(store)}" loading="lazy" decoding="async" data-onerror>` : ''}
         <span>${escapeHtml(store.name)}</span>
       </div>
       <span class="nav-item-count">${storeCount(store.id)}</span>
@@ -5967,7 +5975,7 @@ function renderProductCard(product) {
     : `<span class="product-tag out-of-stock">Out of stock</span>`;
   const imgSrc = product.image_url ? productImageSrc(product) : IMAGE_PLACEHOLDER;
   const isFavorite = favorites.has(product.hash);
-  const favoriteBtn = `<button class="favorite-btn ${isFavorite ? 'active' : ''}" data-deal-hash="${escapeHtml(product.hash)}" onclick="event.stopPropagation(); toggleFavorite('${escapeHtml(product.hash)}')" aria-label="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="${isFavorite ? 'var(--danger)' : 'none'}" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>`;
+  const favoriteBtn = `<button class="favorite-btn ${isFavorite ? 'active' : ''}" data-deal-hash="${escapeHtml(product.hash)}" data-action="toggleFavorite" data-action-arg="${escapeHtml(product.hash)}" aria-label="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}"><svg width="16" height="16" viewBox="0 0 24 24" fill="${isFavorite ? 'var(--danger)' : 'none'}" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></button>`;
 
   // Multi-store handling: if product has stores array, show price range and store count
   const isMultiStore = product.stores && product.stores.length > 1;
@@ -6006,7 +6014,7 @@ function renderProductCard(product) {
           ${stockBadge}
           ${isMultiStore ? `<span class="product-tag multi-store">${product.store_count} stores</span>` : ''}
         </div>
-        <img class="product-img" src="${imgSrc}" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">
+        <img class="product-img" src="${imgSrc}" alt="" loading="lazy" decoding="async" data-onerror>
       </div>
       <div class="product-type-row">
         ${renderTypeBadge(product)}
@@ -6035,7 +6043,7 @@ function renderProductCard(product) {
 
 function compareCheckbox(hash) {
   const isSelected = compareSelection.has(hash);
-  return `<input type="checkbox" class="compare-checkbox" data-deal-hash="${escapeHtml(hash)}" ${isSelected ? 'checked' : ''} onchange="toggleCompareSelection('${escapeHtml(hash)}')" onclick="event.stopPropagation()" aria-label="Add to compare">`;
+  return `<input type="checkbox" class="compare-checkbox" data-deal-hash="${escapeHtml(hash)}" ${isSelected ? 'checked' : ''} data-action="toggleCompareSelection" data-action-arg="${escapeHtml(hash)}" aria-label="Add to compare">`;
 }
 
 // ---- Stats ----
@@ -6305,7 +6313,7 @@ function renderFilterChips() {
     <span class="filter-chip">
       <span class="chip-label">${escapeHtml(c.label)}:</span>
       <span class="chip-value">${escapeHtml(c.value)}</span>
-      <button type="button" aria-label="Remove ${escapeHtml(c.label)} filter" onclick="removeFilter('${c.key}')">&times;</button>
+      <button type="button" aria-label="Remove ${escapeHtml(c.label)} filter" data-action="removeFilter" data-action-arg="${c.key}">&times;</button>
     </span>
   `).join('');
 }
@@ -6540,7 +6548,7 @@ function addStoreItem(label, value, store) {
   it.className = 'modal-info-item';
   let cnt = '<div class="modal-info-label">' + escapeHtml(String(label)) + '</div><div class="modal-info-value" style="display:flex;align-items:center;gap:8px">' + escapeHtml(String(value));
   if (store) {
-    cnt += '<img src="' + storeLogoSrc(store) + '" alt="" style="width:16px;height:16px;border-radius:4px;background:var(--bg)" loading="lazy" decoding="async" onerror="handleImageError(this)">';
+    cnt += '<img src="' + storeLogoSrc(store) + '" alt="" style="width:16px;height:16px;border-radius:4px;background:var(--bg)" loading="lazy" decoding="async" data-onerror>';
   }
   cnt += '</div>';
   it.innerHTML = cnt;
@@ -6555,6 +6563,33 @@ document.addEventListener('click', function(e) {
     if (d) { openQuickView(d); }
   }
 });
+// Delegated data-action handler (CSP: no inline event handlers). Walks up from
+// the click target to the nearest [data-action] element and dispatches to the
+// matching global function, passing data-action-arg when present.
+document.addEventListener('click', function(e) {
+  const trigger = e.target.closest('[data-action]');
+  if (!trigger) return;
+  const action = trigger.getAttribute('data-action');
+  let arg = trigger.getAttribute('data-action-arg');
+  if ((action === 'toggleDealFilter' || action === 'toggleAllWeeklyStores') && (arg === 'true' || arg === 'false')) {
+    arg = arg === 'true';
+  }
+  const fn = window[action];
+  if (typeof fn === 'function') {
+    fn(arg !== null ? arg : undefined);
+  }
+});
+// Capture-phase error listener for img[data-onerror] (error events do not bubble).
+document.addEventListener('error', function(e) {
+  const target = e.target;
+  if (!(target instanceof Element) || !target.matches('img[data-onerror]')) return;
+  const mode = target.getAttribute('data-onerror') || 'fallback';
+  if (mode === 'hide') {
+    target.style.display = 'none';
+  } else {
+    handleImageError(target);
+  }
+}, true);
 document.addEventListener('keydown', function(e) {
   const row = e.target.closest('.deal-row-clickable');
   if (row && (e.key === 'Enter' || e.key === ' ')) {
@@ -6836,13 +6871,13 @@ function renderComparePanel() {
   const products = allData.products.filter(p => compareSelection.has(p.hash));
   grid.innerHTML = products.map(p => {
     const store = allData.stores.find(s => s.id === p.store_id);
-const imgHtml = p.image_url ? `<img class="compare-img" src="${productImageSrc(p)}" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">` : '';
-const storeHtml = store ? '<div class="compare-store"><img src="' + storeLogoSrc(store) + '" alt="" loading="lazy" decoding="async" onerror="handleImageError(this)">' + escapeHtml(store.name) + '</div>' : '';
+const imgHtml = p.image_url ? `<img class="compare-img" src="${productImageSrc(p)}" alt="" loading="lazy" decoding="async" data-onerror>` : '';
+const storeHtml = store ? '<div class="compare-store"><img src="' + storeLogoSrc(store) + '" alt="" loading="lazy" decoding="async" data-onerror>' + escapeHtml(store.name) + '</div>' : '';
     return `
       <div class="compare-card">
         <div class="compare-card-header">
           <div class="compare-card-name">${escapeHtml(p.name)}</div>
-          <button class="compare-remove" onclick="removeFromCompare('${escapeHtml(p.hash)}')" aria-label="Remove">×</button>
+          <button class="compare-remove" data-action="removeFromCompare" data-action-arg="${escapeHtml(p.hash)}" aria-label="Remove">×</button>
         </div>
         ${imgHtml}
         <div class="compare-pricing">

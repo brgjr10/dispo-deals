@@ -46,3 +46,16 @@ modal_inject.js
 # Browser captures (contain live session cookies / cf_clearance)
 *.har
 
+# Secrets and certificates - never sweep these in with git add -A
+*.key
+*.crt
+*.pem
+*.p12
+
+# Build outputs
+dist/
+build/
+node_modules/
+*.sqlite3
+project.json
+
