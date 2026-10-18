@@ -110,7 +110,8 @@ dispo-deals/
 ├── config.yaml            # stores, schedule, webhook, leafly, images
 ├── main.py                # CLI entry point + scheduler
 ├── api_server.py          # dashboard API (ThreadingHTTPServer, port 4040)
-├── dashboard.html         # the whole dashboard, inline CSS + JS
+├── dashboard/
+│   └── dashboard.html     # the whole dashboard, inline CSS + JS
 ├── models.py              # Deal, Strain, WeeklySnapshot, SeenDeal, MenuItem, Diff
 ├── config.py              # typed config loading
 ├── scrapers/
@@ -127,7 +128,11 @@ dispo-deals/
 │   ├── images.py          # download, cache, resize
 │   ├── strain_match.py    # name → Leafly strain resolution
 │   └── signal.py          # JWT/Atom feed helpers
-└── tests/                 # 219 pytest tests
+├── vendor/chart.umd.min.js # self-hosted Chart.js
+├── scripts/
+│   ├── diagnostics/       # check, debug, inspect, try scripts
+│   └── maintenance/       # fix, extract, get scripts
+└── tests/                 # pytest test suite
 ```
 
 ### Data models

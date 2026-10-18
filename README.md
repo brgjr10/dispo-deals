@@ -116,7 +116,8 @@ dispo-deals/
 ├── config.yaml            # stores, schedule, webhook, leafly, images
 ├── main.py                # CLI entry point + scheduler
 ├── api_server.py          # dashboard API (ThreadingHTTPServer, port 4040)
-├── dashboard.html         # the whole dashboard, inline CSS + JS
+├── dashboard/
+│   └── dashboard.html     # the whole dashboard, inline CSS + JS
 ├── models.py              # Deal, Strain, WeeklySnapshot, SeenDeal, MenuItem, Diff
 ├── config.py              # typed config loading
 ├── scrapers/
@@ -125,6 +126,11 @@ dispo-deals/
 │   ├── klutch.py          # Shopify-style HTML scraper
 │   ├── shopify.py         # Shopify products.json scraper
 │   ├── shoplightspeed.py  # Shoplightspeed collection page scraper
+│   ├── magento.py         # Magento scraper
+│   ├── sweed.py           # Sweed POS scraper
+│   ├── woocommerce.py     # WooCommerce scraper
+│   ├── bigcartel.py       # Big Cartel scraper
+│   ├── fourthwall.py      # Fourthwall scraper
 │   └── __init__.py        # create_scraper()
 ├── storage/sqlite.py      # SQLiteStorage (WAL mode)
 ├── notifier/webhook.py    # Discord/Slack payload builder
@@ -133,10 +139,17 @@ dispo-deals/
 │   ├── categories.py      # canonical category names
 │   ├── diff.py            # weekly menu comparison
 │   ├── images.py          # download, cache, resize
-│   ├── strain_match.py    # name → Leafly strain resolution
-│   └── signal.py          # JWT/Atom feed helpers
+│   ├── leafly.py          # Leafly API client
+│   ├── signal.py          # JWT/Atom feed helpers (stub)
+│   └── strain_match.py    # name → Leafly strain resolution
 ├── vendor/chart.umd.min.js # self-hosted Chart.js
-└── tests/                 # pytest test suite
+├── scripts/
+│   ├── diagnostics/       # check, debug, inspect, try scripts
+│   └── maintenance/       # fix, extract, get scripts
+├── maintenance/           # clear_store.py
+├── tests/                 # pytest test suite
+├── docs/                  # PROJECT-OVERVIEW.md
+└── Dockerfile             # container build
 ```
 
 ### Data Models

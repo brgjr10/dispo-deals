@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-DASHBOARD = Path(__file__).resolve().parent.parent / "dashboard.html"
+DASHBOARD = Path(__file__).resolve().parent.parent / "dashboard" / "dashboard.html"
 
 
 def _extract_script():

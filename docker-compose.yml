@@ -34,7 +34,7 @@ services:
       # Source is bind-mounted so code changes (dashboard.html, api_server.py,
       # scrapers/) take effect without rebuilding the image.
       - ./api_server.py:/app/api_server.py:ro
-      - ./dashboard.html:/app/dashboard.html:ro
+      - ./dashboard/dashboard.html:/app/dashboard/dashboard.html:ro
       - ./config.py:/app/config.py:ro
       - ./main.py:/app/main.py:ro
       - ./models.py:/app/models.py:ro
@@ -69,7 +69,7 @@ services:
       # config.yaml drives the logo lookup for /api/logo/<store_id>.
       - ./config.yaml:/app/config.yaml:ro
       - ./api_server.py:/app/api_server.py:ro
-      - ./dashboard.html:/app/dashboard.html:ro
+      - ./dashboard/dashboard.html:/app/dashboard/dashboard.html:ro
       - ./config.py:/app/config.py:ro
       - ./models.py:/app/models.py:ro
       - ./scrapers:/app/scrapers:ro
@@ -100,7 +100,7 @@ services:
       - dispo-cache:/app/cache
       - ./config.yaml:/app/config.yaml:ro
       - ./api_server.py:/app/api_server.py:ro
-      - ./dashboard.html:/app/dashboard.html:ro
+      - ./dashboard/dashboard.html:/app/dashboard/dashboard.html:ro
       - ./config.py:/app/config.py:ro
       - ./main.py:/app/main.py:ro
       - ./models.py:/app/models.py:ro

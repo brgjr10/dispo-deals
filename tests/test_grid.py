@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-DASHBOARD = Path(__file__).resolve().parent.parent / "dashboard.html"
+DASHBOARD = Path(__file__).resolve().parent.parent / "dashboard" / "dashboard.html"
 
 
 @pytest.fixture(scope="module")

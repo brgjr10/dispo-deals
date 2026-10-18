@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DASHBOARD = PROJECT_ROOT / "dashboard.html"
+DASHBOARD = PROJECT_ROOT / "dashboard" / "dashboard.html"
 VENDOR_CHART = PROJECT_ROOT / "vendor" / "chart.umd.min.js"
 
 

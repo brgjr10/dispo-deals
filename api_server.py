@@ -335,7 +335,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.path = '/dashboard.html'
             # Serve HTML with explicit UTF-8 charset
             try:
-                with open(self.project_root / 'dashboard.html', 'r', encoding='utf-8') as f:
+                with open(self.project_root / 'dashboard' / 'dashboard.html', 'r', encoding='utf-8') as f:
                     content = f.read()
                 # Nonce the inline <style> and <script> blocks so the dashboard
                 # can be served under a strict CSP (no 'unsafe-inline'). The
