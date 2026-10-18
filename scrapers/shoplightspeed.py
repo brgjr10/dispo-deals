@@ -245,7 +245,7 @@ class ShoplightspeedScraper(BaseScraper):
             store_id=self.store_config.id,
             product_id=product_id,
             name=name,
-            category=canonical_category(category),
+            category=canonical_category(category, name=name),
             original_price=original,
             sale_price=price,
             discount_pct=0.0,

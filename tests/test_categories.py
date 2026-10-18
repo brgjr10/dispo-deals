@@ -92,7 +92,6 @@ class TestAlreadyCanonical:
 class TestUnknownCategories:
     def test_unknown_category_is_left_alone(self):
         """Guessing at an unrecognised name could merge two real shelves."""
-        assert canonical_category("Merch") == "Merch"
         assert canonical_category("Something Else") == "Something Else"
 
     @pytest.mark.parametrize("raw,expected", [("", ""), (None, None)])
@@ -205,11 +204,11 @@ class TestConsolidatedShelves:
         ("Coil", "Accessories"),
         ("Coils", "Accessories"),
         # Event and artist drops from the glass stores are still glass art.
-        ("Ohio Glassblowers Show 2025", "Glass"),
-        ("Steve Sizelove Drop 2025", "Glass"),
+        ("Ohio Glassblowers Show 2025", "Gear"),
+        ("Steve Sizelove Drop 2025", "Gear"),
         # Donation and Insurance are not product shelves.
-        ("Donation", "Misc"),
-        ("Insurance", "Misc"),
+        ("Donation", "Gear"),
+        ("Insurance", "Gear"),
     ])
     def test_small_shelves_fold_into_bigger_ones(self, raw, expected):
         assert canonical_category(raw) == expected
@@ -226,16 +225,230 @@ class TestConsolidatedShelves:
         assert canonical_category(raw) == f"Accessories{SEP}supplies"
 
 
+class TestScarfSlidesAreScarves:
+    """A scarf slide is a scarf, not footwear.
+
+    The stores sell them beside the scarves, and the name only shares a word
+    with sandals. Before this they landed on the Footwear slides row.
+    """
+
+    NAME = "Daisy Scarf Slide in Vintage White"
+
+    def test_scarf_slides_category_is_a_scarf(self):
+        assert canonical_category("Scarf Slides") == "Apparel"
+        assert canonical_category_named("Scarf Slides", self.NAME) == f"Apparel{SEP}Scarves & Gloves"
+
+    def test_a_real_flip_flop_stays_footwear(self):
+        assert canonical_category_named("Flip Flop", "Beach Flip Flops") == f"Footwear{SEP}Slides"
+
+    def test_a_scarf_slide_title_is_not_read_as_footwear(self):
+        """The title must not pull a scarf onto the slides row either."""
+        assert infer_subcategory("Footwear", self.NAME) == ""
+        assert infer_subcategory("Apparel", self.NAME) == "Scarves & Gloves"
+
+    def test_other_scarves_are_unaffected(self):
+        assert canonical_category_named("Scarf", "Check Scarf") == f"Apparel{SEP}Scarves & Gloves"
+
+
+class TestShelvesThatStillLeaked:
+    """Bare store shelves that were still their own sidebar row.
+
+    Each of these was a top-level group in the rendered nav because only its
+    subcategory label had been mapped, not the shelf itself.
+    """
+
+    @pytest.mark.parametrize("raw,expected", [
+        # 670 products sitting in their own row above Apparel.
+        ("Bottoms", "Apparel"),
+        ("Jacket", "Apparel"),
+        ("jacket", "Apparel"),
+        ("Shirt", "Apparel"),
+        ("shirt", "Apparel"),
+        # Nine separate Puffco rows next to the Puffco group.
+        ("Puffco Accessories", "Gear"),
+        ("Puffco Attachments", "Gear"),
+        ("Puffco Charms", "Gear"),
+        ("Puffco Dry Tops", "Gear"),
+        ("Puffco Joysticks", "Gear"),
+        ("Puffco Pivot Mouthpieces", "Gear"),
+        ("Puffco Proxy Attachments", "Gear"),
+        # Home goods, jewellery and a smoke-shop shelf.
+        ("Blankets", "Gear"),
+        ("blanket", "Gear"),
+        ("Bracelet", "Accessories"),
+        ("bracelet", "Accessories"),
+        ("Choker", "Accessories"),
+        ("choker", "Accessories"),
+        ("Saber Accessory", "Accessories"),
+    ])
+    def test_shelf_folds_into_its_group(self, raw, expected):
+        assert canonical_category(raw) == expected
+
+
+class TestMousepadsAreDabMats:
+    """A mousepad is a dab mat under a different name.
+
+    The stores sell the silicone sheets next to desk mats and file some of
+    them under a catch-all shelf, so without these aliases the mats split
+    between three shelves.
+    """
+
+    @pytest.mark.parametrize("raw", [
+        "Mousepad", "Mousepads", "Mouse Pad", "Mouse Pads", "mouse pad",
+    ])
+    def test_shelf_collapses_onto_dab_mats(self, raw):
+        assert canonical_category(raw) == "Gear"
+
+    @pytest.mark.parametrize("raw", [
+        f"Accessories{SEP}Mousepad",
+        f"Accessories{SEP}mousepads",
+        f"Accessories{SEP}Mouse Pad",
+    ])
+    def test_subcategory_collapses_onto_dab_mats(self, raw):
+        assert canonical_category(raw) == f"Accessories{SEP}dab mats"
+
+    @pytest.mark.parametrize("name", [
+        "Large Mousepad", "Silicone Mouse Pad", "mouse-pad", "MousePad XL",
+    ])
+    def test_a_mat_filed_under_a_catch_all_is_rescued(self, name):
+        assert canonical_category_named("misc", name) == "Gear"
+
+    @pytest.mark.parametrize("category", [
+        "Glass", "Accessories", "Mousepad", "Misc", "Other Shit", "",
+        "Accessories · dab mats", "Concentrates",
+    ])
+    def test_a_mousepad_lands_on_dab_mats_wherever_it_was_filed(self, category):
+        """The stores file the silicone sheets beside their other stock.
+
+        A catch-all rescue alone could not reach a mat filed under Glass or
+        Accessories, which is how mousepads ended up scattered across shelves.
+        """
+        assert main_category(canonical_category_named(category, "Custom Mousepad")) == "Gear"
+
+    def test_a_dab_pad_is_not_relocated_out_of_concentrates(self):
+        """Only the mousepad spelling is force-moved.
+
+        "Dab pad" is a genuine Concentrates shelf, so relocating it would move
+        a real product onto the wrong shelf.
+        """
+        assert canonical_category_named(
+            "Concentrates · quartz", "Quartz Banger Dab Pad"
+        ) == f"Concentrate{SEP}quartz"
+
+    def test_a_generic_product_is_not_rescued(self):
+        assert canonical_category_named("misc", "Premium Herb Grinder") == "Gear"
+
+
+class TestBrandStoreShelves:
+    """Brand stores file one shelf under dozens of names.
+
+    Each of these was its own row in the sidebar before consolidation, which
+    split the counts and buried the real shelves.
+    """
+
+    @pytest.mark.parametrize("raw,expected", [
+        # Clothing: case, typo and wholesale-code variants of one shelf.
+        ("APPAREL", "Apparel"),
+        ("T-Shirts", "Apparel"),
+        ("tshirts", "Apparel"),
+        ("TEE SS PRINTED", "Apparel"),
+        ("BOTTOM KNIT SHORT", "Apparel"),
+        ("MAXI", "Apparel"),
+        ("Mini", "Apparel"),
+        # Glass: a beaker size, a Prism series and an artist drop.
+        ("45mm beakers", "Gear"),
+        ("Clear Models (2nd)", "Gear"),
+        ("Hologram Toro", "Gear"),
+        ("full color signature", "Gear"),
+        # Smoke-shop one-offs.
+        ("Accesory", "Accessories"),
+        ("Silicone Accessory Kit", "Accessories"),
+        ("Spoon Pipe", "Accessories"),
+        ("Terp Timer", "Accessories"),
+        # Sale flags and placeholders are not product shelves.
+        ("Other Shit", "Gear"),
+        ("Expivi Product Replica", "Gear"),
+        ("Shipping Protection", "Gear"),
+        ("Extras Sale", "Gear"),
+        # Home goods are not a product shelf either.
+        ("Drinkware", "Gear"),
+        ("Kitchen & Bar", "Gear"),
+        # Cannabis shelves keep their existing canonical spelling.
+        ("Concentrates", "Concentrate"),
+        ("1g THCA cartridge", "Vaporizers"),
+        ("Beverage", "Edible"),
+        ("Dabbing Mat", "Gear"),
+        ("Thca Diamonds", "Concentrate"),
+        ("$55 smalls ounce", "Flower"),
+        ("Official Puffco", "Gear"),
+        ("Smart Rig Kit", "Gear"),
+        ("Skateboard Deck", "Clothing"),
+        # A name already canonical is left alone.
+        ("Modul", "Modül"),
+    ])
+    def test_stray_shelf_folds_into_a_main_group(self, raw, expected):
+        assert canonical_category(raw) == expected
+
+    @pytest.mark.parametrize("raw,expected", [
+        # Wholesale taxonomy codes become readable labels. A printed tee is a
+        # t-shirt, so the code folds into that row rather than standing alone.
+        (f"Apparel{SEP}TEE SS PRINTED", f"Apparel{SEP}T-Shirts"),
+        (f"Apparel{SEP}BOTTOM KNIT SHORT", f"Apparel{SEP}Knit Shorts"),
+        (f"Apparel{SEP}HOODED FLEECE CUT/ SEW", f"Apparel{SEP}Hooded Fleece"),
+        (f"Apparel{SEP}OUTERWEAR WINDBREAKER CUT/SEW", f"Apparel{SEP}Windbreaker"),
+        # Singular, plural and case variants merge onto one row.
+        (f"Apparel{SEP}Hoodie", f"Apparel{SEP}Hoodies"),
+        (f"Apparel{SEP}Hoodies", f"Apparel{SEP}Hoodies"),
+        (f"Apparel{SEP}Smalls", f"Apparel{SEP}Smalls"),
+        # Spellings that each used to be their own row.
+        (f"Apparel{SEP}long sleeve", f"Apparel{SEP}Tops"),
+        (f"Apparel{SEP}longsleeve", f"Apparel{SEP}Tops"),
+        (f"Apparel{SEP}Jacket", f"Apparel{SEP}Jackets"),
+        (f"Apparel{SEP}APPAREL", f"Apparel{SEP}Clothing"),
+        # Spelling and spacing fixes.
+        (f"Accessories{SEP}cleaning-solutions", f"Accessories{SEP}cleaning solutions"),
+        (f"Accessories{SEP}storage-containers", f"Accessories{SEP}storage"),
+        (f"Flower{SEP}Smalls", f"Flower{SEP}small buds"),
+        (f"Vaporizers{SEP}All-in-One", f"Vaporizers{SEP}all-in-one"),
+        (f"Vaporizers{SEP}live-rosin", f"Vaporizers{SEP}live rosin"),
+        (f"Vaporizers{SEP}Kit", f"Vaporizers{SEP}kits"),
+        (f"Pre-Rolls{SEP}Pre-Roll Pack", f"Pre-Rolls{SEP}packs"),
+        (f"Concentrate{SEP}Resin", f"Concentrate{SEP}live resin"),
+        # Rows on the Accessories shelf are lowercase throughout.
+        (f"Accessories{SEP}Chillum", f"Accessories{SEP}chillum"),
+        (f"Accessories{SEP}Dab Straws", f"Accessories{SEP}dab straws"),
+        (f"Concentrate{SEP}Ground Flower", f"Concentrate{SEP}ground flower"),
+        (f"Topicals{SEP}Body Oil", f"Topicals{SEP}body oil"),
+        (f"Dab Mats{SEP}Dabbing Mat", f"Gear{SEP}Dabbing Mat"),
+        (f"Flower{SEP}Indoor Flower", f"Flower{SEP}indoor flower"),
+        # Already canonical is left alone.
+        (f"Flower{SEP}whole flower", f"Flower{SEP}whole flower"),
+    ])
+    def test_subcategory_label_is_corrected(self, raw, expected):
+        assert canonical_category(raw) == expected
+
+    def test_consolidation_targets_are_idempotent(self):
+        for raw in ["45mm beakers", "Other Shit", "T-Shirts", "Accesory",
+                    "Beverage", "Concentrates"]:
+            once = canonical_category(raw)
+            assert canonical_category(once) == once
+
+    def test_merch_is_not_an_accessory(self):
+        """Pins and patches are print runs, not smoking gear."""
+        assert canonical_category("Patches") == "Clothing"
+        assert canonical_category("Posters") == "Clothing"
+
+
 class TestDabMats:
     """Dab mats are their own shelf, not a dab tool and not merch."""
 
     @pytest.mark.parametrize("raw,expected", [
-        ("Dab Mats", "Dab Mats"),
-        ("dab mats", "Dab Mats"),
-        ("Dab Mat", "Dab Mats"),
-        ("mat", "Dab Mats"),
-        ("mats", "Dab Mats"),
-        ("Dab Pad", "Dab Mats"),
+        ("Dab Mats", "Gear"),
+        ("dab mats", "Gear"),
+        ("Dab Mat", "Gear"),
+        ("mat", "Gear"),
+        ("mats", "Gear"),
+        ("Dab Pad", "Gear"),
     ])
     def test_spellings_collapse_onto_one_shelf(self, raw, expected):
         assert canonical_category(raw) == expected
@@ -248,7 +461,7 @@ class TestDabMats:
 
     def test_other_shelves_are_untouched(self):
         """"mat" must not swallow a shelf that merely contains the letters."""
-        assert canonical_category("Merch") == "Merch"
+        assert canonical_category("Merch") == "Clothing"
         assert canonical_category("Accessories") == "Accessories"
 
     def test_idempotent(self):
@@ -270,7 +483,7 @@ class TestDabMatNameRescue:
         ("misc", "Dab Pad"),
     ])
     def test_rescued_onto_dab_mats(self, category, name):
-        assert canonical_category_named(category, name) == "Dab Mats"
+        assert canonical_category_named(category, name) == "Gear"
 
     @pytest.mark.parametrize("category,name", [
         ("misc", "Package Protection"),   # a Misc item stays in Misc
@@ -283,12 +496,12 @@ class TestDabMatNameRescue:
     def test_named_rescue_does_not_touch_real_shelves(self):
         # A mat title must not hijack a product genuinely filed elsewhere.
         assert canonical_category_named("Flower", "Dab Mat Cake") == "Flower"
-        assert canonical_category_named("Puffco", "Puffco Dab Mat") == "Puffco"
+        assert canonical_category_named("Puffco", "Puffco Dab Mat") == "Gear"
 
     def test_canonical_category_signature_unchanged(self):
         # The rescue lives in a separate helper; canonical_category keeps its
         # single-argument contract and None passthrough.
-        assert canonical_category("misc") == "Misc"
+        assert canonical_category("misc") == "Gear"
         assert canonical_category(None) is None
 
 
@@ -313,10 +526,11 @@ class TestSubcategoryFromTitle:
         assert canonical_category_named(raw, "Small Buds") == raw
 
     def test_main_without_subcategories_is_untouched(self):
-        # Apparel, Hats and Bags have no curated subcategories, so the title
-        # must not invent one.
-        assert canonical_category_named("Apparel", "Graphic Hoodie Blue") == "Apparel"
-        assert canonical_category_named("Bags", "Woven Backpack") == "Bags"
+        # A title naming no known shelf must not invent one. Hats and Bags
+        # carry curated subcategories now, but "cap" alone is not one of them.
+        assert canonical_category_named("Hats", "Black Trucker Cap") == "Hats"
+        assert canonical_category_named("Bags", "Woven Backpack") == f"Bags{SEP}Backpacks"
+        assert canonical_category_named("Apparel", "Graphic Hoodie Blue") == f"Apparel{SEP}Hoodies"
 
     def test_no_match_leaves_main_alone(self):
         assert canonical_category_named("Vaporizers", "Arcata-TL") == "Vaporizers"
@@ -324,7 +538,73 @@ class TestSubcategoryFromTitle:
     def test_infer_subcategory_helper(self):
         assert infer_subcategory("Concentrate", "live rosin") == "live rosin"
         assert infer_subcategory("Accessories", "cool gadget") == ""
-        assert infer_subcategory("Apparel", "hoodie") == ""
+        # Apparel subcategories are curated, so a garment name is recognised.
+        assert infer_subcategory("Apparel", "hoodie") == "Hoodies"
+        assert infer_subcategory("Apparel", "plain onesie") == ""
+
+
+class TestPhenotypeKeepsCannabis:
+    """A product whose title states its I/S/H type is cannabis, always.
+
+    The label is the store's own word for the product, so it beats both the
+    shelf it was filed under and the brand it carries: a Puffco-branded
+    cartridge called "Indica" is a filled vape, not a device, and stays in
+    Cannabis. Without this, the hardware-brand rule would pull it onto Gear.
+    """
+
+    @pytest.mark.parametrize("name", [
+        "Blue Dream [S]", "Blue Dream (S)", "Blue Dream - Sativa",
+        "Blue Dream Sativa", "Blue Dream I/S", "Blue Dream I/S/H",
+        "Blue Dream [I]", "Blue Dream (I)", "Blue Dream - Indica",
+        "Blue Dream Indica", "Blue Dream [H]", "Blue Dream (H)",
+        "Blue Dream - Hybrid", "Blue Dream Hybrid",
+    ])
+    def test_filled_vape_stays_in_cannabis(self, name):
+        # "I/S" and "I/S/H" list all three types; the first matching pattern
+        # wins, which is the same rule the dashboard's strainTypeFromName uses.
+        # Either way the title states a phenotype, so the product is cannabis.
+        assert canonical_category("Vaporizers", name=name) == "Vaporizers"
+        assert canonical_category("Concentrate", name=name) == "Concentrate"
+
+    @pytest.mark.parametrize("name", [
+        "Puffco Peak Pro", "Puffco Proxy", "Focus V Rouge", "Puffco Peak",
+    ])
+    def test_hardware_with_no_phenotype_still_goes_to_gear(self, name):
+        # The hardware-brand rule still applies when the title is silent: an
+        # empty device is gear, not cannabis.
+        assert canonical_category("Vaporizers", brand="Puffco", name=name) == "Gear"
+
+    def test_phenotype_beats_hardware_brand(self):
+        """A Puffco-branded cartridge labelled Indica is a filled vape."""
+        assert canonical_category(
+            "Vaporizers", brand="Puffco", name="Puffco Peak Pro [I]"
+        ) == "Vaporizers"
+
+    def test_silent_title_keeps_head_shop_hardware_on_gear(self):
+        assert canonical_category(
+            "Vaporizers", store_id="headshop", brand="Puffco", name="Peak Pro"
+        ) == "Gear"
+
+    def test_silent_title_keeps_dispensary_cannabis_in_cannabis(self):
+        assert canonical_category(
+            "Vaporizers", store_id="dispensary", name="Live Resin Cart"
+        ) == "Vaporizers"
+
+    def test_phenotype_does_not_move_non_vape_mains(self):
+        # The name check only applies to Vaporizers/Concentrate; a Flower
+        # product with a phenotype in its title stays Flower.
+        assert canonical_category("Flower", name="Blue Dream Sativa") == "Flower"
+
+    def test_strain_type_from_name_helper(self):
+        from utils.categories import _strain_type_from_name
+        assert _strain_type_from_name("Blue Dream [S]") == "sativa"
+        assert _strain_type_from_name("Blue Dream (I)") == "indica"
+        # "I/S/H" lists all three types; the first matching pattern wins, which
+        # is the same rule the dashboard's strainTypeFromName uses.
+        assert _strain_type_from_name("Blue Dream I/S/H") == "sativa"
+        assert _strain_type_from_name("Blue Dream - Indica") == "indica"
+        assert _strain_type_from_name("Blue Dream") == ""
+        assert _strain_type_from_name("") == ""
 
 
 if __name__ == "__main__":

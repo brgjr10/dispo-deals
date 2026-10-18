@@ -1,5 +1,7 @@
 from scrapers.base import BaseScraper
+from scrapers.bigcartel import BigCartelScraper
 from scrapers.dutchie import DutchieScraper
+from scrapers.fourthwall import FourthwallScraper
 from scrapers.magento import MagentoScraper
 from scrapers.shopify import ShopifyScraper
 from scrapers.shoplightspeed import ShoplightspeedScraper
@@ -11,7 +13,9 @@ from config import Config
 
 __all__ = [
     "BaseScraper",
+    "BigCartelScraper",
     "DutchieScraper",
+    "FourthwallScraper",
     "MagentoScraper",
     "ShopifyScraper",
     "ShoplightspeedScraper",
@@ -29,7 +33,9 @@ def create_scraper(store_config: StoreConfig, config: Config) -> BaseScraper:
     would silently read the wrong site.
     """
     scraper_classes = {
+        "bigcartel": BigCartelScraper,
         "dutchie": DutchieScraper,
+        "fourthwall": FourthwallScraper,
         "magento": MagentoScraper,
         "shopify": ShopifyScraper,
         "shoplightspeed": ShoplightspeedScraper,

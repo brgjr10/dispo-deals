@@ -11,6 +11,8 @@ from utils.strain_match import normalize_name
 
 logger = logging.getLogger(__name__)
 
+PRUNE_MIN_MENU_RATIO = 0.5
+
 DEFAULT_DB_PATH = Path(__file__).parent.parent / "data" / "dispo_deals.db"
 
 
@@ -460,6 +462,43 @@ class SQLiteStorage:
                 "SELECT COUNT(*) FROM seen_deals WHERE store_id = ?", (store_id,)
             ).fetchone()
         return row[0] if row else 0
+
+    def prune_missing_products(self, store_id: str, current_hashes: List[str]) -> int:
+        """Remove products for a store that are no longer in the current scrape.
+
+        Guarded by PRUNE_MIN_MENU_RATIO: if the new menu is less than 50% of
+        the existing menu size, assume a partial/failed scrape and prune nothing.
+        This prevents a Cloudflare block or timeout from wiping the catalogue.
+        """
+        if not current_hashes:
+            return 0
+
+        with self._get_connection() as conn:
+            # Count existing products for this store
+            existing_count = conn.execute(
+                "SELECT COUNT(*) FROM seen_deals WHERE store_id = ?", (store_id,)
+            ).fetchone()[0]
+
+            # Guard: if new menu is less than 50% of existing, don't prune
+            if existing_count > 0 and len(current_hashes) < existing_count * PRUNE_MIN_MENU_RATIO:
+                logger.info(
+                    f"Prune skipped for {store_id}: new menu ({len(current_hashes)}) "
+                    f"< {PRUNE_MIN_MENU_RATIO * 100:.0f}% of existing ({existing_count})"
+                )
+                return 0
+
+            # Delete products whose hash is not in the current scrape
+            placeholders = ",".join("?" for _ in current_hashes)
+            query = f"""
+                DELETE FROM seen_deals
+                WHERE store_id = ? AND hash NOT IN ({placeholders})
+            """
+            cursor = conn.execute(query, [store_id] + current_hashes)
+            conn.commit()
+            pruned = cursor.rowcount
+            if pruned:
+                logger.info(f"Pruned {pruned} stale products for {store_id}")
+            return pruned
 
     def delete_store_data(self, store_id: str) -> bool:
         """Remove every trace of a store that was added at runtime.

@@ -1168,16 +1168,20 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             deal["image_key"] = hash_url(deal["image_url"]) if deal.get("image_url") else ""
             # Add weekly status if we can compute it
             deal["weekly_status"] = "NEW"  # Default
-            # Rows written before the canonical names existed keep the raw one,
-            # so normalise here too or the sidebar still splits the shelf. The
-            # name is passed so a mat filed under "misc" is rescued onto the
-            # Dab Mats shelf rather than staying in the catch-all.
-            deal["category"] = canonical_category_named(deal.get("category"), deal.get("name"))
-            # Mark whether this product is actually on sale.
-            deal["is_deal"] = (deal.get("discount_pct") or 0) > 0
             # Brands are typed per store, so the same brand arrives with
             # different spellings and would otherwise split into several rows.
+            # Canonicalise the brand before the category so a hardware brand
+            # (Puffco, Focus V, ...) can move a vaporizer onto Gear even at a
+            # dispensary that also sells prefilled cannabis cartridges.
             deal["brand"] = self._brand_canonicalizer()(deal.get("brand"))
+            # Rows written before the canonical names existed keep the raw one,
+            # so normalise here too or the sidebar still splits the shelf.
+            deal["category"] = canonical_category_named(
+                deal.get("category"), deal.get("name"),
+                store_id=deal.get("store_id"), brand=deal.get("brand"),
+            )
+            # Mark whether this product is actually on sale.
+            deal["is_deal"] = (deal.get("discount_pct") or 0) > 0
             deals.append(deal)
         # First dedupe within each store, then aggregate across stores
         deduped = dedupe_products(deals)
@@ -1236,15 +1240,17 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     item["is_deal"] = (item.get("discount_pct") or 0) > 0
                     # Weekly status from diff
                     item["weekly_status"] = item.get("weekly_status", "NEW")
-                    # Stores disagree on shelf names, and a snapshot written by
-                    # an older scraper can still carry a stale one, so the
-                    # category is canonicalised on the way out. The name lets a
-                    # mat filed under a catch-all shelf move to Dab Mats.
-                    item["category"] = canonical_category_named(item.get("category"), item.get("name"))
                     # Snapshots store the brand exactly as it was typed when
                     # the menu was scraped, so the same canonicalisation has to
                     # be applied here or the menu view splits brands again.
+                    # Canonicalise the brand before the category so a hardware
+                    # brand (Puffco, Focus V, ...) moves a vaporizer onto Gear
+                    # even at a dispensary that also sells prefilled cartridges.
                     item["brand"] = self._brand_canonicalizer()(item.get("brand"))
+                    item["category"] = canonical_category_named(
+                        item.get("category"), item.get("name"),
+                        store_id=data["store_id"], brand=item.get("brand"),
+                    )
                     all_products.append(item)
             except Exception as e:
                 logger.warning(f"Failed to parse snapshot for {data['store_id']}: {e}")

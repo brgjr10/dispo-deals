@@ -43,6 +43,38 @@ def store_is_due(store: StoreConfig, last_scrape_at: Optional[datetime], now: da
     return now - last_scrape_at >= timedelta(hours=float(interval))
 
 
+def store_is_due_initial(
+    store: StoreConfig,
+    last_scrape_at: Optional[datetime],
+    now: datetime,
+    window_hours: int = 1,
+    product_count: int = 0,
+) -> bool:
+    """Whether a store should be scraped on initial/on-launch run.
+
+    Unlike the scheduled throttle, this only skips stores scraped within
+    the last `window_hours` (default 1 hour) to avoid re-scraping right
+    after a container restart.
+
+    A store with nothing saved is never skipped, however recently it was
+    scraped. A scrape that recorded zero products — a block, a timeout, a
+    fetch that returned an empty menu — still stamps the store as fresh, and
+    the throttle would then hold it empty until the window elapsed, so the
+    store silently disappears from the dashboard. Skipping is only safe once
+    the store actually has a menu.
+
+    ``product_count`` defaults to 0 so a caller that does not know the store's
+    size gets the safe answer (scrape it) rather than a silent skip.
+    """
+    if last_scrape_at is None:
+        return True
+    if product_count <= 0:
+        return True
+    if last_scrape_at.tzinfo is None:
+        last_scrape_at = last_scrape_at.replace(tzinfo=timezone.utc)
+    return now - last_scrape_at >= timedelta(hours=window_hours)
+
+
 class DispoDeals:
     def __init__(self, config: Config):
         self.config = config
@@ -102,9 +134,9 @@ class DispoDeals:
             return True
         return False
 
-    def run_once(self) -> bool:
+    def run_once(self, initial_run: bool = False) -> bool:
         logger = logging.getLogger(__name__)
-        logger.info("Starting dispo-deals run")
+        logger.info("Starting dispo-deals run (initial_run=%s)", initial_run)
 
         all_new_deals = []
         store_results = {}
@@ -113,19 +145,31 @@ class DispoDeals:
             try:
                 now = datetime.now(timezone.utc)
                 last_scrape = self.storage.get_store_last_scrape(store.id)
-                if not store_is_due(store, last_scrape, now):
-                    if last_scrape is not None:
-                        if last_scrape.tzinfo is None:
-                            last_scrape = last_scrape.replace(tzinfo=timezone.utc)
-                        ago = (now - last_scrape).total_seconds() / 3600
-                    else:
-                        ago = 0.0
-                    logger.info(
-                        f"Skipping {store.name}: scraped {ago:.1f}h ago "
-                        f"(interval {store.scrape_interval_hours}h not elapsed)"
-                    )
-                    store_results[store.id] = {"deals": [], "error": None, "skipped": True}
-                    continue
+                
+                if initial_run:
+                    # On initial run: skip only stores scraped within the last
+                    # hour, and never one with nothing saved, or a scrape that
+                    # came back empty would leave the store stuck that way.
+                    saved_products = self.storage.count_store_products(store.id)
+                    if not store_is_due_initial(
+                        store, last_scrape, now, window_hours=1,
+                        product_count=saved_products,
+                    ):
+                        if last_scrape is not None:
+                            if last_scrape.tzinfo is None:
+                                last_scrape = last_scrape.replace(tzinfo=timezone.utc)
+                            ago = (now - last_scrape).total_seconds() / 3600
+                        else:
+                            ago = 0.0
+                        logger.info(
+                            f"Skipping {store.name} on initial run: scraped {ago:.1f}h ago "
+                            f"(within 1h initial-run window) with {saved_products} products saved"
+                        )
+                        store_results[store.id] = {"deals": [], "error": None, "skipped": True}
+                        continue
+                else:
+                    # Scheduled run: always scrape all stores (ignore per-store throttle)
+                    pass
 
                 logger.info(f"Scraping {store.name}...")
                 scraper = create_scraper(store, self.config)
@@ -521,7 +565,7 @@ def main():
         return 0 if app.enrich_strains() else 1
 
     if args.once:
-        success = app.run_once()
+        success = app.run_once(initial_run=True)
         return 0 if success else 1
     else:
         # On scheduler startup, skip initial run if a scrape was done recently
@@ -529,7 +573,7 @@ def main():
             logging.getLogger(__name__).info("Skipping initial scrape, waiting for next scheduled run")
         else:
             logging.getLogger(__name__).info("No recent scrape found, running initial scrape")
-            app.run_once()
+            app.run_once(initial_run=True)
         app.run_scheduler()
         return 0
 

@@ -107,7 +107,7 @@ class KlutchScraper(BaseScraper):
                 store_id=self.store_config.id,
                 product_id=str(product_id),
                 name=name,
-                category=category,
+                category=canonical_category(category, name=name, brand=brand),
                 original_price=original_price,
                 sale_price=sale_price,
                 discount_pct=0.0,

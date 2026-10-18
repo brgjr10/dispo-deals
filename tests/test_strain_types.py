@@ -66,6 +66,23 @@ def _function_end(script, name):
     raise AssertionError(f"unbalanced braces while reading {name}")
 
 
+def _extract_const(script, name):
+    """Pull out a top-level ``const NAME = { ... };`` object literal."""
+    match = re.search(rf"^const {name} = {{", script, re.MULTILINE)
+    assert match, f"{name} not found"
+    start = match.start()
+    depth = 0
+    for index in range(script.index("{", match.end() - 1), len(script)):
+        if script[index] == "{":
+            depth += 1
+        elif script[index] == "}":
+            depth -= 1
+            if depth == 0:
+                end = script.index(";", index)
+                return script[start:end + 1]
+    raise AssertionError(f"unbalanced braces while reading {name}")
+
+
 @pytest.fixture(scope="module")
 def helpers():
     if shutil.which("node") is None:
@@ -80,9 +97,19 @@ def helpers():
     start = script.index("const STRAIN_TYPES")
     region = script[start:_function_end(script, "strainTypeLabel")]
 
-    render_badge = "\n\n".join(
-        _extract_functions(script, ["strainTypeIcon", "renderTypeBadge"])[name]
-        for name in ("strainTypeIcon", "renderTypeBadge")
+    # normalizeCategoryMain reads the MAIN_ALIASES table and categoryKey, both
+    # of which live outside the function, so they come along with it.
+    category_helpers = "\n\n".join(
+        [
+            _extract_functions(script, ["categoryKey"])["categoryKey"],
+            _extract_const(script, "MAIN_ALIASES"),
+            _extract_const(script, "MAIN_REMAP"),
+        ]
+        + [
+            _extract_functions(script, [name])[name]
+            for name in ("strainTypeIcon", "normalizeCategoryMain",
+                         "categoryMain", "renderTypeBadge")
+        ]
     )
 
     # renderTypeBadge needs an escaper.
@@ -92,7 +119,7 @@ def helpers():
         "const escapeHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')"
         ".replace(/>/g,'&gt;').replace(/\"/g,'&quot;');",
     ])
-    return region, render_badge, harness
+    return region, category_helpers, harness
 
 
 def _run_js(helpers, body):
@@ -223,7 +250,7 @@ class TestTypeFallback:
 class TestTypeBadge:
     def test_badge_uses_the_icon_and_full_form(self, helpers):
         """The phenotype shows as an icon (moon/sun/split) plus the full label."""
-        product = {"name": "GG#4 (I)"}
+        product = {"name": "GG#4 (I)", "category": "Flower"}
         out = _run_js(
             helpers,
             f"console.log(JSON.stringify(renderTypeBadge({json.dumps(product)})))"
@@ -237,7 +264,7 @@ class TestTypeBadge:
         def icon_for(name):
             out = _run_js(
                 helpers,
-                f"console.log(JSON.stringify(renderTypeBadge({json.dumps({'name': name})})))"
+                f"console.log(JSON.stringify(renderTypeBadge({json.dumps({'name': name, 'category': 'Flower'})})))"
             )
             return out
 

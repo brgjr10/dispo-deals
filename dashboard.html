@@ -71,12 +71,23 @@ body {
   padding: 8px;
 }
 .nav-section-title {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 10px 8px 6px 8px;
+}
+
+.nav-sub-section {
+  font-size: 11px;
+  font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 12px 8px 6px 8px;
+  letter-spacing: 0.8px;
+  margin: 14px 8px 6px 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
 }
 .nav-section-footer {
   padding: 8px;
@@ -2417,6 +2428,32 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Automatic space-sensing title case for category sub-labels: splits camelCase
+// (PreRolls -> Pre Rolls) and consecutive caps (XMLParser -> XML Parser), then
+// title-cases each word so labels read consistently no matter how a store
+// spelled them.
+// Stores that fetched pages with the wrong charset double-encode UTF-8 as
+// Latin-1 (StÃ¼ndenglass instead of Stündenglass). Undo that before casing so a
+// mis-encoded label still reads correctly.
+function repairMojibake(text) {
+  try {
+    const repaired = decodeURIComponent(escape(text));
+    return repaired !== text ? repaired : text;
+  } catch (e) {
+    return text;
+  }
+}
+
+function titleCaseSub(text) {
+  if (!text) return '';
+  return repairMojibake(String(text))
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
 function getUrlState() {
   const params = new URLSearchParams(window.location.search);
   return {
@@ -3198,7 +3235,7 @@ function populateSidebar() {
     const isConfigStore = !store.removable;
     item.innerHTML = `
       <div class="nav-item-store">
-        ${store.logo_url ? `<img src="${store.logo_url}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
+        ${store.logo_url ? `<img src="${storeLogoSrc(store)}" loading="lazy" decoding="async" onerror="handleImageError(this)">` : ''}
         <span>${escapeHtml(store.name)}</span>
       </div>
       <span class="nav-item-count">${storeCount(store.id)}</span>
@@ -3245,8 +3282,21 @@ function populateSidebar() {
 
   const groups = new Map();
   Object.keys(catCounts).forEach(cat => {
-    const main = categoryMain(cat);
-    const sub = cat !== main ? normalizeCategorySub(cat) : '';
+    let main = categoryMain(cat);
+    let sub = cat !== main ? normalizeCategorySub(cat) : '';
+    // MAIN_REMAP folds Glass/Puffco/Dab Mats/Kits/Misc into "Gear", but each
+    // should render as its own top-level group under the Gear section divider
+    // rather than nesting as sub-items under Gear.
+    if (main === 'Gear' && sub) {
+      const firstPart = String(cat).split(' · ')[0].trim();
+      if (firstPart !== 'Gear') {
+        main = firstPart;
+        sub = '';
+      } else {
+        main = sub;
+        sub = '';
+      }
+    }
     if (!groups.has(main)) groups.set(main, { count: 0, subs: new Map() });
     const group = groups.get(main);
     group.count += catCounts[cat];
@@ -3255,16 +3305,28 @@ function populateSidebar() {
     }
   });
 
-  const expanded = getExpandedGroups();
+const expanded = getExpandedGroups();
   // Keep the group holding the active subcategory visible.
   if (currentFilters.category) expanded.add(categoryMain(currentFilters.category));
 
-  [...groups.keys()].sort().forEach(main => {
+  // The category shelf splits into three visual sections - cannabis products,
+  // clothing and accessories, and gear (glass, Puffco hardware, dab mats,
+  // kits, and most of the catch-all) - so a browser can jump straight to the
+  // kind of thing they are shopping for instead of wading through the
+  // alphabetised rows. The sets and sectionForMain live at module scope.
+  const sectionOrder = [
+    { title: 'Cannabis' },
+    { title: 'Clothing' },
+    { title: 'Gear' },
+  ];
+
+  const renderGroup = (main, skipHeader = false) => {
     const group = groups.get(main);
     const wrap = document.createElement('div');
     wrap.className = 'nav-group' + (expanded.has(main) ? ' open' : '');
     wrap.dataset.group = main;
 
+    if (!skipHeader) {
     const header = document.createElement('div');
     header.className = 'nav-item nav-group-header';
     header.dataset.group = main;
@@ -3272,20 +3334,23 @@ function populateSidebar() {
     // target that browses the category (and toggles it open or closed).
     const hasSubs = group.subs.size > 0;
     const isActive = currentFilters.category === main || (currentFilters.category && categoryMain(currentFilters.category) === main);
+    // The Gear shelves are unpacked from "Gear · bongs" to "bongs", so the
+    // group key is lowercase; title-case it for the header the same way the
+    // sub-items are labelled.
+    const label = titleCaseSub(main);
     header.innerHTML = `
       <span class="nav-group-label">
-        ${hasSubs ? '<span class="nav-chevron" aria-hidden="true"></span>' : ''}
-        <span>${escapeHtml(main)}</span>
+        <span class="nav-chevron" aria-hidden="true"></span>
+        <span>${escapeHtml(label)}</span>
       </span>
       <span class="nav-item-count">${group.count}</span>
-      ${isActive ? '<span class="nav-item-count" style="background:var(--primary);color:var(--bg)">active</span>' : ''}
+      ${isActive ? '<span class="nav-item-count" style="background:var(--primary);color:var(--bg)">active</span>' : ""}
     `;
     header.setAttribute('role', 'button');
     header.setAttribute('tabindex', '0');
     header.setAttribute('aria-expanded', hasSubs && expanded.has(main) ? 'true' : 'false');
-    header.setAttribute('aria-label', `${escapeHtml(main)}, ${group.count} products${hasSubs ? ' (click to browse all, click again to close)' : ', click to filter'}`);
+    header.setAttribute('aria-label', `${escapeHtml(label)}, ${group.count} products${hasSubs ? ' (click to browse all, click again to close)' : ', click to filter'}`);
     wrap.appendChild(header);
-
     // A header click selects the whole category. Accordion behaviour lives in
     // selectCategory: it opens this group (and closes any other), and clicking
     // the same category a second time clears the filter and collapses it.
@@ -3296,6 +3361,7 @@ function populateSidebar() {
         selectCategory(main);
       }
     });
+    }
 
     if (group.subs.size) {
       const subs = document.createElement('div');
@@ -3303,27 +3369,182 @@ function populateSidebar() {
       [...group.subs.entries()]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .forEach(([sub, count]) => {
-          // Find the original raw category for this normalized sub to use in filtering
-          const rawCat = Object.keys(catCounts).find(c => 
-            categoryMain(c) === main && normalizeCategorySub(c) === sub
-          ) || main;
+          // Filtering matches on the normalised main · sub pair, so the row is
+          // keyed by that rather than by whichever raw spelling happened to be
+          // found first. Two stores typing one shelf differently must not leave
+          // the row showing half the products its own count promises.
           const subEl = document.createElement('div');
           subEl.className = 'nav-item nav-sub-item';
-          subEl.dataset.category = rawCat;
+          subEl.dataset.category = main + ' · ' + sub;
           subEl.innerHTML = `
-            <span>${escapeHtml(sub)}</span>
+            <span>${escapeHtml(titleCaseSub(sub))}</span>
             <span class="nav-item-count">${count}</span>
           `;
           subEl.addEventListener('click', (e) => {
             e.stopPropagation();
-            selectCategory(rawCat);
+            selectCategory(subEl.dataset.category);
           });
           subs.appendChild(subEl);
         });
       wrap.appendChild(subs);
     }
+    return wrap;
+  };
 
-    catNav.appendChild(wrap);
+sectionOrder.forEach(sec => {
+    // The backend folds Glass, Puffco, Dab Mats, Kits and Misc onto "Gear" and
+    // the sidebar unpacks each "Gear · <sub>" pair back to its own shelf, so the
+    // group keys here are the former shelf names (bongs, peak, mats, ...).
+    // sectionForMain maps each back to its section divider.
+    // The "Gear" divider itself is not a shelf: every product filed under it
+    // arrives as "Gear · <sub>" and is unpacked to its own shelf above, so the
+    // bare Gear group carries nothing and must not render as an empty row.
+    const mainsInSec = [...groups.keys()]
+      .filter(m => m !== sec.title && sectionForMain(m) === sec.title)
+      .sort();
+    if (!mainsInSec.length) return;
+    const divider = document.createElement('div');
+    divider.className = 'nav-sub-section';
+    divider.textContent = sec.title;
+    catNav.appendChild(divider);
+    if (sec.title !== 'Gear') {
+      mainsInSec.forEach(main => catNav.appendChild(renderGroup(main, main === sec.title)));
+      return;
+    }
+    // The Gear section is a catch-all of unpacked shelves. Group them under
+    // collapsible family headers (Glass, Puffco, Dab Mats, Kits, Misc) so the
+    // section reads like a shop instead of one alphabetised wall.
+    //
+    // The Accessories shelf is not a family of its own: its sub-items are
+    // distributed into the families they belong to - glassware, bowls, ash
+    // catchers and pipe parts go under Glass; batteries, chargers, devices and
+    // vape accessories under Puffco; dab mats, tools and tethers under Dab
+    // Mats; cones, rolling papers and trays under Kits; and everything else
+    // (lighters, grinders, jewelry, storage, ...) under Misc. The canonical
+    // sub names normalise to the same keys GEAR_FAMILIES already uses, so
+    // gearFamilyFor places each one beside the hardware it complements, and
+    // Accessories stops being a 3388-product catch-all row.
+    // Shelves with no family (cartridges, disposables, hash, Vinyl Decals, ...)
+    // render directly under the Gear divider.
+    const familyOrder = ['Glass', 'Puffco', 'Dab Mats', 'Kits', 'Misc'];
+    const families = new Map();
+    familyOrder.forEach(f => families.set(f, { shelves: [], subs: [] }));
+    const loose = [];
+    const looseSubs = [];
+    mainsInSec.forEach(main => {
+      if (main === 'Accessories') {
+        const group = groups.get(main);
+        if (group && group.subs.size) {
+          group.subs.forEach((count, sub) => {
+            const family = gearFamilyFor(sub);
+            if (family && families.has(family)) {
+              families.get(family).subs.push({ sub, count });
+            } else {
+              looseSubs.push({ sub, count });
+            }
+          });
+        }
+        return;
+      }
+      const family = gearFamilyFor(main);
+      if (family) {
+        families.get(family).shelves.push(main);
+      } else {
+        loose.push(main);
+      }
+    });
+    familyOrder.forEach(family => {
+      const data = families.get(family);
+      if (!data || (!data.shelves.length && !data.subs.length)) return;
+      // A family header is not itself a filterable category (no product is
+      // filed under "Glass" alone - they are all "Gear · bongs"), so build the
+      // wrapper manually rather than calling renderGroup, which expects a real
+      // group in the map. Clicking the header browses the first shelf in the
+      // family instead of filtering to zero.
+      const famWrap = document.createElement('div');
+      famWrap.className = 'nav-group';
+      famWrap.dataset.group = family;
+      famWrap.dataset.family = family;
+      const famHeader = document.createElement('div');
+      famHeader.className = 'nav-item nav-group-header';
+      famHeader.dataset.group = family;
+      const famLabel = titleCaseSub(family);
+      const famCount = data.shelves.reduce(
+        (n, main) => n + (groups.get(main) || {count: 0}).count, 0)
+        + data.subs.reduce((n, s) => n + s.count, 0);
+      famHeader.innerHTML = `
+        <span class="nav-group-label">
+          <span class="nav-chevron" aria-hidden="true"></span>
+          <span>${escapeHtml(famLabel)}</span>
+        </span>
+        <span class="nav-item-count">${famCount}</span>
+      `;
+      famHeader.setAttribute('role', 'button');
+      famHeader.setAttribute('tabindex', '0');
+      const firstShelf = data.shelves[0] || `Accessories · ${data.subs[0].sub}`;
+      famHeader.addEventListener('click', () => selectCategory(firstShelf));
+      famHeader.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectCategory(firstShelf);
+        }
+      });
+      famWrap.appendChild(famHeader);
+      const items = document.createElement('div');
+      items.className = 'nav-group-items';
+      // Hardware shelves first (each a clickable header row), then the
+      // Accessories sub-items that belong to this family as plain rows.
+      data.shelves.forEach(main => {
+        const shelf = renderGroup(main, false);
+        const shelfItems = shelf.querySelector('.nav-group-items');
+        if (shelfItems) items.appendChild(shelfItems);
+        items.appendChild(shelf);
+      });
+      data.subs.forEach(({ sub, count }) => {
+        const subEl = document.createElement('div');
+        subEl.className = 'nav-item nav-sub-item';
+        subEl.dataset.category = 'Accessories · ' + sub;
+        subEl.innerHTML = `
+          <span>${escapeHtml(titleCaseSub(sub))}</span>
+          <span class="nav-item-count">${count}</span>
+        `;
+        subEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectCategory(subEl.dataset.category);
+        });
+        items.appendChild(subEl);
+      });
+      famWrap.appendChild(items);
+      catNav.appendChild(famWrap);
+    });
+    loose.forEach(main => catNav.appendChild(renderGroup(main, main === sec.title)));
+    // Any Accessories sub that did not fit a family (one-off store drops with
+    // no product family) stay under a residual Accessories header rather than
+    // disappearing. In practice every live accessory maps to a family, so this
+    // is a safety net, not the common path.
+    if (looseSubs.length) {
+      const accWrap = renderGroup('Accessories', false);
+      const existing = accWrap.querySelector('.nav-group-items');
+      if (existing) existing.remove();
+      const items = document.createElement('div');
+      items.className = 'nav-group-items';
+      looseSubs.forEach(({ sub, count }) => {
+        const subEl = document.createElement('div');
+        subEl.className = 'nav-item nav-sub-item';
+        subEl.dataset.category = 'Accessories · ' + sub;
+        subEl.innerHTML = `
+          <span>${escapeHtml(titleCaseSub(sub))}</span>
+          <span class="nav-item-count">${count}</span>
+        `;
+        subEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          selectCategory(subEl.dataset.category);
+        });
+        items.appendChild(subEl);
+      });
+      accWrap.appendChild(items);
+      catNav.appendChild(accWrap);
+    }
   });
 
   // Brands
@@ -3366,30 +3587,43 @@ function populateFilters() {
 
   const catSelect = document.getElementById('categoryFilter');
   catSelect.innerHTML = '<option value="">All Categories</option>';
-  // Grouped the same way as the sidebar: one optgroup per main category so the
-  // list is not a flat wall of repeated "Flower · ..." entries.
+  // Grouped the same way as the sidebar: one optgroup per shelf, and the shelves
+  // are nested under their section (Cannabis / Clothing / Gear) so the select
+  // mirrors the three-section sidebar instead of alphabetising the Gear
+  // sub-shelves across the whole list.
   const catGroups = new Map();
   allData.categories.forEach(cat => {
-    const main = categoryMain(cat);
+    let main = categoryMain(cat);
+    if (main === 'Gear') {
+      const parts = String(cat).split(' · ');
+      const firstPart = parts[0].trim();
+      if (firstPart !== 'Gear') {
+        main = firstPart;
+      } else if (parts.length > 1) {
+        main = parts[1].trim();
+      }
+    }
     if (!catGroups.has(main)) catGroups.set(main, []);
     catGroups.get(main).push(cat);
   });
   [...catGroups.keys()].sort().forEach(main => {
     const options = catGroups.get(main).sort();
+    const section = sectionForMain(main);
     const lines = [];
     // The group has to be selectable even when every product sits under a
     // subcategory and no bare "Vaporizers" category exists, so add it as the
     // first entry of its optgroup. Without it, picking the group from the
     // sidebar leaves the select with no matching option and it reads as
     // "All Categories" while the list is filtered.
+    const mainLabel = titleCaseSub(main);
     if (!options.includes(main)) {
-      lines.push(`      <option value="${escapeHtml(main)}">All ${escapeHtml(main)}</option>`);
+      lines.push(`      <option value="${escapeHtml(main)}">All ${escapeHtml(mainLabel)}</option>`);
     }
     lines.push(...options.map(cat =>
       `      <option value="${escapeHtml(cat)}">${escapeHtml(categorySub(cat))}</option>`
     ));
     catSelect.innerHTML +=
-      `    <optgroup label="${escapeHtml(main)}">\n${lines.join('\n')}\n    </optgroup>\n`;
+      `    <optgroup label="${escapeHtml(section)} › ${escapeHtml(mainLabel)}">\n${lines.join('\n')}\n    </optgroup>\n`;
   });
 
   const brandSelect = document.getElementById('brandFilter');
@@ -3485,11 +3719,20 @@ function updateActiveStore(storeId) {
 
 function updateActiveCategory(cat) {
   const main = cat ? categoryMain(cat) : '';
+  // A Gear family header lights up when any shelf inside it is active. When
+  // the active row is an Accessories sub-item that was distributed into a
+  // family (e.g. "Accessories · batteries" → Puffco), the family is looked
+  // up from the sub rather than from "Accessories", which has no family.
+  const sub = cat && main === 'Accessories' ? normalizeCategorySub(cat) : '';
+  const family = main ? (gearFamilyFor(main) || (sub ? gearFamilyFor(sub) : '')) : '';
   // Group headers (e.g. "Flower") light up when the group itself is selected
   // or when a subcategory beneath it is active, so the parent is always
-  // recognisable when its contents are selected.
+  // recognisable when its contents are selected. A Gear family header lights
+  // up when any shelf inside it is active.
   document.querySelectorAll('#categoryNavList .nav-group-header').forEach(item => {
-    item.classList.toggle('active', !!cat && item.dataset.group === main);
+    const groupActive = !!cat && item.dataset.group === main;
+    const familyActive = !!family && item.dataset.family === family;
+    item.classList.toggle('active', groupActive || familyActive);
   });
 
   // Sub items (e.g. "Flower · premium") are active only for their exact match.
@@ -3501,101 +3744,725 @@ function updateActiveCategory(cat) {
   // Accordion: only the group owning the active selection stays open; every
   // other group collapses. A whole-group filter opens it (it can still be
   // toggled closed from its header), an active subcategory reveals its parent,
-  // and clearing the filter closes everything.
-  applyCategoryAccordion(main);
+  // and clearing the filter closes everything. A Gear family opens when any
+  // shelf inside it is the active selection.
+  applyCategoryAccordion(main, sub);
 }
 
 // ---- Category groups ----
 
 // Normalize raw category names to clean, consolidated groups.
-// Handles spacing inconsistencies, duplicate groups, and merges similar categories.
+// Handles spacing inconsistencies, duplicate groups, and merges similar
+// categories, so the sidebar shows one row per shelf however a store spells it.
+//
+// Keys are compared with spacing and punctuation removed and case ignored, the
+// same normalisation the Python side uses, so "Accesory", "Acc Miscellaneous"
+// and "accessories" all reach one shelf. Any name not listed is left untouched
+// rather than guessed at.
+function categoryKey(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+const MAIN_ALIASES = {
+      '14gramscheap': 'Flower',
+      '14gramssmalls': 'Flower',
+      '14gsmalls2pack27gpacks': 'Flower',
+      '15gvapecartridge': 'Vaporizers',
+      '1gthcacartridge': 'Vaporizers',
+      '2gdualflavordisposable': 'Vaporizers',
+      '2gliquiddiamonds': 'Concentrates',
+      '2packsmalls1ounce': 'Flower',
+      '2pcset': 'Misc',
+      '35gdepflowerpack': 'Flower',
+      '45mmbeakers': 'Glass',
+      '45mmminicollinsbeakers': 'Glass',
+      '55smallsounce': 'Flower',
+      '5mmbeakers': 'Glass',
+      '5mmstraights': 'Glass',
+      '7gramspremiumflower': 'Flower',
+      '7mmbeakers': 'Glass',
+      '7mmminibeaker': 'Glass',
+      '7mmscopedminibeaker': 'Glass',
+      '9mmbeakers': 'Glass',
+      'accdadhat': 'Hats',
+      'accesory': 'Accessories',
+      'accessories': 'Accessories',
+      'accessory': 'Accessories',
+      'accfootwear': 'Footwear',
+      'accknitbeanie': 'Beanies',
+      'accmiscellaneous': 'Accessories',
+      'accshoulderbag': 'Bags',
+      'accsnapback': 'Hats',
+      'accsnapbackhat': 'Hats',
+      'acctruckerhat': 'Hats',
+      'accwovenbackpack': 'Bags',
+      'active': 'Apparel',
+      'adapters': 'Accessories',
+      'anklesocks': 'Apparel',
+      'apparel': 'Apparel',
+      'archivessale': 'Misc',
+      'ashcatcher': 'Glass',
+      'ashcatchers': 'Glass',
+      'ashtray': 'Accessories',
+      'ashtrays': 'Accessories',
+      'assurance': 'Misc',
+      'atomizer': 'Accessories',
+      'backpack': 'Bags',
+      'bags': 'Bags',
+      'bagswallets': 'Bags',
+      'banger': 'Concentrates',
+      'bangerbasket': 'Concentrates',
+      'bangers': 'Concentrates',
+      'batteries': 'Accessories',
+      'battery': 'Accessories',
+      'beads': 'Accessories',
+      'beaker': 'Glass',
+      'beakers': 'Glass',
+      'beanie': 'Beanies',
+      'beanies': 'Beanies',
+      'bedding': 'Misc',
+      'bellbottoms': 'Apparel',
+      'belt': 'Apparel',
+      'belts': 'Apparel',
+      'beltsharnesses': 'Apparel',
+      'beverage': 'Edible',
+      'bikini': 'Apparel',
+      'blanket': 'Misc',
+      'blankets': 'Misc',
+      'blazer': 'Apparel',
+      'blouse': 'Apparel',
+      'blowout': 'Misc',
+      'bluntbubbler': 'Glass',
+      'blunttips': 'Accessories',
+      'bobmarley': 'Accessories',
+      'bodycon': 'Apparel',
+      'bodysuit': 'Apparel',
+      'bolero': 'Apparel',
+      'bong': 'Glass',
+      'bongs': 'Glass',
+      'bongsdabrigs': 'Glass',
+      'boots': 'Footwear',
+      'bootsbooties': 'Footwear',
+      'bottomknitpant': 'Apparel',
+      'bottomknitshort': 'Apparel',
+      'bottomprintedpant': 'Apparel',
+      'bottomprintedshort': 'Apparel',
+      'bottoms': 'Apparel',
+      'bottomswimtrunk': 'Apparel',
+      'bottomwindbreakerpant': 'Apparel',
+      'bottomwovenpant': 'Apparel',
+      'bowl': 'Glass',
+      'bowlpiece': 'Accessories',
+      'bowls': 'Glass',
+      'boxers': 'Apparel',
+      'boxstickers': 'Merch',
+      'bracelet': 'Accessories',
+      'bralet': 'Apparel',
+      'bubbler': 'Glass',
+      'bubblerdanklins': 'Glass',
+      'bubblers': 'Glass',
+      'buildyourownbigspremiumounce': 'Flower',
+      'bundle': 'Misc',
+      'bundleset': 'Misc',
+      'cannabuttermaker': 'Accessories',
+      'canvas': 'Misc',
+      'capbundle': 'Hats',
+      'caps': 'Hats',
+      'carb': 'Concentrates',
+      'carbcap': 'Concentrates',
+      'carbcaps': 'Concentrates',
+      'cardigan': 'Apparel',
+      'cardigans': 'Apparel',
+      'carstyling': 'Misc',
+      'cartridges': 'Vaporizers',
+      'carts': 'Vaporizers',
+      'case': 'Accessories',
+      'character': 'Accessories',
+      'charger': 'Accessories',
+      'chargers': 'Accessories',
+      'chillstraw': 'Accessories',
+      'chillum': 'Accessories',
+      'choker': 'Accessories',
+      'cleaning': 'Accessories',
+      'cleaningcare': 'Accessories',
+      'cleaningproducts': 'Accessories',
+      'cleaningsupplies': 'Accessories',
+      'cleaningsupply': 'Accessories',
+      'clearance': 'Misc',
+      'clearmodels': 'Glass',
+      'clearmodels2nd': 'Glass',
+      'clearslides': 'Glass',
+      'clearsolidpipes': 'Accessories',
+      'cloak': 'Apparel',
+      'clothing': 'Apparel',
+      'clothingdropship': 'Apparel',
+      'coasters': 'Misc',
+      'coat': 'Apparel',
+      'coats': 'Apparel',
+      'coil': 'Accessories',
+      'coils': 'Accessories',
+      'coinpurse': 'Bags',
+      'collabs': 'Misc',
+      'collinsbeakers': 'Glass',
+      'colormodels': 'Glass',
+      'concentrate': 'Concentrates',
+      'concentrateaccessories': 'Concentrates',
+      'concentrateaccessory': 'Concentrates',
+      'concentraterig': 'Concentrates',
+      'concentraterigs': 'Concentrates',
+      'concentrates': 'Concentrates',
+      'cone': 'Accessories',
+      'cones': 'Accessories',
+      'container': 'Accessories',
+      'corset': 'Apparel',
+      'corsets': 'Apparel',
+      'costumes': 'Apparel',
+      'creepers': 'Footwear',
+      'crewneckfleeceprinted': 'Apparel',
+      'crewneckprintedfleece': 'Apparel',
+      'croptop': 'Apparel',
+      'crossbody': 'Bags',
+      'cup': 'Misc',
+      'currentcustomdrop': 'Misc',
+      'currentdrops': 'Misc',
+      'dabaccessories': 'Accessories',
+      'dabaccessory': 'Accessories',
+      'dabbingaccessories': 'Accessories',
+      'dabbingmat': 'Dab Mats',
+      'dabmat': 'Dab Mats',
+      'dabmats': 'Dab Mats',
+      'dabpad': 'Dab Mats',
+      'dabpads': 'Dab Mats',
+      'dabrig': 'Concentrates',
+      'dabrigs': 'Concentrates',
+      'dabtool': 'Accessories',
+      'dabtools': 'Accessories',
+      'dailydeals': 'Misc',
+      'danklincoil': 'Glass',
+      'deals': 'Misc',
+      'dealsdrypipes': 'Accessories',
+      'dealsgear': 'Misc',
+      'deck': 'Skate',
+      'decor': 'Misc',
+      'denim': 'Apparel',
+      'diecutstickers': 'Merch',
+      'directsale': 'Misc',
+      'donation': 'Misc',
+      'downstems': 'Glass',
+      'dresses': 'Apparel',
+      'drinkware': 'Misc',
+      'dryherbpipe': 'Accessories',
+      'drypipe': 'Accessories',
+      'duffle': 'Bags',
+      'dugout': 'Accessories',
+      'duster': 'Apparel',
+      'earrings': 'Accessories',
+      'edible': 'Edible',
+      'edibles': 'Edible',
+      'electricbong': 'Glass',
+      'electricpipe': 'Accessories',
+      'electronicdabtool': 'Accessories',
+      'electronicrig': 'Vaporizers',
+      'electronicrigs': 'Vaporizers',
+      'elite': 'Misc',
+      'encalmodiscashcatchers': 'Accessories',
+      'erig': 'Vaporizers',
+      'erigs': 'Vaporizers',
+      'erigsvaporizers': 'Vaporizers',
+      'essentials99subscriptionpack': 'Misc',
+      'expiviproductreplica': 'Misc',
+      'extensions': 'Misc',
+      'extract': 'Concentrates',
+      'extracts': 'Concentrates',
+      'extrassale': 'Misc',
+      'eyeliner': 'Misc',
+      'eyes': 'Misc',
+      'eyeshadow': 'Misc',
+      'facebody': 'Misc',
+      'fedora': 'Hats',
+      'flares': 'Apparel',
+      'flats': 'Footwear',
+      'flipflop': 'Footwear',
+      'flower': 'Flower',
+      'flowerpipe': 'Glass',
+      'flowerpipes': 'Glass',
+      'flowerpipesandaccessories': 'Glass',
+      'flowers': 'Flower',
+      'flowervarietypackpremium': 'Flower',
+      'footwear': 'Footwear',
+      'frostedbeakers': 'Glass',
+      'frostedsignaturestraights': 'Glass',
+      'fullcolorpremiumsignaturebeakers': 'Glass',
+      'fullcolorscopedbeakers': 'Glass',
+      'fullcolorsignature': 'Glass',
+      'fullsize': 'Glass',
+      'fungames': 'Misc',
+      'gasmask': 'Accessories',
+      'giftcard': 'Gift Cards',
+      'giftcards': 'Gift Cards',
+      'giftwithpurchase': 'Misc',
+      'glass': 'Glass',
+      'glassaccessories': 'Glass',
+      'glassattachment': 'Glass',
+      'glassbong': 'Glass',
+      'glassbubbler': 'Glass',
+      'glasspipe': 'Accessories',
+      'glassrig': 'Glass',
+      'glasstop': 'Glass',
+      'glassware': 'Accessories',
+      'glasswaterpipe': 'Glass',
+      'gloves': 'Apparel',
+      'glycerinestraw': 'Accessories',
+      'gravityinfuser': 'Glass',
+      'gravitypipe': 'Glass',
+      'grinder': 'Accessories',
+      'grinders': 'Accessories',
+      'gummysharks': 'Edible',
+      'h': 'Misc',
+      'hair': 'Misc',
+      'hairaccessories': 'Accessories',
+      'hairaccessory': 'Accessories',
+      'hammers': 'Glass',
+      'handbag': 'Bags',
+      'handbags': 'Bags',
+      'handmadebelts': 'Apparel',
+      'handmadehats': 'Hats',
+      'handpipe': 'Accessories',
+      'handpipes': 'Accessories',
+      'harness': 'Apparel',
+      'harnesses': 'Apparel',
+      'hash': 'Concentrate',
+      'hat': 'Hats',
+      'hats': 'Hats',
+      'hatsscarvesgloves': 'Apparel',
+      'headwear': 'Hats',
+      'headyglass': 'Glass',
+      'heavyhitbeakers': 'Glass',
+      'heavyweight175subscriptionpack': 'Misc',
+      'heels': 'Footwear',
+      'hexmat': 'Dab Mats',
+      'highlightsection': 'Misc',
+      'hologramtoro': 'Glass',
+      'homeaccessory': 'Misc',
+      'homestuff': 'Misc',
+      'homeware': 'Misc',
+      'hoodedfleececutsew': 'Apparel',
+      'hoodie': 'Apparel',
+      'hoodies': 'Apparel',
+      'hoodiessweats': 'Apparel',
+      'hoodyfleeceprinted': 'Apparel',
+      'iceguyshash': 'Concentrates',
+      'icepackforshipping': 'Misc',
+      'illadelphcoils': 'Glass',
+      'illadelphstraighttubes': 'Glass',
+      'illadelphtubes': 'Glass',
+      'incense': 'Misc',
+      'indoorflower': 'Flower',
+      'inflatable': 'Misc',
+      'insurance': 'Misc',
+      'jacket': 'Apparel',
+      'jackets': 'Apparel',
+      'jars': 'Accessories',
+      'jersey': 'Apparel',
+      'jewelry': 'Accessories',
+      'joggershorts': 'Apparel',
+      'jointbubbler': 'Glass',
+      'jointbubblers': 'Glass',
+      'jointcase': 'Accessories',
+      'jointcases': 'Accessories',
+      'jointholder': 'Accessories',
+      'jointholders': 'Accessories',
+      'juicyjcollab': 'Misc',
+      'jumpsuit': 'Apparel',
+      'jumpsuits': 'Apparel',
+      'jumpsuitsplaysuits': 'Apparel',
+      'jumpsuitsrompers': 'Apparel',
+      'keychain': 'Accessories',
+      'kids': 'Apparel',
+      'kit': 'Kits',
+      'kitchenbar': 'Misc',
+      'kits': 'Kits',
+      'knitdress': 'Apparel',
+      'knitlstop': 'Apparel',
+      'knits': 'Knitwear',
+      'knitsstop': 'Apparel',
+      'knittankcutsew': 'Apparel',
+      'knitwear': 'Knitwear',
+      'kuties': 'Apparel',
+      'lanyard': 'Accessories',
+      'leggings': 'Apparel',
+      'legwarmers': 'Apparel',
+      'lighter': 'Accessories',
+      'lighter3pack': 'Accessories',
+      'lightercase': 'Accessories',
+      'lightercases': 'Accessories',
+      'lighterholder': 'Accessories',
+      'lighters': 'Accessories',
+      'lights': 'Misc',
+      'lingerie': 'Apparel',
+      'lingeriesleepwear': 'Apparel',
+      'lipliner': 'Misc',
+      'lipproduct': 'Misc',
+      'lips': 'Misc',
+      'lipstick': 'Misc',
+      'liquiddiamonds': 'Concentrates',
+      'longsleeve': 'Apparel',
+      'longsocks': 'Apparel',
+      'luggage': 'Bags',
+      'marbles': 'Accessories',
+      'mat': 'Dab Mats',
+      'mats': 'Dab Mats',
+      'maxi': 'Apparel',
+      'membership': 'Misc',
+      'mensblackstyletshirt': 'Apparel',
+      'mensindigostyletshirt': 'Apparel',
+      'mensmilitarygreenstyletshirt': 'Apparel',
+      'merch': 'Merch',
+      'merchandise': 'Merch',
+      'messenger': 'Bags',
+      'midi': 'Apparel',
+      'mini': 'Apparel',
+      'mirrors': 'Misc',
+      'misc': 'Misc',
+      'modlaccessories': 'Puffco',
+      'modul': 'Modül',
+      'mothershipmeltdown': 'Misc',
+      'mousepad': 'Dab Mats',
+      'mousepads': 'Dab Mats',
+      'mouthpiece': 'Glass',
+      'mouthpieces': 'Glass',
+      'mug': 'Misc',
+      'mystery1gdisposable': 'Vaporizers',
+      'mysterymarble': 'Accessories',
+      'nail': 'Concentrates',
+      'nails': 'Concentrates',
+      'necklace': 'Accessories',
+      'necklaces': 'Accessories',
+      'necklaceschokers': 'Accessories',
+      'nectarcollector': 'Concentrates',
+      'newproducts': 'Misc',
+      'officialpuffco': 'Puffco',
+      'ohioglassblowersshow': 'Glass',
+      'ohioglassblowersshow2025': 'Glass',
+      'oilrig': 'Concentrates',
+      'oilrigs': 'Concentrates',
+      'opalspheres': 'Accessories',
+      'oral': 'Oral',
+      'other': 'Misc',
+      'othershit': 'Misc',
+      'outdoor': 'Misc',
+      'outerwear': 'Apparel',
+      'outerwearjacketcutsew': 'Apparel',
+      'outerwearwindbreakercutsew': 'Apparel',
+      'pallets': 'Misc',
+      'pants': 'Apparel',
+      'panty': 'Apparel',
+      'pastiestatts': 'Apparel',
+      'patches': 'Merch',
+      'peak': 'Puffco',
+      'peakaccessories': 'Puffco',
+      'peakattachment': 'Puffco',
+      'peakpro': 'Puffco',
+      'peakproaccessories': 'Puffco',
+      'pearl': 'Accessories',
+      'pearls': 'Accessories',
+      'pendant': 'Glass',
+      'pendants': 'Glass',
+      'percolator': 'Glass',
+      'pin': 'Merch',
+      'pinbackbuttons': 'Merch',
+      'pipe': 'Glass',
+      'pipes': 'Glass',
+      'pivot': 'Puffco',
+      'pivotaccessories': 'Puffco',
+      'pivotaccessory': 'Puffco',
+      'platformboots': 'Footwear',
+      'platforms': 'Footwear',
+      'playsuit': 'Apparel',
+      'pomade': 'Misc',
+      'posters': 'Merch',
+      'premiumdepflower': 'Flower',
+      'premiumdepflower95ounce': 'Flower',
+      'premiumseries': 'Glass',
+      'preroll': 'Pre-Rolls',
+      'prerolls': 'Pre-Rolls',
+      'prismhalofamfavorites': 'Glass',
+      'product': 'Misc',
+      'protection': 'Accessories',
+      'proxyaccessory': 'Puffco',
+      'proxycore': 'Puffco',
+      'proxycoreaccessory': 'Puffco',
+      'puffco': 'Puffco',
+      'puffcoaccessories': 'Puffco',
+      'puffcoattachments': 'Puffco',
+      'puffcocharms': 'Puffco',
+      'puffcodrytops': 'Puffco',
+      'puffcojoysticks': 'Puffco',
+      'puffcopivotmouthpieces': 'Puffco',
+      'puffcoproxyattachments': 'Puffco',
+      'pumkinpiecartandbattery': 'Vaporizers',
+      'qpsmallsvarietypack': 'Flower',
+      'quartz': 'Concentrates',
+      'quartzbanger': 'Concentrates',
+      'replacementpart': 'Accessories',
+      'replacementparts': 'Accessories',
+      'rig': 'Glass',
+      'rigs': 'Glass',
+      'rollingcones': 'Accessories',
+      'rollingconesaccessories': 'Accessories',
+      'rollingpaper': 'Accessories',
+      'rollingpapers': 'Accessories',
+      'rollingtray': 'Accessories',
+      'rollingtrays': 'Accessories',
+      'rompers': 'Apparel',
+      'rug': 'Misc',
+      'saberaccessory': 'Accessories',
+      'sandal': 'Footwear',
+      'sandals': 'Footwear',
+      'sarong': 'Apparel',
+      'scarf': 'Apparel',
+      'scarfslides': 'Apparel',
+      'scarves': 'Apparel',
+      'scarvesgloves': 'Apparel',
+      'scopedseries': 'Glass',
+      'scrunchie': 'Accessories',
+      'sherlockpipe': 'Accessories',
+      'shippingprotection': 'Misc',
+      'shirt': 'Apparel',
+      'shirts': 'Apparel',
+      'shirtsblouses': 'Apparel',
+      'shoes': 'Footwear',
+      'shorts': 'Apparel',
+      'shortsleeve': 'Apparel',
+      'sign': 'Misc',
+      'siliconeaccessorykit': 'Accessories',
+      'skate': 'Skate',
+      'skateboarddeck': 'Skate',
+      'skater': 'Skate',
+      'skirt': 'Apparel',
+      'skirts': 'Apparel',
+      'slide': 'Glass',
+      'slides': 'Glass',
+      'slurpercaps': 'Concentrates',
+      'smartrigkit': 'Kits',
+      'smokemiscellaneous': 'Accessories',
+      'smokingaccessories': 'Accessories',
+      'smokingkit': 'Kits',
+      'smokingpipe': 'Accessories',
+      'sneakers': 'Footwear',
+      'socks': 'Apparel',
+      'sockstights': 'Apparel',
+      'solidpipes': 'Accessories',
+      'spoonpipe': 'Accessories',
+      'springsale': 'Misc',
+      'standardtee': 'Apparel',
+      'statichash': 'Concentrates',
+      'steamroller': 'Glass',
+      'stevesizelovedrop': 'Glass',
+      'stevesizelovedrop2025': 'Glass',
+      'stickerpack': 'Merch',
+      'stockings': 'Apparel',
+      'storage': 'Accessories',
+      'subscriptionbox': 'Misc',
+      'sunglasses': 'Accessories',
+      'sweater': 'Apparel',
+      'sweaterdress': 'Apparel',
+      'sweaters': 'Apparel',
+      'sweatpants': 'Apparel',
+      'sweats': 'Apparel',
+      'sweatshirt': 'Apparel',
+      'swim': 'Apparel',
+      'swimsuit': 'Apparel',
+      'syrup': 'Edible',
+      'syrupbuilder3for60': 'Edible',
+      'tableware': 'Misc',
+      'tank': 'Apparel',
+      'tarotcards': 'Misc',
+      'tee': 'Apparel',
+      'teelsprinted': 'Apparel',
+      'tees': 'Apparel',
+      'teessprinted': 'Apparel',
+      'terpjars': 'Accessories',
+      'terppearl': 'Concentrates',
+      'terppearls': 'Concentrates',
+      'terppillar': 'Accessories',
+      'terpslurper': 'Concentrates',
+      'terpslurpers': 'Concentrates',
+      'terptimer': 'Accessories',
+      'tether': 'Accessories',
+      'thcadiamonds': 'Concentrates',
+      'thedopestbattery': 'Accessories',
+      'thedopestcubesgummies': 'Edible',
+      'tights': 'Apparel',
+      'tincture': 'Tinctures',
+      'tinctures': 'Tinctures',
+      'tool': 'Accessories',
+      'tools': 'Accessories',
+      'topical': 'Topicals',
+      'topicals': 'Topicals',
+      'tops': 'Apparel',
+      'toque': 'Beanies',
+      'toro': 'Glass',
+      'tote': 'Bags',
+      'totebag': 'Bags',
+      'towel': 'Misc',
+      'toy': 'Misc',
+      'tray': 'Accessories',
+      'trays': 'Accessories',
+      'trousers': 'Apparel',
+      'trousersshorts': 'Apparel',
+      'trunks': 'Apparel',
+      'tshirt': 'Apparel',
+      'tshirts': 'Apparel',
+      'tunic': 'Apparel',
+      'umbrella': 'Misc',
+      'uncategorized': 'Misc',
+      'vape': 'Vaporizers',
+      'vapeaccessory': 'Accessories',
+      'vapecartridge': 'Vaporizers',
+      'vapedisposable': 'Vaporizers',
+      'vapes': 'Vaporizers',
+      'vaporizer': 'Vaporizers',
+      'vaporizeraccessories': 'Accessories',
+      'vaporizers': 'Vaporizers',
+      'vase': 'Misc',
+      'veil': 'Apparel',
+      'vest': 'Apparel',
+      'vtgtops': 'Apparel',
+      'wallet': 'Bags',
+      'wallpaper': 'Misc',
+      'warranty': 'Misc',
+      'waterpipe': 'Glass',
+      'waterpipes': 'Glass',
+      'waterpipesrigs': 'Glass',
+      'wedges': 'Footwear',
+      'weekendbag': 'Bags',
+      'wholesaleaccessories': 'Accessories',
+      'wholesalemodels': 'Glass',
+      'wideleg': 'Apparel',
+      'womensblackstyletshirt': 'Apparel',
+      'womensheathergreystyletshirt': 'Apparel',
+      'wovenlstop': 'Apparel',
+      'wovensstop': 'Apparel',
+      'zippo': 'Accessories',
+};
+
+// Shelf redesign group remap, mirroring the Python canonicaliser so the client
+// agrees with the server on which shelf a main belongs to:
+//   Glass → Gear, Puffco → Gear, Dab Mats → Gear, Kits → Gear, Misc → Gear,
+//   Skate → Clothing, Merch → Clothing.
+const MAIN_REMAP = {
+  puffco: 'Gear',
+  skate: 'Clothing',
+  misc: 'Gear',
+  dabmats: 'Gear',
+  glass: 'Gear',
+  merch: 'Clothing',
+  kits: 'Gear',
+};
+
 function normalizeCategoryMain(cat) {
   const raw = String(cat || '').split(' · ')[0].trim();
-
-  const map = {
-    // Apparel — all map to "Apparel" as main category, subcategory preserved
-    'TEE SS PRINTED': 'Apparel',
-    'TEE LS PRINTED': 'Apparel',
-    'Tee': 'Apparel',
-    'KNIT SS TOP': 'Apparel',
-    'KNIT LS TOP': 'Apparel',
-    'KNIT TANK CUT/ SEW': 'Apparel',
-    'WOVEN SS TOP': 'Apparel',
-    'WOVEN LS TOP': 'Apparel',
-    'Crewneck Fleece Printed': 'Apparel',
-    'Crewneck Printed Fleece': 'Apparel',
-    'Hoody Fleece Printed': 'Apparel',
-    'Hoodie': 'Apparel',
-    'Hoodies': 'Apparel',
-    'HOODED FLEECE CUT/ SEW': 'Apparel',
-    'HOODED FLEECE CUT/SEW': 'Apparel',
-    'OUTERWEAR JACKET CUT/SEW': 'Apparel',
-    'OUTERWEAR WINDBREAKER CUT/ SEW': 'Apparel',
-    'OUTERWEAR WINDBREAKER CUT/SEW': 'Apparel',
-    'Jackets': 'Apparel',
-    'Pants': 'Apparel',
-    'Shorts': 'Apparel',
-    'BOTTOM KNIT PANT': 'Apparel',
-    'BOTTOM KNIT SHORT': 'Apparel',
-    'BOTTOM PRINTED PANT': 'Apparel',
-    'BOTTOM PRINTED SHORT': 'Apparel',
-    'BOTTOM SWIM TRUNK': 'Apparel',
-    'BOTTOM WINDBREAKER PANT': 'Apparel',
-    'BOTTOM WOVEN PANT': 'Apparel',
-    'Shirts': 'Apparel',
-    'Jersey': 'Apparel',
-    'Apparel': 'Apparel',
-    'Boxers': 'Apparel',
-    'Socks': 'Apparel',
-
-    // Headwear — consolidate hat/beanie variants
-    'ACC DAD HAT': 'Hats',
-    'ACC SNAPBACK': 'Hats',
-    'ACC SNAPBACK HAT': 'Hats',
-    'ACC TRUCKER HAT': 'Hats',
-    'Headwear': 'Hats',
-    'Beanies': 'Beanies',
-    'Acc Knit Beanie': 'Beanies',
-
-    // Bags & Footwear
-    'Bags': 'Bags',
-    'Acc Shoulder Bag': 'Bags',
-    'Acc Woven Backpack': 'Bags',
-    'Acc Footwear': 'Footwear',
-    'Footwear': 'Footwear',
-    'Acc Miscellaneous': 'Accessories',
-
-    // Cannabis — already well structured with " · " subcategories
-    'Accessories': 'Accessories',
-    'Concentrate': 'Concentrates',
-    'Edible': 'Edibles',
-    'Flower': 'Flower',
-    'Pre-Rolls': 'Pre-Rolls',
-    'Tincture': 'Tinctures',
-    'Topicals': 'Topicals',
-    'Vaporizers': 'Vaporizers',
-
-    // Other
-    'Glass': 'Glass',
-    'Puffco': 'Puffco',
-    'Kits': 'Kits',
-    'Merch': 'Merch',
-    'Misc': 'Misc',
-    'Gift Cards': 'Gift Cards',
-    'Deck': 'Skate',
-    'Dab Mats': 'Dab Mats',
-    'Skate': 'Skate',
-    'Smoke Miscellaneous': 'Accessories',
-    'Zippo': 'Accessories',
-    'Knits': 'Knitwear',
-    'Acc Miscellaneous': 'Accessories',
-  };
-
-  return map[raw] || raw;
+  let main = MAIN_ALIASES[categoryKey(raw)] || raw;
+  // Apply the shelf redesign remap so "Glass" and "Puffco" show as "Gear",
+  // "Skate" and "Merch" as "Clothing", etc.
+  return MAIN_REMAP[categoryKey(main)] || main;
 }
 
 function categoryMain(cat) {
   return normalizeCategoryMain(cat);
+}
+
+// The sidebar unpacks every "Gear · <sub>" pair back to its own shelf ("Gear ·
+// bongs" -> "bongs"), so the group keys it renders are the former shelf names.
+// filterProducts has to do the same unpacking on both sides or a row for a
+// bare shelf (hash, cartridges, disposables, ...) filters to zero: the product
+// side still says "Gear · hash" while the selection says "hash".
+function sidebarMain(cat) {
+  const main = normalizeCategoryMain(cat);
+  const sub = normalizeCategorySub(cat);
+  if (main === 'Gear' && sub) {
+    const firstPart = String(cat || '').split(' · ')[0].trim();
+    if (firstPart !== 'Gear') return normalizeCategoryMain(firstPart);
+    return normalizeCategoryMain(sub);
+  }
+  return main;
+}
+
+// The category shelf splits into three visual sections - cannabis products,
+// clothing and accessories, and gear (glass, Puffco hardware, dab mats,
+// kits, and most of the catch-all) - so a browser can jump straight to the
+// kind of thing they are shopping for instead of wading through the
+// alphabetised rows. The sets live at module scope so sectionForMain can
+// consult them too.
+const SECTION_CANNABIS = new Set([
+  'Flower', 'Pre-Rolls', 'Concentrates', 'Edible', 'Vaporizers', 'Tinctures',
+  'Topicals', 'Oral', 'Gift Cards',
+]);
+const SECTION_CLOTHING = new Set([
+  'Apparel', 'Hats', 'Beanies', 'Bags', 'Footwear', 'Knitwear', 'Merch', 'Skate',
+  'Clothing',
+]);
+// The backend folds Glass, Puffco, Dab Mats, Kits and Misc onto "Gear" and then
+// unpacks each pair back to its own shelf ("Gear · bongs" -> "bongs"), so the
+// group keys the sidebar renders are the former shelf names. Map one back to
+// its section divider for grouping; anything not on a known shelf is Gear.
+const GEAR_SHELVES = new Set([
+  'glass', 'puffco', 'dabmats', 'dab mats', 'kits', 'misc',
+]);
+function sectionForMain(main) {
+  if (SECTION_CANNABIS.has(main)) return 'Cannabis';
+  if (SECTION_CLOTHING.has(main)) return 'Clothing';
+  if (main === 'Gear' || GEAR_SHELVES.has(categoryKey(main))) return 'Gear';
+  return 'Gear';
+}
+
+// The Gear section is a catch-all: the backend folds glass, Puffco hardware,
+// dab mats, smoking kits and the catch-all shelf onto it, and each arrives as
+// its own row. Group those rows under collapsible family headers (Glass, Puffco,
+// Dab Mats, Kits, Misc) so the section reads like a shop rather than one
+// alphabetised wall. The keys are the normalised shelf names
+// (categoryKey strips punctuation and case), matching the group keys the
+// sidebar renders. The Accessories shelf is folded into these families - glass
+// parts go to Glass, vape parts to Puffco, dab tools to Dab Mats, rolling
+// supplies to Kits, and everything else to Misc - so it stops being a
+// separate catch-all. Shelves that belong to a cannabis family
+// (cartridges, disposables, hash, rosin) stay under their own header.
+const GEAR_FAMILIES = {
+  "Glass": new Set([
+    "adapters", "ashcatchers", "beakers", "bongs", "bongsrigs", "bowls",
+    "bubblers", "chillum", "cleaningsolutions", "downstems", "glasstips", "glassware",
+    "hammers", "headyglass", "illadelphglass", "jointbubblers", "pipeaccessories", "pipes",
+    "protection", "replacementparts", "rigs", "screens", "signatureseries", "straights",
+    "tips", "wholesaleaccessories", "wholesalemodels",
+  ]),
+  "Puffco": new Set([
+    "batteries", "batteriesatomizers", "chargers", "charmsjoysticks", "devices", "mouthpieces",
+    "peak", "peakaccessories", "peakattachments", "peakpro", "peakproaccessories", "pivot",
+    "pivotaccessories", "proxyaccessories", "proxycore", "proxycoreaccessories", "puffcoaccessories", "vapeaccessories",
+  ]),
+  "Dab Mats": new Set([
+    "dabmats", "dabstraws", "dabtools", "mats", "siliconeaccessories", "tethers",
+    "tools",
+  ]),
+  "Kits": new Set([
+    "cones", "papersrollingsupplies", "rigkits", "rollingmachine", "rollingpapers", "rollingtrays",
+    "smokingkits", "trays",
+  ]),
+  "Misc": new Set([
+    "ashtrays", "beauty", "bluntsupplies", "bundle", "carstyling", "collabs",
+    "deals", "directsale", "drops", "dugouts", "expiviproductreplica", "eyewear",
+    "fungames", "grinders", "hairaccessories", "homedecor", "jewelry", "jointcases",
+    "jointholders", "lightercases", "lighters", "miscellaneous", "mothershipmeltdown", "other",
+    "pearls", "pomade", "sale", "smokingaccessories", "storage", "wraps",
+  ]),
+};
+function gearFamilyFor(main) {
+  const key = categoryKey(main);
+  for (const [family, shelves] of Object.entries(GEAR_FAMILIES)) {
+    if (shelves.has(key)) return family;
+  }
+  return null;
 }
 
 function categorySub(cat) {
@@ -3603,19 +4470,563 @@ function categorySub(cat) {
   return parts.length > 1 ? parts.slice(1).join(' · ').trim() : cat;
 }
 
-// Normalize subcategory names to merge spacing/case variants
+// Subcategory labels are corrected for case, spacing and spelling, and obvious
+// variants are merged ("Hoodie"/"Hoodies", "Smalls"/"small buds") so one shelf
+// does not split into several rows because two stores typed it differently.
+const SUB_ALIASES = {
+      '14gramscheap': 'ounce deals',
+      '14gramssmalls': 'ounce deals',
+      '14gsmalls2pack27gpacks': 'ounce deals',
+      '15gvapecartridge': 'cartridges',
+      '1gthcacartridge': 'cartridges',
+      '2gdualflavordisposable': 'disposables',
+      '2gliquiddiamonds': 'diamonds',
+      '2packsmalls1ounce': 'ounce deals',
+      '2pcset': 'Bundle',
+      '35gdepflowerpack': 'ounce deals',
+      '45mmbeakers': 'beakers',
+      '45mmminicollinsbeakers': 'beakers',
+      '55smallsounce': 'ounce deals',
+      '5mmbeakers': 'beakers',
+      '5mmstraights': 'straights',
+      '7gramspremiumflower': 'premium',
+      '7mmbeakers': 'beakers',
+      '7mmminibeaker': 'beakers',
+      '7mmscopedminibeaker': 'beakers',
+      '9mmbeakers': 'beakers',
+      'accdadhat': 'Dad Hat',
+      'accesory': 'miscellaneous',
+      'accfootwear': 'Footwear',
+      'accknitbeanie': 'Knit Beanie',
+      'accmiscellaneous': 'miscellaneous',
+      'accshoulderbag': 'Shoulder Bags',
+      'accsnapback': 'Snapbacks',
+      'accsnapbackhat': 'Snapback Hats',
+      'acctruckerhat': 'Trucker Hats',
+      'accwovenbackpack': 'Woven Backpacks',
+      'active': 'Activewear',
+      'adapters': 'adapters',
+      'allinone': 'all-in-one',
+      'anklesocks': 'Ankle Socks',
+      'apparel': 'Clothing',
+      'applicators': 'applicators',
+      'archivessale': 'Sale',
+      'ashcatchers': 'ash catchers',
+      'ashtrays': 'ashtrays',
+      'assurance': 'Other',
+      'atomizer': 'batteries & atomizers',
+      'backpack': 'Backpacks',
+      'badder': 'badder',
+      'bags': 'Bags',
+      'bagswallets': 'Wallets',
+      'balms': 'balms',
+      'bangerbasket': 'quartz',
+      'bar': 'bars',
+      'batteries': 'batteries',
+      'beads': 'jewelry',
+      'beaker': 'beakers',
+      'beakers': 'beakers',
+      'beanie': 'Beanies',
+      'beanies': 'Beanies',
+      'bedding': 'Home & Decor',
+      'bellbottoms': 'Flared Pants',
+      'belt': 'Belts',
+      'belts': 'Belts',
+      'beltsharnesses': 'Belts',
+      'beverage': 'drinks',
+      'bikini': 'Swim',
+      'blankets': 'Home & Decor',
+      'blazer': 'Jackets',
+      'blouse': 'Blouses',
+      'blowout': 'Sale',
+      'bluntbubbler': 'bongs & rigs',
+      'blunttips': 'blunt supplies',
+      'bobmarley': 'smoking accessories',
+      'bodycon': 'Corsets',
+      'bodyoil': 'body oil',
+      'bodysuit': 'Bodysuits',
+      'bolero': 'Jackets',
+      'bong': 'bongs',
+      'bongs': 'bongs',
+      'bongsdabrigs': 'bongs & rigs',
+      'boots': 'Boots',
+      'bootsbooties': 'Boots',
+      'bottomknitpant': 'Knit Pants',
+      'bottomknitshort': 'Knit Shorts',
+      'bottomprintedpant': 'Printed Pants',
+      'bottomprintedshort': 'Printed Shorts',
+      'bottomswimtrunk': 'Swim Trunks',
+      'bottomwindbreakerpant': 'Windbreaker Pants',
+      'bottomwovenpant': 'Woven Pants',
+      'bowlpiece': 'bowls',
+      'bowls': 'bowls',
+      'boxers': 'Boxers',
+      'boxstickers': 'stickers',
+      'bralet': 'Lingerie',
+      'briq': 'BRIQ',
+      'bubblerdanklins': 'bongs & rigs',
+      'bubblers': 'bubblers',
+      'budder': 'budder',
+      'budlets': 'small buds',
+      'buildyourownbigspremiumounce': 'ounce deals',
+      'bulkflower': 'bulk flower',
+      'bundle': 'Bundle',
+      'bundleset': 'Bundle',
+      'candy': 'candy',
+      'cannabuttermaker': 'silicone accessories',
+      'canvas': 'Home & Decor',
+      'capbundle': 'Headwear',
+      'caps': 'Headwear',
+      'capsules': 'capsules',
+      'capsulestablets': 'capsules & tablets',
+      'caramel': 'candy',
+      'cardigan': 'Cardigans',
+      'cardigans': 'Cardigans',
+      'carstyling': 'Car Styling',
+      'cartridges': 'cartridges',
+      'case': 'storage',
+      'chargers': 'chargers',
+      'chews': 'chews',
+      'chillstraw': 'pipe accessories',
+      'chillum': 'chillum',
+      'chocolates': 'chocolates',
+      'cleaningproducts': 'cleaning solutions',
+      'cleaningsolutions': 'cleaning solutions',
+      'clearance': 'Sale',
+      'clearmodels': 'heady glass',
+      'clearmodels2nd': 'heady glass',
+      'clearslides': 'heady glass',
+      'clearsolidpipes': 'pipe accessories',
+      'cloak': 'Coats',
+      'clothing': 'Clothing',
+      'clothingdropship': 'Clothing',
+      'coasters': 'Home & Decor',
+      'coat': 'Coats',
+      'coats': 'Coats',
+      'coinpurse': 'Coin Purses',
+      'collabs': 'Collabs',
+      'collinsbeakers': 'beakers',
+      'colormodels': 'heady glass',
+      'concentratesoil': 'oil',
+      'cones': 'cones',
+      'container': 'storage',
+      'cookingbaking': 'cooking & baking',
+      'corset': 'Corsets',
+      'corsets': 'Corsets',
+      'costumes': 'Costumes',
+      'creepers': 'Creepers',
+      'crewneckfleeceprinted': 'Crewneck Fleece',
+      'crewneckprintedfleece': 'Crewneck Fleece',
+      'croptop': 'Crop Tops',
+      'crossbody': 'Cross Body',
+      'crumble': 'crumble',
+      'cup': 'Home & Decor',
+      'curedresincartridge': 'cured resin cartridge',
+      'curedresindisposable': 'cured resin disposable',
+      'currentcustomdrop': 'Drops',
+      'currentdrops': 'Drops',
+      'dabbingaccessories': 'wholesale accessories',
+      'dabbingmat': 'mats',
+      'dabmats': 'dab mats',
+      'dabstraw': 'dab straws',
+      'dabstraws': 'dab straws',
+      'dabtools': 'dab tools',
+      'dailydeals': 'Deals',
+      'danklincoil': 'downstems',
+      'deals': 'Deals',
+      'dealsdrypipes': 'pipe accessories',
+      'dealsgear': 'Deals',
+      'deck': 'decks',
+      'decor': 'Home & Decor',
+      'denim': 'Pants',
+      'devices': 'devices',
+      'diecutstickers': 'stickers',
+      'directsale': 'Direct Sale',
+      'disposables': 'disposables',
+      'dissolvables': 'dissolvables',
+      'downstems': 'downstems',
+      'dresses': 'Dresses',
+      'drinks': 'drinks',
+      'drinkware': 'Home & Decor',
+      'dryherbpipe': 'pipe accessories',
+      'drypipe': 'pipe accessories',
+      'duffle': 'Duffles',
+      'dugout': 'dugouts',
+      'duster': 'Coats',
+      'earrings': 'jewelry',
+      'edible': 'Edible',
+      'electricbong': 'bongs & rigs',
+      'electricpipe': 'pipe accessories',
+      'electronicdabtool': 'dab tools',
+      'elite': 'Other',
+      'encalmodiscashcatchers': 'ash catchers',
+      'expiviproductreplica': 'Expivi Product Replica',
+      'extensions': 'Other',
+      'extrassale': 'Sale',
+      'eyeliner': 'Beauty',
+      'eyes': 'Beauty',
+      'eyeshadow': 'Beauty',
+      'facebody': 'Beauty',
+      'fedora': 'Headwear',
+      'flares': 'Flared Pants',
+      'flats': 'Flats',
+      'flipflop': 'Slides',
+      'flowervarietypackpremium': 'premium',
+      'footwear': 'Footwear',
+      'frostedbeakers': 'beakers',
+      'frostedsignaturestraights': 'beakers',
+      'fullcolorpremiumsignaturebeakers': 'beakers',
+      'fullcolorscopedbeakers': 'beakers',
+      'fullcolorsignature': 'signature series',
+      'fullsize': 'signature series',
+      'fungames': 'Fun & Games',
+      'gasmask': 'smoking accessories',
+      'giftwithpurchase': 'Other',
+      'glassaccessories': 'bongs & rigs',
+      'glassattachment': 'bongs & rigs',
+      'glassbong': 'bongs & rigs',
+      'glassbubbler': 'bongs & rigs',
+      'glasspipe': 'pipe accessories',
+      'glassrig': 'bongs & rigs',
+      'glasstip': 'glass tips',
+      'glasstips': 'glass tips',
+      'glasstop': 'bongs & rigs',
+      'glassware': 'glassware',
+      'glasswaterpipe': 'bongs & rigs',
+      'gloves': 'Scarves & Gloves',
+      'glycerinestraw': 'dab straws',
+      'gravityinfuser': 'bongs & rigs',
+      'gravitypipe': 'bongs & rigs',
+      'grinders': 'grinders',
+      'groundflower': 'ground flower',
+      'gummies': 'gummies',
+      'gummysharks': 'gummies',
+      'h': 'Other',
+      'hair': 'Beauty',
+      'hairaccessories': 'hair accessories',
+      'hairaccessory': 'hair accessories',
+      'hammers': 'hammers',
+      'handbag': 'Handbags',
+      'handbags': 'Handbags',
+      'handmadebelts': 'Belts',
+      'handmadehats': 'Headwear',
+      'handpipe': 'pipe accessories',
+      'handpipes': 'pipe accessories',
+      'hardcandy': 'hard candy',
+      'harness': 'Belts',
+      'harnesses': 'Belts',
+      'hash': 'hash',
+      'hat': 'Hats',
+      'hats': 'Hats',
+      'hatsscarvesgloves': 'Scarves & Gloves',
+      'headwear': 'Headwear',
+      'headyglass': 'heady glass',
+      'heavyhitbeakers': 'beakers',
+      'heels': 'Heels',
+      'hexmat': 'mats',
+      'highlightsection': 'Other',
+      'hologramtoro': 'heady glass',
+      'homeaccessory': 'Home & Decor',
+      'homestuff': 'Home & Decor',
+      'homeware': 'Home & Decor',
+      'hoodedfleececutsew': 'Hooded Fleece',
+      'hoodie': 'Hoodies',
+      'hoodies': 'Hoodies',
+      'hoodiessweats': 'Sweaters',
+      'hoodyfleeceprinted': 'Hooded Fleece',
+      'iceguyshash': 'hash',
+      'icepackforshipping': 'Other',
+      'illadelphcoils': 'illadelph glass',
+      'illadelphstraighttubes': 'illadelph glass',
+      'illadelphtubes': 'illadelph glass',
+      'incense': 'Other',
+      'indoorflower': 'indoor flower',
+      'inflatable': 'Other',
+      'infused': 'infused',
+      'infusedflower': 'infused-flower',
+      'jacket': 'Jackets',
+      'jackets': 'Jackets',
+      'jars': 'storage',
+      'jersey': 'Jersey',
+      'jewelry': 'jewelry',
+      'joggershorts': 'Shorts',
+      'jointbubblers': 'joint bubblers',
+      'jointcases': 'joint cases',
+      'jointholders': 'joint holders',
+      'juicyjcollab': 'Collabs',
+      'jumpsuit': 'Jumpsuits',
+      'jumpsuits': 'Jumpsuits',
+      'jumpsuitsplaysuits': 'Jumpsuits',
+      'jumpsuitsrompers': 'Jumpsuits',
+      'keychain': 'miscellaneous',
+      'kids': 'Kids',
+      'kit': 'kits',
+      'kitchenbar': 'Home & Decor',
+      'kits': 'kits',
+      'knitdress': 'Knit Dress',
+      'knitlstop': 'Long Sleeve Knit Top',
+      'knits': 'knits',
+      'knitsstop': 'Short Sleeve Knit Top',
+      'knittankcutsew': 'Knit Tank',
+      'kuties': 'Kids',
+      'lanyard': 'miscellaneous',
+      'leggings': 'Leggings',
+      'legwarmers': 'Leg Warmers',
+      'lighter3pack': 'lighters',
+      'lightercases': 'lighter cases',
+      'lighterholder': 'lighters',
+      'lighters': 'lighters',
+      'lights': 'Other',
+      'lingerie': 'Lingerie',
+      'lingeriesleepwear': 'Lingerie',
+      'lipliner': 'Beauty',
+      'lipproduct': 'Beauty',
+      'lips': 'Beauty',
+      'lipstick': 'Beauty',
+      'liquiddiamonds': 'diamonds',
+      'liveresin': 'live resin',
+      'liveresincartridge': 'live resin cartridge',
+      'liveresindisposable': 'live resin disposable',
+      'liveresingummies': 'live resin gummies',
+      'liverosin': 'live rosin',
+      'liverosindisposable': 'live rosin disposable',
+      'liverosingummies': 'live rosin gummies',
+      'longsleeve': 'Tops',
+      'longsleevetee': 'T-Shirts',
+      'longsocks': 'Socks',
+      'lotions': 'lotions',
+      'luggage': 'Luggage',
+      'marbles': 'jewelry',
+      'maxi': 'Dresses',
+      'membership': 'Other',
+      'mensblackstyletshirt': 'Sets',
+      'mensindigostyletshirt': 'Sets',
+      'mensmilitarygreenstyletshirt': 'Sets',
+      'messenger': 'Messenger Bags',
+      'midi': 'Dresses',
+      'mini': 'Dresses',
+      'minibuds': 'small buds',
+      'mints': 'mints',
+      'mirrors': 'Home & Decor',
+      'mixedbuds': 'mixed buds',
+      'modl': 'modül',
+      'modlaccessories': 'modül',
+      'moonrocks': 'moonrocks',
+      'mothershipmeltdown': 'Mothership Meltdown',
+      'mousepad': 'dab mats',
+      'mousepads': 'dab mats',
+      'mouthpieces': 'mouthpieces',
+      'mug': 'Home & Decor',
+      'mystery1gdisposable': 'disposables',
+      'mysterymarble': 'jewelry',
+      'necklace': 'jewelry',
+      'necklaces': 'jewelry',
+      'necklaceschokers': 'jewelry',
+      'nectarcollector': 'quartz',
+      'newproducts': 'Other',
+      'officialpuffco': 'puffco accessories',
+      'opalspheres': 'jewelry',
+      'other': 'Other',
+      'othershit': 'Other',
+      'outdoor': 'Other',
+      'outerwear': 'Outerwear',
+      'outerwearjacketcutsew': 'Jacket',
+      'outerwearwindbreakercutsew': 'Windbreaker',
+      'packs': 'packs',
+      'pallets': 'Other',
+      'pants': 'Pants',
+      'panty': 'Lingerie',
+      'papersrollingsupplies': 'papers & rolling supplies',
+      'pastiestatts': 'Lingerie',
+      'patch': 'transdermal patches',
+      'patches': 'pins & patches',
+      'peak': 'peak',
+      'peakattachment': 'peak attachments',
+      'peakpro': 'peak pro',
+      'pearls': 'pearls',
+      'percolator': 'bongs & rigs',
+      'pin': 'pins & patches',
+      'pinbackbuttons': 'pins & patches',
+      'pipes': 'pipes',
+      'pivot': 'pivot',
+      'platformboots': 'Boots',
+      'platforms': 'Platforms',
+      'playsuit': 'Jumpsuits',
+      'pods': 'pods',
+      'pomade': 'Pomade',
+      'popcorn': 'popcorn',
+      'posters': 'posters',
+      'preground': 'pre-ground',
+      'premium': 'premium',
+      'premiumdepflower': 'premium',
+      'premiumdepflower95ounce': 'premium',
+      'premiumseries': 'signature series',
+      'preparationtray': 'rolling trays',
+      'preroll': 'singles',
+      'prerollpack': 'packs',
+      'prismhalofamfavorites': 'bongs & rigs',
+      'product': 'Other',
+      'protection': 'protection',
+      'proxycore': 'proxy core',
+      'puffcoaccessories': 'puffco accessories',
+      'puffcoattachments': 'peak attachments',
+      'puffcocharms': 'charms & joysticks',
+      'puffcodrytops': 'mouthpieces',
+      'puffcojoysticks': 'charms & joysticks',
+      'puffcopivotmouthpieces': 'mouthpieces',
+      'puffcoproxyattachments': 'peak attachments',
+      'pumkinpiecartandbattery': 'disposables',
+      'qpsmallsvarietypack': 'ounce deals',
+      'quartzbanger': 'quartz',
+      'ratio': 'ratio',
+      'reloadpod': 'pods',
+      'resin': 'live resin',
+      'rigs': 'rigs',
+      'rollingmachine': 'rolling machine',
+      'rollingmachines': 'rolling machine',
+      'rollingpapers': 'rolling papers',
+      'rollingtrays': 'rolling trays',
+      'rompers': 'Jumpsuits',
+      'rosin': 'rosin',
+      'rso': 'rso',
+      'rug': 'Home & Decor',
+      'salve': 'balms',
+      'sandal': 'Sandals',
+      'sandals': 'Sandals',
+      'sarong': 'Swim',
+      'sauce': 'sauce',
+      'scarf': 'Scarves & Gloves',
+      'scarfslide': 'Scarves & Gloves',
+      'scarfslides': 'Scarves & Gloves',
+      'scarvesgloves': 'Scarves & Gloves',
+      'scopedseries': 'signature series',
+      'screens': 'screens',
+      'scrunchie': 'hair accessories',
+      'seltzer': 'drinks',
+      'shaketrim': 'shake & trim',
+      'shatter': 'shatter',
+      'sherlockpipe': 'pipe accessories',
+      'shippingprotection': 'Other',
+      'shirt': 'Shirts',
+      'shirts': 'Shirts',
+      'shirtsblouses': 'Shirts',
+      'shoes': 'Footwear',
+      'shorts': 'Shorts',
+      'shortsleeve': 'Tops',
+      'shortsleevetee': 'T-Shirts',
+      'sign': 'Other',
+      'siliconeaccessorykit': 'silicone accessories',
+      'singleinfusedpreroll': 'infused',
+      'singles': 'singles',
+      'skateboarddeck': 'decks',
+      'skater': 'skater',
+      'skirt': 'Skirts',
+      'skirts': 'Skirts',
+      'slurpercaps': 'quartz',
+      'smallbuds': 'small buds',
+      'smalls': 'small buds',
+      'smallspopcorn': 'popcorn',
+      'smartrigkit': 'rig kits',
+      'smokemiscellaneous': 'miscellaneous',
+      'smokingaccessories': 'smoking accessories',
+      'smokingkit': 'smoking kits',
+      'smokingpipe': 'pipe accessories',
+      'sneakers': 'Footwear',
+      'socks': 'Socks',
+      'sockstights': 'Socks & Tights',
+      'solidpipes': 'pipe accessories',
+      'spoonpipe': 'pipe accessories',
+      'spray': 'sprays',
+      'sprays': 'sprays',
+      'springsale': 'Sale',
+      'standardtee': 'T-Shirts',
+      'statichash': 'hash',
+      'steamroller': 'bongs & rigs',
+      'stickerpack': 'stickers',
+      'stiq': 'STIQ',
+      'stockings': 'Tights',
+      'storagecontainers': 'storage',
+      'sugar': 'sugar',
+      'sunglasses': 'eyewear',
+      'suppositories': 'suppositories',
+      'sweater': 'Sweaters',
+      'sweaterdress': 'Knit Dress',
+      'sweaters': 'Sweaters',
+      'sweatpants': 'Pants',
+      'sweats': 'Sweaters',
+      'sweatshirt': 'Sweaters',
+      'swim': 'Swim',
+      'swimsuit': 'Swim',
+      'syringe': 'applicators',
+      'syrup': 'syrups',
+      'syrupbuilder3for60': 'syrups',
+      'tableware': 'Home & Decor',
+      'tank': 'Tops',
+      'tarotcards': 'Fun & Games',
+      'tee': 'T-Shirts',
+      'teelsprinted': 'T-Shirts',
+      'tees': 'T-Shirts',
+      'teessprinted': 'T-Shirts',
+      'terpjars': 'storage',
+      'terppillar': 'dab tools',
+      'terpsugar': 'sugar',
+      'terptimer': 'dab tools',
+      'tether': 'tethers',
+      'thcadiamonds': 'diamonds',
+      'thedopestbattery': 'vape accessories',
+      'thedopestcubesgummies': 'gummies',
+      'tights': 'Tights',
+      'tincture': 'tincture',
+      'tips': 'tips',
+      'tools': 'tools',
+      'tops': 'Tops',
+      'toque': 'Beanies',
+      'toro': 'bongs & rigs',
+      'tote': 'Totes',
+      'totebag': 'Totes',
+      'towel': 'Home & Decor',
+      'toy': 'Fun & Games',
+      'transdermalpatches': 'transdermal patches',
+      'trays': 'trays',
+      'trousers': 'Trousers',
+      'trousersshorts': 'Trousers',
+      'trunks': 'Swim',
+      'tshirt': 'T-Shirts',
+      'tshirts': 'T-Shirts',
+      'tunic': 'Tops',
+      'umbrella': 'Other',
+      'unflavored': 'unflavored',
+      'vapeaccessory': 'vape accessories',
+      'vapecartridge': 'cartridges',
+      'vapedisposable': 'disposables',
+      'vaporizeraccessories': 'vape accessories',
+      'vase': 'Home & Decor',
+      'veil': 'Veil',
+      'vest': 'Vests',
+      'vtgtops': 'Tops',
+      'wallet': 'Wallets',
+      'wallpaper': 'Home & Decor',
+      'warranty': 'Other',
+      'waterpipesrigs': 'bongs & rigs',
+      'wax': 'wax',
+      'wedges': 'Heels',
+      'weekendbag': 'Weekend Bags',
+      'wholeflower': 'whole flower',
+      'wholesaleaccessories': 'wholesale accessories',
+      'wholesalemodels': 'wholesale models',
+      'wideleg': 'Pants',
+      'womensblackstyletshirt': 'Sets',
+      'womensheathergreystyletshirt': 'Sets',
+      'wovenlstop': 'Long Sleeve Woven Top',
+      'wovensstop': 'Short Sleeve Woven Top',
+      'wraps': 'wraps',
+      'zippo': 'lighters',
+};
+
 function normalizeCategorySub(cat) {
   const raw = categorySub(cat);
 
-  const map = {
-    // Fix spacing variants
-    'OUTERWEAR WINDBREAKER CUT/SEW': 'Windbreaker',
-    'OUTERWEAR WINDBREAKER CUT/ SEW': 'Windbreaker',
-    'HOODED FLEECE CUT/SEW': 'Hooded Fleece',
-    'HOODED FLEECE CUT/ SEW': 'Hooded Fleece',
-  };
-
-  return map[raw] || raw;
+  return SUB_ALIASES[categoryKey(raw)] || raw;
 }
 
 const EXPANDED_GROUPS_KEY = 'dispo-category-groups';
@@ -3678,20 +5089,26 @@ function setExpandedGroup(main) {
   } catch (e) { /* private mode: expansion simply is not remembered */ }
 }
 
-// Open only `openMain` and collapse every other group. Called from every place
-// the active category changes so the open group always follows the selection.
-// The group name is stored raw, matching the DOM data-group attribute and the
-// getExpandedGroups() set used when the sidebar is built.
-function applyCategoryAccordion(openMain) {
-  document.querySelectorAll('#categoryNavList .nav-group').forEach(wrap => {
-    const isOpen = wrap.dataset.group === openMain;
-    wrap.classList.toggle('open', isOpen);
-    // Keep the collapsed/expanded state announced correctly after each toggle.
-    const header = wrap.querySelector('.nav-group-header');
-    if (header) header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-  });
-  setExpandedGroup(openMain || '');
-}
+// Open only `openMain` (and its Gear family, if any) and collapse every other
+  // group. Called from every place the active category changes so the open group
+  // always follows the selection. The group name is stored raw, matching the DOM
+  // data-group attribute and the getExpandedGroups() set used when the sidebar
+  // is built. `openSub` is the normalised sub when the active row is an
+  // Accessories sub-item distributed into a family, so the family header
+  // opens instead of "Accessories", which has no family of its own.
+  function applyCategoryAccordion(openMain, openSub = '') {
+    const family = openMain ? (gearFamilyFor(openMain) || (openSub ? gearFamilyFor(openSub) : '')) : '';
+    document.querySelectorAll('#categoryNavList .nav-group').forEach(wrap => {
+      const isGroup = wrap.dataset.group === openMain;
+      const isFamily = family && wrap.dataset.family === family;
+      const isOpen = isGroup || isFamily;
+      wrap.classList.toggle('open', isOpen);
+      // Keep the collapsed/expanded state announced correctly after each toggle.
+      const header = wrap.querySelector('.nav-group-header');
+      if (header) header.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+    setExpandedGroup(openMain || '');
+  }
 
 function updateFilterSelects() {
   // Mirror the sidebar state into the header selects. A group selection such
@@ -3832,12 +5249,20 @@ function filterProducts(products) {
     if (currentFilters.store && p.store_id !== currentFilters.store) return false;
     if (currentFilters.category) {
       // A group selection ("Flower") matches every subcategory beneath it,
-      // while a subcategory selection ("Flower · premium") matches exactly.
-      const selected = categoryMain(currentFilters.category);
+      // while a subcategory selection ("Apparel · Hoodies") matches every
+      // spelling of that subcategory. Both sides are normalised, so a row that
+      // merged "Hoodie" and "Hoodies" filters to both of them rather than to
+      // whichever spelling the sidebar happened to find first. Both sides are
+      // also unpacked the way the sidebar is, so a bare Gear shelf row ("hash")
+      // filters the products filed under "Gear · hash" instead of zero.
+      const selected = sidebarMain(currentFilters.category);
       if (selected === currentFilters.category) {
-        if (categoryMain(p.category) !== selected) return false;
-      } else if (p.category !== currentFilters.category) {
-        return false;
+        if (sidebarMain(p.category) !== selected) return false;
+      } else {
+        const selectedSub = normalizeCategorySub(currentFilters.category);
+        const pMain = sidebarMain(p.category);
+        const pSub = pMain === p.category ? '' : normalizeCategorySub(p.category);
+        if (pMain !== selected || pSub !== selectedSub) return false;
       }
     }
        if (currentFilters.brand && p.brand !== currentFilters.brand) return false;
@@ -4427,7 +5852,19 @@ function strainTypeOf(product) {
       return strain.strain_type;
     }
   }
-  return '';
+return '';
+
+}
+
+// Cannabis categories that should show strain type badges
+const CANNABIS_MAIN_CATEGORIES = new Set([
+  'Concentrates', 'Edibles', 'Flower', 'Pre-Rolls', 'Tinctures', 'Topicals', 'Vaporizers'
+]);
+
+function isCannabisProduct(product) {
+  if (!product || !product.category) return false;
+  const main = categoryMain(product.category);
+  return CANNABIS_MAIN_CATEGORIES.has(main);
 }
 
 function strainTypeLabel(type) {
@@ -4481,6 +5918,7 @@ function strainTypeIcon(type) {
 }
 
 function renderTypeBadge(product) {
+  if (!isCannabisProduct(product)) return '';
   const type = strainTypeOf(product);
   if (!type) return '';
   const strainInfo = STRAIN_TYPES[type] || { label: type };
@@ -4681,8 +6119,8 @@ function updateStats() {
                 const key = grouping(p);
                 if (!key) return;
                 if (!buckets[key]) buckets[key] = [];
-                buckets[key].push(p);
-            });
+buckets[key].push(p);
+        });
 
         const ranked = Object.entries(buckets)
             .map(([key, deals]) => ({ key: key, deals: deals, ...metric.compute(deals) }))

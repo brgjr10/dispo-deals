@@ -486,8 +486,10 @@ class DutchieScraper(BaseScraper):
             if subcategory:
                 category = f"{category} · {subcategory}" if category != "Uncategorized" else subcategory
             # Dutchie is already consistent, but a store reporting "Concentrates"
-            # would otherwise sit next to the canonical "Concentrate" shelf.
-            category = canonical_category(category)
+            # would otherwise sit next to the canonical "Concentrate" shelf. The
+            # product title is passed through so an I/S/H label keeps a filled
+            # vape in Cannabis even when the store filed it under Vaporizers.
+            category = canonical_category(category, name=name)
 
             options = product.get("Options") or []
             weight = options[0] if options and options[0] and options[0] != "N/A" else None

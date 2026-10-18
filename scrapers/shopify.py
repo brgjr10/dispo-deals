@@ -95,7 +95,9 @@ class ShopifyScraper(BaseScraper):
             store_id=self.store_config.id,
             product_id=str(product.get("id") or handle),
             name=(product.get("title") or "").strip(),
-            category=canonical_category(product_type),
+            category=canonical_category(
+                product_type, name=(product.get("title") or "").strip()
+            ),
             original_price=original,
             sale_price=sale,
             discount_pct=0.0,

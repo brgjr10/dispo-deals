@@ -9,11 +9,14 @@ from models import StoreConfig, NotificationMode
 
 @dataclass
 class ScraperConfig:
+    bigcartel: Dict[str, Any] = field(default_factory=dict)
     dutchie: Dict[str, Any] = field(default_factory=dict)
     klutch: Dict[str, Any] = field(default_factory=dict)
     magento: Dict[str, Any] = field(default_factory=dict)
     sweed: Dict[str, Any] = field(default_factory=dict)
     woocommerce: Dict[str, Any] = field(default_factory=dict)
+    shopify: Dict[str, Any] = field(default_factory=dict)
+    fourthwall: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

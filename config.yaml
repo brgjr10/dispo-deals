@@ -135,6 +135,9 @@ stores:
   # The collection is a skate shop's, so it also carries candy-branded merch.
   exclude_terms:
   - candy
+  - chew
+  - sour
+  - rotten
 - id: pure-ohio-tallmadge
   name: Pure Ohio Wellness — Tallmadge
   url: https://pureohiowellness.com/stores/tallmadge
@@ -331,7 +334,133 @@ stores:
   notification_mode: per-store
   enabled: true
   webhook_enabled: false
+- id: pinepark
+  name: Pine Park
+  url: https://pinepark.shop/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://pinepark.shop/cdn/shop/files/Pine_Park_Logo_-_Horizontal_Black_1_cb1f4203-7a64-4290-b3c8-060bee51d133.png?v=1786564199&width=500'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: hashish-la
+  name: Hashish LA
+  url: https://hashish.la/en-usd
+  scrape_interval_hours: 24
+  scraper: fourthwall
+  logo_url: 'https://imgproxy.fourthwall.dev/dCFLSJcCJ6W1d3amfe4L-icC8TxI2QveK25oy3s9PqU/w:1200/sm:1/enc/osqpEj3XuFfL2gHr/4kdTe56GLJJmAcJd/XbjAWNtr7rmqwCfs/JABZay2i_lEB-hSx/lPWsfviQ8d6j2ZLC/R3E6IDIkbVd6Xgr_/CRGoPAruEkQ6ZcGL/Snk2e1ABYVcdp3hu/exyhSqrNYYtawqwx/1QC8a7cUHKP1ae2E/6a5XABRRwjydN_pO/7czU7FAX164i9VuN/zYkrzY0SZfklWTfw/UmzZ-jaqLGLXMWIN/3mQBjEnyp7Aqtt60/y9DkUEMRKB_r6ofl.png'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+  scraper_options:
+    headers:
+      Referer: https://hashish.la/
+      Origin: https://hashish.la
+- id: the-freeze-pipe
+  name: The Freeze Pipe
+  url: https://thefreezepipe.com/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://thefreezepipe.com/cdn/shop/files/White_Logo.png?v=1614306852&width=500'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: hashish-merch
+  name: Hashish Merch
+  url: https://hashishmerch.com/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://hashishmerch.com/cdn/shop/files/hashish-side-white-removebg-preview.png?v=1775353584&width=500'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: miracle-eye
+  name: Miracle Eye
+  url: https://shopmiracleeye.com/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://shopmiracleeye.com/cdn/shop/files/Miracle_Eye_Text_Site_Logo_ea3e8ef4-1860-4331-9d26-70cabf556ba4.jpg?v=1644527234&width=600'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: free-and-easy
+  name: Free & Easy
+  url: https://www.freeandeasy.com/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://www.freeandeasy.com/cdn/shop/files/fe_shadow_logo.png?v=1733182472&width=500'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: huf-worldwide
+  name: HUF Worldwide
+  url: https://hufworldwide.com/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://cdn.shopify.com/s/files/1/0268/5180/3305/files/huf-worldwide-social-share_99d5cd04-6b8f-4174-96fd-399d0cbba668.jpg?v=1616476164'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: teamsesh
+  name: TeamSESH
+  url: https://teamsesh.bigcartel.com/
+  scrape_interval_hours: 24
+  scraper: bigcartel
+  logo_url: 'https://assets.bigcartel.com/theme_images/117428830/seshskull_site.png?auto=format&fit=max&h=195'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: borntodie
+  name: Born To Die
+  url: https://borntodie.co/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT3c7ldI1xshNwHQPsseP5OzpqlU3fR5wk9a26UV7VR4A&s=10'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: itsokay
+  name: It's Okay
+  url: https://itsokay.gg/collections/all
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ9cNKSEi6xChqKLSizUuNClxXVvvR4hZRD5Q1Gy4Lk8qCcrvL293_MeVk&s=10'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: afraidofdrowning
+  name: Afraid of Drowning
+  url: https://afraidofdrowning.com/collections/all-products-excluding-route-1
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://cdn.shopify.com/shop-assets/shopify_brokers/afraidofdrowning.myshopify.com/1699545189/logo.png?format=webp'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: dollskill
+  name: Dolls Kill
+  url: https://www.dollskill.com/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://upload.wikimedia.org/wikipedia/commons/d/d3/DOLLSKILL-LOGO_2.jpeg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
+- id: killstar
+  name: Killstar
+  url: https://www.killstar.com/
+  scrape_interval_hours: 24
+  scraper: shopify
+  logo_url: 'https://www.killstar.com/cdn/shop/files/killstar-logo.png'
+  notification_mode: per-store
+  enabled: true
+  webhook_enabled: false
 scrapers:
+  bigcartel:
+    timeout: 30
+    headers:
+      User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+      Accept: application/json
   dutchie:
     graphql_endpoint: https://api.dutchie.com/graphql
     timeout: 30
@@ -360,6 +489,23 @@ scrapers:
     headers:
       User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
       Accept: application/json
+  shopify:
+    timeout: 30
+    headers:
+      User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+      Accept: application/json, text/javascript, */*; q=0.01
+      Accept-Language: en-US,en;q=0.9
+      Cache-Control: no-cache
+      Pragma: no-cache
+      X-Requested-With: XMLHttpRequest
+  fourthwall:
+    timeout: 30
+    headers:
+      User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+      Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+      Accept-Language: en-US,en;q=0.9
+      Cache-Control: no-cache
+      Pragma: no-cache
 images:
   cache_dir: ./cache/images
   max_width: 800

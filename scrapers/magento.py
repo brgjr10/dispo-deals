@@ -246,7 +246,7 @@ class MagentoScraper(BaseScraper):
             store_id=self.store_config.id,
             product_id=str(product.get("sku") or url_key),
             name=name,
-            category=canonical_category("Accessories"),
+            category=canonical_category("Accessories", name=name),
             original_price=original,
             sale_price=sale,
             discount_pct=discount_pct,

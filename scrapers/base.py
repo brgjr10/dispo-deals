@@ -39,7 +39,13 @@ class BaseScraper(ABC):
 
     def _get_headers(self, scraper_key: str) -> Dict[str, str]:
         scraper_config = getattr(self.config.scrapers, scraper_key, {})
-        return scraper_config.get("headers", {})
+        headers = scraper_config.get("headers", {})
+        # Allow per-store header overrides via scraper_options
+        store_options = getattr(self.store_config, "scraper_options", {}) or {}
+        store_headers = store_options.get("headers", {})
+        if store_headers:
+            headers = {**headers, **store_headers}
+        return headers
 
     @abstractmethod
     def fetch_menu(self) -> List[Deal]:
