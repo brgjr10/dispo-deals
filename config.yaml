@@ -510,6 +510,9 @@ images:
   cache_dir: ./cache/images
   max_width: 800
   max_size_kb: 500
+  # How many images may be fetched and resized at the same time.
+  # Keeps a cold cache from saturating the box.
+  max_concurrent_downloads: 2
   formats:
   - jpg
   - jpeg

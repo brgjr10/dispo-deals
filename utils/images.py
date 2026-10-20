@@ -4,11 +4,13 @@ import logging
 import os
 import socket
 import requests
+import urllib3
 from io import BytesIO
 from pathlib import Path
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 from PIL import Image
+from urllib3.connection import HTTPConnection, HTTPSConnection
 
 logger = logging.getLogger(__name__)
 
@@ -74,18 +76,85 @@ def _host_resolves_only_to_public(host: str) -> tuple[bool, str | None]:
     return True, pinned
 
 
-def _pinned_url(url: str, pinned_ip: str) -> str:
-    """Rewrite the URL netloc to the pinned IP while keeping the original Host.
+class _PinnedConnectionMixin:
+    """Connect to a pre-validated IP while keeping the hostname for TLS.
 
-    Connecting directly to the validated IP defeats DNS rebind: even if the
-    name later resolves to a private address, the socket is already bound to
-    the public address we checked.
+    urllib3 keeps the name it resolves (_dns_host) apart from the name it
+    presents (host): the second one drives the SNI extension, the certificate
+    check and the Host header. Only _dns_host is aimed at the validated
+    address, so the request still names the real server - a ClientHello
+    without the right server name is answered by every CDN with a handshake
+    alert - while the socket cannot be steered to a private address by a
+    DNS rebind.
     """
-    parsed = urlparse(url)
-    netloc = pinned_ip
-    if parsed.port is not None:
-        netloc = f"{pinned_ip}:{parsed.port}"
-    return parsed._replace(netloc=netloc).geturl()
+
+    def __init__(self, *args, pinned_ip: Optional[str] = None, **kwargs):
+        self._pinned_ip = pinned_ip
+        super().__init__(*args, **kwargs)
+
+    def _new_conn(self):
+        # _dns_host is the only place urllib3 resolves the name, so swapping it
+        # for the pinned IP moves the TCP connection and nothing else.
+        original_dns_host = self._dns_host
+        self._dns_host = self._pinned_ip
+        try:
+            return super()._new_conn()
+        finally:
+            self._dns_host = original_dns_host
+
+
+class _PinnedHTTPConnection(_PinnedConnectionMixin, HTTPConnection):
+    pass
+
+
+class _PinnedHTTPSConnection(_PinnedConnectionMixin, HTTPSConnection):
+    pass
+
+
+class _PinnedHTTPConnectionPool(urllib3.HTTPConnectionPool):
+    ConnectionCls = _PinnedHTTPConnection
+
+
+class _PinnedHTTPSConnectionPool(urllib3.HTTPSConnectionPool):
+    ConnectionCls = _PinnedHTTPSConnection
+
+
+class _PinnedHTTPAdapter(requests.adapters.HTTPAdapter):
+    """Adapter that validates the target host and pins the socket to it.
+
+    Every request a session makes passes through here, including the hops of
+    a redirect, so a redirect cannot be used to reach a private address
+    either - each hop is resolved and checked again on its own.
+    """
+
+    def get_connection(self, url, proxies=None):
+        parsed = urlparse(url)
+        host = parsed.hostname
+        if not host:
+            raise requests.exceptions.InvalidURL(f"No host in {url!r}")
+
+        ok, pinned_ip = _host_resolves_only_to_public(host)
+        if not ok:
+            raise requests.exceptions.InvalidURL(
+                f"Refusing to download from {host!r}: not a public address"
+            )
+
+        # The pool keeps the hostname, so urllib3 sends the right Host header
+        # and verifies the certificate against the right name; only the socket
+        # is aimed at the validated address.
+        if parsed.scheme == "https":
+            return _PinnedHTTPSConnectionPool(
+                host,
+                parsed.port or 443,
+                pinned_ip=pinned_ip,
+                cert_reqs="CERT_REQUIRED",
+                assert_hostname=host,
+            )
+        return _PinnedHTTPConnectionPool(
+            host,
+            parsed.port or 80,
+            pinned_ip=pinned_ip,
+        )
 
 
 def download_image(url: str, timeout: int = 15) -> Optional[bytes]:
@@ -93,8 +162,9 @@ def download_image(url: str, timeout: int = 15) -> Optional[bytes]:
 
     The URL must use http/https, resolve only to public addresses, carry an
     image Content-Type, and stay under the size ceiling. The connection is
-    pinned to the first resolved public IP so DNS rebind cannot redirect to a
-    private address after validation.
+    pinned to the validated address so DNS rebind cannot redirect it to a
+    private one, while the hostname stays in the request so the TLS handshake
+    still names the server.
     """
     try:
         parsed = urlparse(url)
@@ -111,22 +181,16 @@ def download_image(url: str, timeout: int = 15) -> Optional[bytes]:
         logger.warning(f"Blocked image URL with no host: {url}")
         return None
 
-    ok, pinned_ip = _host_resolves_only_to_public(host)
-    if not ok:
-        return None
-
-    # Pin the connection to the validated public IP; keep the original host as
-    # the Host header so virtual-hosted servers still work.
-    pinned = _pinned_url(url, pinned_ip)
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Host": host,
     }
 
+    session = requests.Session()
+    session.mount("http://", _PinnedHTTPAdapter())
+    session.mount("https://", _PinnedHTTPAdapter())
+
     try:
-        response = requests.get(
-            pinned, headers=headers, timeout=timeout, stream=True
-        )
+        response = session.get(url, headers=headers, timeout=timeout, stream=True)
         response.raise_for_status()
 
         content_type = response.headers.get("Content-Type", "")
@@ -154,6 +218,8 @@ def download_image(url: str, timeout: int = 15) -> Optional[bytes]:
     except Exception as e:
         logger.warning(f"Failed to download image from {url}: {e}")
         return None
+    finally:
+        session.close()
 
 
 def resize_image(image_data: bytes, max_width: int = 800, max_size_kb: int = 500) -> bytes:

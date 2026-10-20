@@ -64,6 +64,38 @@ SECURITY_HEADERS = {
 # runaway client from exhausting memory via /api/stores/add or webhook endpoints.
 MAX_BODY_SIZE = 1 * 1024 * 1024  # 1 MB
 
+# Turning a remote image into a cached one is the heaviest work the server
+# does - a download, a decode and a re-encode - and the dashboard asks for
+# hundreds of them at once when the cache is cold. Capping how many run at the
+# same time keeps a cold start from saturating the box; the images still
+# arrive, just spread out instead of in one burst. Two is enough to keep the
+# pipe full without the box running hot on a shared host.
+DEFAULT_MAX_IMAGE_WORKERS = 2
+_image_work_slots = None
+_image_work_limit = DEFAULT_MAX_IMAGE_WORKERS
+_image_work_slots_lock = threading.Lock()
+
+
+def _image_work_limiter():
+    """Return the semaphore that bounds concurrent image processing."""
+    global _image_work_slots, _image_work_limit
+    if _image_work_slots is None:
+        with _image_work_slots_lock:
+            if _image_work_slots is None:
+                limit = DEFAULT_MAX_IMAGE_WORKERS
+                try:
+                    config_path = Path(__file__).parent / "config.yaml"
+                    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+                    limit = int((config.get("images") or {}).get(
+                        "max_concurrent_downloads", limit))
+                except Exception:
+                    pass
+                _image_work_limit = max(1, limit)
+                _image_work_slots = threading.BoundedSemaphore(_image_work_limit)
+                print(f"Image processing limited to {_image_work_limit} at a time")
+    return _image_work_slots
+
+
 class LRUCache:
     """Simple LRU cache with max size."""
     def __init__(self, maxsize=1000):
@@ -469,13 +501,16 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if not remote_url:
             return None
 
-        downloaded = download_image(remote_url)
-        if downloaded:
-            downloaded = self._resize_for_cache(downloaded)
-            mime = get_mime_type(downloaded)
-            save_image_cache(downloaded, cache_dir, key)
-            self.storage.save_product_image(key, downloaded, mime)
-            self._image_cache.set(key, downloaded)
+        # The download and the resize are the expensive part, so they run under
+        # the shared limiter rather than as many at a time as the client asks.
+        with _image_work_limiter():
+            downloaded = download_image(remote_url)
+            if downloaded:
+                downloaded = self._resize_for_cache(downloaded)
+                mime = get_mime_type(downloaded)
+                save_image_cache(downloaded, cache_dir, key)
+                self.storage.save_product_image(key, downloaded, mime)
+                self._image_cache.set(key, downloaded)
         return downloaded
 
     def _resize_for_cache(self, image_data):

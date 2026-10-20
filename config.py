@@ -24,6 +24,9 @@ class ImageConfig:
     cache_dir: str = "./cache/images"
     max_width: int = 800
     max_size_kb: int = 500
+    # How many images may be fetched and resized at the same time. A cold
+    # cache otherwise lets the dashboard's burst of requests saturate the box.
+    max_concurrent_downloads: int = 2
     formats: List[str] = field(default_factory=lambda: ["jpg", "jpeg", "png", "webp"])
 
 

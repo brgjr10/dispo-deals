@@ -1848,6 +1848,26 @@ html {
   .deal-segment { flex-direction: column; }
   .deal-segment .btn { width: 100%; }
 }
+
+/* Utilities
+   The dashboard is served under a strict CSP with no 'unsafe-inline', so the
+   browser refuses a style attribute outright - these are the one-off
+   declarations that used to live inline. None of them carry !important: a
+   script that sets el.style.* at runtime still wins over them, which is how
+   the loader, the compare panel and the rest show and hide themselves. */
+.u-hidden { display: none; }
+.u-stat-wide { min-width: 200px; }
+.u-select-auto { width: auto; }
+.u-chart-200 { height: 200px; }
+.u-ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.u-no-x-scroll { overflow-x: hidden; }
+.u-modal-narrow { max-width: 480px; }
+.u-subtle { color: var(--muted); font-weight: 500; }
+.u-muted { color: var(--muted); }
+.u-row { display: flex; align-items: center; gap: 8px; }
+.u-logo-xs { width: 16px; height: 16px; border-radius: 4px; background: var(--bg); }
+/* Scoped with the component so it outranks the shared nav-item count rule. */
+.nav-item-count.nav-count-active { background: var(--primary); color: var(--bg); }
 </style>
 </head>
 <body>
@@ -1865,7 +1885,7 @@ html {
       <div class="nav-section-title">Stores</div>
       <div id="storeNavList"></div>
       <div class="nav-section-footer">
-        <button class="btn ghost" id="showHiddenStoresBtn" data-action="showHiddenStores" style="display:none;">
+        <button class="btn ghost u-hidden" id="showHiddenStoresBtn" data-action="showHiddenStores">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-5.52 0-10-4.48-10-10S6.48 2 12 2c5.52 0 10 4.48 10 10 0 2.27-0.76 4.37-2 6.14"/></svg>
           Show hidden stores
         </button>
@@ -1973,15 +1993,15 @@ html {
     </header>
 
     <div class="stats-bar" id="statsBar">
-        <div class="stat" style="min-width: 200px;">
+        <div class="stat u-stat-wide">
             <div class="stat-value" id="totalProducts">0</div>
             <div class="stat-label">Total Products</div>
         </div>
-        <div class="stat" style="min-width: 200px;">
+        <div class="stat u-stat-wide">
             <div class="stat-value" id="totalDeals">0</div>
             <div class="stat-label">On Deal</div>
         </div>
-        <div class="stat" style="min-width: 200px;">
+        <div class="stat u-stat-wide">
             <div class="stat-value" id="storesWithDeals">0</div>
             <div class="stat-label">Stores with Deals</div>
         </div>
@@ -1994,7 +2014,7 @@ html {
           <div class="products-count" id="productsCount">Showing all products across all stores</div>
         </div>
         <div class="products-header-actions">
-          <button class="btn" id="compareToggle" data-action="toggleCompareMode" style="display:none;" aria-pressed="false">
+          <button class="btn u-hidden" id="compareToggle" data-action="toggleCompareMode" aria-pressed="false">
             Compare (<span id="compareCount">0</span>)
           </button>
           <button class="btn secondary" data-action="loadData">Refresh</button>
@@ -2054,11 +2074,11 @@ html {
       </section>
 
       <div class="product-grid" id="productGrid">
-        <div class="vg-loader" id="vgLoader" aria-hidden="true" style="display:none;">
+        <div class="vg-loader u-hidden" id="vgLoader" aria-hidden="true">
           <div class="vg-spinner"></div>
           <span>Loading products...</span>
         </div>
-        <div class="vg-end" id="vgEnd" aria-hidden="true" style="display:none;">No more products</div>
+        <div class="vg-end u-hidden" id="vgEnd" aria-hidden="true">No more products</div>
         <div class="vg-sentinel" id="vgSentinel" aria-hidden="true"></div>
       </div>
     </div>
@@ -2073,8 +2093,8 @@ html {
         </div>
         <div class="page-actions">
           <button class="btn secondary" data-action="loadData">Refresh</button>
-          <button class="btn ghost" id="collapseAllStoresBtn" data-action="toggleAllWeeklyStores" data-action-arg="false" style="display:none;">Collapse All</button>
-          <button class="btn ghost" id="expandAllStoresBtn" data-action="toggleAllWeeklyStores" data-action-arg="true" style="display:none;">Expand All</button>
+          <button class="btn ghost u-hidden" id="collapseAllStoresBtn" data-action="toggleAllWeeklyStores" data-action-arg="false">Collapse All</button>
+          <button class="btn ghost u-hidden" id="expandAllStoresBtn" data-action="toggleAllWeeklyStores" data-action-arg="true">Expand All</button>
         </div>
       </div>
       <div id="weeklyMenuBody" class="menu-body"></div>
@@ -2091,7 +2111,7 @@ html {
           <button class="btn secondary" data-action="loadData">Refresh</button>
         </div>
       </div>
-      <div id="weeklyDealsBody" class="deals-body" style="overflow-x: hidden;"></div>
+      <div id="weeklyDealsBody" class="deals-body u-no-x-scroll"></div>
     </section>
 
     <!-- Executive Summary: CEO dashboard - best deals first, no fluff. -->
@@ -2148,13 +2168,13 @@ html {
         <section class="executive-section">
           <div class="section-head">
             <h2>Best Categories</h2>
-            <select class="filter-select" id="catRankMetric" style="width:auto;">
+            <select class="filter-select u-select-auto" id="catRankMetric">
               <option value="avg">Best Avg Discount</option>
               <option value="count">Most Deals</option>
               <option value="best">Deepest Single</option>
             </select>
           </div>
-          <div class="insight-canvas-wrap" style="height:200px;">
+          <div class="insight-canvas-wrap u-chart-200">
             <canvas id="catRankChart"></canvas>
           </div>
           <div class="cat-rank-list" id="catRankList"></div>
@@ -2164,13 +2184,13 @@ html {
         <section class="executive-section">
           <div class="section-head">
             <h2>Best Brands</h2>
-            <select class="filter-select" id="brandRankMetric" style="width:auto;">
+            <select class="filter-select u-select-auto" id="brandRankMetric">
               <option value="avg">Best Avg Discount</option>
               <option value="count">Most Deals</option>
               <option value="best">Deepest Single</option>
             </select>
           </div>
-          <div class="insight-canvas-wrap" style="height:200px;">
+          <div class="insight-canvas-wrap u-chart-200">
             <canvas id="brandRankChart"></canvas>
           </div>
           <div class="brand-rank-list" id="brandRankList"></div>
@@ -2198,7 +2218,7 @@ html {
 </div>
 
 <!-- Compare Panel -->
-<div id="comparePanel" class="compare-panel" role="region" aria-label="Product comparison" style="display:none;">
+<div id="comparePanel" class="compare-panel u-hidden" role="region" aria-label="Product comparison">
   <div class="compare-header">
     <h3>Compare Products</h3>
     <div class="compare-actions">
@@ -2264,7 +2284,7 @@ html {
 
 <!-- Add Store Modal -->
 <div id="addStoreModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="addStoreTitle">
-  <div class="modal add-store-modal" role="document" tabindex="-1" style="max-width:480px;">
+  <div class="modal add-store-modal u-modal-narrow" role="document" tabindex="-1">
     <div class="modal-header">
       <div class="modal-title">
         <div class="modal-name" id="addStoreTitle">Add a Dispensary</div>
@@ -2316,9 +2336,9 @@ html {
             <div class="modal-savings" id="modalSavings"></div>
           </div>
         </div>
-        <div class="modal-section" id="modalPriceHistorySection" style="display:none;">
+        <div class="modal-section u-hidden" id="modalPriceHistorySection">
           <div class="modal-section-title">Price History</div>
-          <div class="insight-canvas-wrap" style="height: 200px;">
+          <div class="insight-canvas-wrap u-chart-200">
             <canvas id="modalPriceChart"></canvas>
           </div>
           <div class="insight-empty" id="modalPriceChartEmpty" hidden>No price history available</div>
@@ -2339,7 +2359,7 @@ html {
         <div class="modal-actions">
           <a class="modal-btn" id="modalProductLink" href="#" target="_blank" rel="noopener noreferrer">View Product Page</a>
           <button class="modal-btn secondary" id="modalCloseBtn">Close</button>
-          <button class="modal-btn ghost" id="modalShareBtn" style="display:none">Share</button>
+          <button class="modal-btn ghost u-hidden" id="modalShareBtn">Share</button>
         </div>
       </div>
     </div>
@@ -2940,8 +2960,8 @@ function renderLanding() {
     const deals = products.filter(p => p.is_deal);
     const best = deals.length ? Math.max(...deals.map(p => p.discount_pct || 0)) : 0;
     const badge = deals.length
-      ? `<span class="landing-store-deals">${deals.length} deals<br><span style="color:var(--muted);font-weight:500">best -${best.toFixed(0)}%</span></span>`
-      : '<span class="landing-store-deals" style="color:var(--muted)">no deals</span>';
+      ? `<span class="landing-store-deals">${deals.length} deals<br><span class="u-subtle">best -${best.toFixed(0)}%</span></span>`
+      : '<span class="landing-store-deals u-muted">no deals</span>';
     return `
       <button class="landing-store" data-action="openStore" data-action-arg="${escapeHtml(store.id)}">
         ${store.logo_url ? `<img src="${escapeHtml(store.logo_url)}" loading="lazy" decoding="async" data-onerror="hide">` : ''}
@@ -3117,8 +3137,8 @@ function renderWeeklyDeals() {
         <div class="deal-cat-row" data-action="openQuickViewByHash" data-action-arg="${escapeHtml(item.hash)}">
           <span class="deal-rank">${index + 1}</span>
           <span class="deal-cat-main">
-            <span class="deal-cat-item-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(cleaned.name)}</span>
-            <span class="deal-cat-item-meta" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.storeName || storeName(item.store_id))}</span>
+            <span class="deal-cat-item-name">${escapeHtml(cleaned.name)}</span>
+            <span class="deal-cat-item-meta u-ellipsis">${escapeHtml(item.storeName || storeName(item.store_id))}</span>
           </span>
           <span class="deal-off">-${(item.discount_pct || 0).toFixed(0)}%</span>
         </div>
@@ -3352,7 +3372,7 @@ const expanded = getExpandedGroups();
         <span>${escapeHtml(label)}</span>
       </span>
       <span class="nav-item-count">${group.count}</span>
-      ${isActive ? '<span class="nav-item-count" style="background:var(--primary);color:var(--bg)">active</span>' : ""}
+      ${isActive ? '<span class="nav-item-count nav-count-active">active</span>' : ""}
     `;
     header.setAttribute('role', 'button');
     header.setAttribute('tabindex', '0');
@@ -5458,10 +5478,10 @@ function renderVirtualizedGrid() {
   // than a band above the grid, and so the sentinel stays at the very bottom
   // where it triggers the next batch.
   container.innerHTML = `
-    <div class="vg-loader" id="vgLoader" aria-hidden="true" style="display:none;">
+    <div class="vg-loader u-hidden" id="vgLoader" aria-hidden="true">
       <div class="vg-spinner"></div><span>Loading products...</span>
     </div>
-    <div class="vg-end" id="vgEnd" aria-hidden="true" style="display:none;">No more products</div>
+    <div class="vg-end u-hidden" id="vgEnd" aria-hidden="true">No more products</div>
     <div class="vg-sentinel" id="vgSentinel" aria-hidden="true"></div>
   `;
   updateStats();
@@ -6546,9 +6566,9 @@ function addInfoItem(label, value) {
 function addStoreItem(label, value, store) {
   const it = document.createElement('div');
   it.className = 'modal-info-item';
-  let cnt = '<div class="modal-info-label">' + escapeHtml(String(label)) + '</div><div class="modal-info-value" style="display:flex;align-items:center;gap:8px">' + escapeHtml(String(value));
+  let cnt = '<div class="modal-info-label">' + escapeHtml(String(label)) + '</div><div class="modal-info-value u-row">' + escapeHtml(String(value));
   if (store) {
-    cnt += '<img src="' + storeLogoSrc(store) + '" alt="" style="width:16px;height:16px;border-radius:4px;background:var(--bg)" loading="lazy" decoding="async" data-onerror>';
+    cnt += '<img src="' + storeLogoSrc(store) + '" alt="" class="u-logo-xs" loading="lazy" decoding="async" data-onerror>';
   }
   cnt += '</div>';
   it.innerHTML = cnt;
@@ -6782,7 +6802,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function toggleCompareMode() {
   const panel = document.getElementById('comparePanel');
   const toggle = document.getElementById('compareToggle');
-  const isOpen = panel.style.display !== 'none';
+  const isOpen = !panel.classList.contains('u-hidden');
   if (isOpen) {
     closeComparePanel();
   } else {
@@ -6793,7 +6813,7 @@ function toggleCompareMode() {
 function openComparePanel() {
   const panel = document.getElementById('comparePanel');
   const toggle = document.getElementById('compareToggle');
-  panel.style.display = 'block';
+  panel.classList.remove('u-hidden');
   toggle.setAttribute('aria-pressed', 'true');
   toggle.textContent = 'Compare (' + compareSelection.size + ') Close';
   renderComparePanel();
@@ -6803,7 +6823,7 @@ function openComparePanel() {
 function closeComparePanel() {
   const panel = document.getElementById('comparePanel');
   const toggle = document.getElementById('compareToggle');
-  panel.style.display = 'none';
+  panel.classList.add('u-hidden');
   toggle.setAttribute('aria-pressed', 'false');
   toggle.textContent = 'Compare (' + compareSelection.size + ')';
   document.querySelectorAll('.deal-row-clickable.selected').forEach(el => el.classList.remove('selected'));
@@ -7105,18 +7125,18 @@ async function loadPriceHistory(storeId, productId) {
   try {
     const response = await fetch(`/api/price-history/${encodeURIComponent(storeId)}/${encodeURIComponent(productId)}`);
     if (!response.ok) {
-      section.style.display = 'none';
+      section.classList.add('u-hidden');
       return;
     }
     const data = await response.json();
     const history = data.history || [];
     
     if (history.length === 0) {
-      section.style.display = 'none';
+      section.classList.add('u-hidden');
       return;
     }
 
-    section.style.display = '';
+    section.classList.remove('u-hidden');
     empty.hidden = true;
     canvas.hidden = false;
 
@@ -7231,7 +7251,7 @@ function handleKeyboardShortcuts(e) {
       return;
     }
     const comparePanel = document.getElementById('comparePanel');
-    if (comparePanel && comparePanel.style.display !== 'none') {
+    if (comparePanel && !comparePanel.classList.contains('u-hidden')) {
       closeComparePanel();
       return;
     }
